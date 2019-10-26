@@ -1,2 +1,2 @@
-# scalaxy
-Multi-purpose cloud ready distributed database
+# Scalaxy
+Multi-purpose cloud-ready distributed database
