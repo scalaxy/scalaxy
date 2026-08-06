@@ -2,11 +2,12 @@
 
 (in-package #:scalaxy)
 
-(defstruct (node (:constructor %make-node (id store replicator followers)))
+(defstruct (node (:constructor %make-node (id store replicator followers started-at)))
   id
   store
   replicator
-  followers)   ; list of (follower-id . transport-fn)
+  followers   ; list of (follower-id . transport-fn)
+  started-at) ; universal time when the node was created
 
 (defvar *node-counter* 0)
 
@@ -15,7 +16,8 @@
   (%make-node (or id (format nil "node-~d" *node-counter*))
               store
               (make-replicator)
-              nil))
+              nil
+              (get-universal-time)))
 
 (defun node-next-seq (node)
   (let ((seq (replicator-seq (node-replicator node))))
@@ -67,10 +69,12 @@ followers that acknowledged the write."
   (store-scan (node-store node) prefix))
 
 (defun node-dispatch (node msg)
-  "Handle a decoded request message and return a reply message plist."
+  "Handle a decoded request message and return a reply message plist.
+Writes go through NODE-PUT/NODE-DELETE so they are replicated to the
+node's followers (in-process or TCP) before the client is acknowledged."
   (case (getf msg :op)
     (#.+op-put+
-     (store-put (node-store node) (getf msg :key) (getf msg :value))
+     (node-put node (getf msg :key) (getf msg :value))
      (list :op #.+op-ack+ :status #.+status-ok+))
     (#.+op-get+
      (let ((value (store-get (node-store node) (getf msg :key))))
@@ -78,7 +82,7 @@ followers that acknowledged the write."
              :status (if value #.+status-ok+ #.+status-not-found+)
              :value value)))
     (#.+op-delete+
-     (store-delete (node-store node) (getf msg :key))
+     (node-delete node (getf msg :key))
      (list :op #.+op-ack+ :status #.+status-ok+))
     (#.+op-scan+
      (list :op #.+op-response+ :status #.+status-ok+

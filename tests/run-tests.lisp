@@ -234,6 +234,205 @@
 
 ;;; ------------------------------------------------------------------
 
+
+;;; ------------------------------------------------------------------
+;;; JSON
+
+(defun test-json ()
+  (deftest json
+    (let* ((obj (let ((h (make-hash-table :test #'equal)))
+                  (setf (gethash "name" h) "scalaxy"
+                        (gethash "count" h) 42
+                        (gethash "ok" h) t
+                        (gethash "nothing" h) nil
+                        (gethash "tags" h) '("a" "b" "c")
+                        (gethash "nested" h) (let ((h2 (make-hash-table :test #'equal)))
+                                               (setf (gethash "x" h2) 1.5)
+                                               h2))
+                  h))
+           (decoded (json-decode (json-encode obj))))
+      (check (string= (gethash "name" decoded) "scalaxy") "json string")
+      (check (= (gethash "count" decoded) 42) "json integer")
+      (check (eq (gethash "ok" decoded) t) "json true")
+      (check (null (gethash "nothing" decoded)) "json null")
+      (check (equal (gethash "tags" decoded) '("a" "b" "c")) "json array")
+      (check (= (gethash "x" (gethash "nested" decoded)) 1.5) "json nested object"))
+    (let ((s (json-decode (json-encode (format nil "a~c~c~c~c~c~c~c~c"
+                                               #\" #\\ #\c #\Newline #\d #\Tab #\e (code-char #x1234))))))
+      (check (string= s (format nil "a~c~c~c~c~c~c~c~c"
+                                #\" #\\ #\c #\Newline #\d #\Tab #\e (code-char #x1234)))
+             "json escaping round-trip"))
+    (check (equal (json-decode "[1,2,3]") '(1 2 3)) "json literal array")
+    (check (null (json-decode "null")) "json null literal")
+    (let* ((decoded (json-decode "{\"a\":{\"b\":[true,false]}}"))
+           (a (gethash "a" decoded))
+           (b (and a (gethash "b" a))))
+      (check (hash-table-p a) "json nested object")
+      (check (equal b '(t nil)) "json nested literals"))))
+
+;;; ------------------------------------------------------------------
+;;; HTTP server / client
+
+(defun test-http ()
+  (deftest http
+    (let ((server (http-serve
+                   (lambda (req)
+                     (cond ((string= (getf req :path) "/echo")
+                            (json-response (list (cons "method" (getf req :method))
+                                                 (cons "body" (getf req :body)))))
+                           ((string= (getf req :path) "/decode")
+                            (json-response (list (cons "q" (getf req :query)))))
+                           (t (json-response (list (cons "error" "nf")) :status 404))))
+                   :port 0)))
+      (unwind-protect
+           (let ((port (http-server-port server)))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "POST" "/echo" :body "{\"a\":1}")
+               (declare (ignore hdrs))
+               (let ((d (json-decode body)))
+                 (check (= status 200) "http status 200")
+                 (check (string= (gethash "method" d) "POST") "http method echo")
+                 (check (string= (gethash "body" d) "{\"a\":1}") "http body echo")))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/decode?x=1&y=hello%20world")
+               (declare (ignore hdrs))
+               (let ((q (gethash "q" (json-decode body))))
+                 (check (string= (gethash "y" q) "hello world") "query y decode")
+                 (check (string= (gethash "x" q) "1") "query x")))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/nope")
+               (declare (ignore hdrs body))
+               (check (= status 404) "http 404"))
+             (check (string= (http-url-decode "a%20b+c") "a b c") "url decode"))
+        (http-stop server)))))
+
+;;; ------------------------------------------------------------------
+;;; web API (node + HTTP console)
+
+(defun test-web-api ()
+  (deftest web-api
+    (let* ((node (make-node :id "web"))
+           (tcp-server (tcp-serve node :port 0))
+           (http-server (http-serve
+                         (make-web-handler :node node :web-dir "web/"
+                                           :address "127.0.0.1:7200"
+                                           :http-address "127.0.0.1:8080")
+                         :port 0)))
+      (unwind-protect
+           (let ((port (http-server-port http-server)))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/healthz")
+               (declare (ignore hdrs))
+               (check (= status 200) "healthz status")
+               (check (string= (gethash "status" (json-decode body)) "ok") "healthz body"))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/")
+               (declare (ignore hdrs))
+               (check (and (= status 200) (search "Scalaxy Console" body)) "index page"))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "PUT" "/api/keys/web-key"
+                                                                   :body "{\"value\":\"web-value\"}")
+               (declare (ignore hdrs))
+               (check (= status 200) "api put status")
+               (check (gethash "ok" (json-decode body)) "api put ok"))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/api/keys/web-key")
+               (declare (ignore hdrs))
+               (let ((d (json-decode body)))
+                 (check (= status 200) "api get status")
+                 (check (string= (gethash "utf8" d) "web-value") "api get utf8")
+                 (check (string= (gethash "hex" d) (hex-digest (string-to-octets "web-value"))) "api get hex")))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "GET" "/api/keys")
+               (declare (ignore hdrs))
+               (let ((d (json-decode body)))
+                 (check (= (gethash "total" d) 1) "api keys total")
+                 (check (string= (gethash "key" (first (gethash "keys" d))) "web-key") "api keys list")))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "POST" "/api/query"
+                                                                   :body "{\"command\":\"get web-key\"}")
+               (declare (ignore hdrs))
+               (let ((d (json-decode body)))
+                 (check (gethash "ok" d) "query ok")
+                 (check (search "web-value" (gethash "output" d)) "query output")))
+             (multiple-value-bind (status hdrs body) (http-request "127.0.0.1" port "DELETE" "/api/keys/web-key")
+               (declare (ignore hdrs body))
+               (check (= status 200) "api delete status")))
+        (http-stop http-server)
+        (tcp-stop tcp-server)))))
+
+;;; ------------------------------------------------------------------
+;;; gateway: ring routing over real TCP
+
+(defun test-gateway ()
+  (deftest gateway
+    (let* ((nodes (loop for i below 3 collect (make-node :id (format nil "g~d" i))))
+           (servers (loop for n in nodes collect (tcp-serve n :port 0)))
+           (ports (mapcar #'server-port servers))
+           (peers (loop for i below 3
+                        collect (list (format nil "g~d" i) "127.0.0.1" (nth i ports))))
+           (gw (make-gateway :peers peers)))
+      (unwind-protect
+           (progn
+             (dolist (k '("aaa" "bbb" "ccc" "ddd" "eee"))
+               (gateway-put gw k (string-to-octets (format nil "v-~a" k))))
+             (dolist (k '("aaa" "bbb" "ccc" "ddd" "eee"))
+               (check (deep-equal (gateway-get gw k) (string-to-octets (format nil "v-~a" k)))
+                      (format nil "gateway get ~a" k)))
+             (check (= (length (gateway-scan gw "")) 5) "gateway scan total")
+             (check (= (length (gateway-scan gw "c")) 1) "gateway scan prefix")
+             (gateway-delete gw "aaa")
+             (check (null (gateway-get gw "aaa")) "gateway delete")
+             (check (= (reduce #'+ (mapcar (lambda (n) (store-count (node-store n))) nodes)) 4)
+                    "keys distributed across nodes"))
+        (dolist (s servers) (tcp-stop s))))))
+
+(defun test-gateway-status ()
+  (deftest gateway-status
+    (let* ((nodes (loop for i below 3 collect (make-node :id (format nil "s~d" i))))
+           (tcp-servers (loop for n in nodes collect (tcp-serve n :port 0)))
+           (http-servers (loop for n in nodes
+                               collect (http-serve (make-web-handler :node n :web-dir "web/")
+                                                   :port 0)))
+           (peers (loop for i below 3
+                        collect (list (format nil "s~d" i) "127.0.0.1"
+                                      (server-port (nth i tcp-servers))
+                                      (http-server-port (nth i http-servers)))))
+           (gw (make-gateway :peers peers)))
+      (unwind-protect
+           (progn
+             (gateway-put gw "k1" (string-to-octets "1"))
+             (gateway-put gw "k2" (string-to-octets "2"))
+             (gateway-put gw "k3" (string-to-octets "3"))
+             (let ((status (gateway-status gw)))
+               (check (= (length (getf status :nodes)) 3) "status aggregates 3 nodes")
+               (check (= (getf status :total-keys) 3) "status total keys")
+               (check (every (lambda (n) (string= (gethash "status" n) "ok"))
+                             (getf status :nodes))
+                      "all peers report ok")))
+        (dolist (s http-servers) (http-stop s))
+        (dolist (s tcp-servers) (tcp-stop s))))))
+
+(defun test-gateway-failover ()
+  (deftest gateway-failover
+    (let* ((nodes (loop for i below 3 collect (make-node :id (format nil "f~d" i))))
+           (servers (loop for n in nodes collect (tcp-serve n :port 0)))
+           (ports (mapcar #'server-port servers))
+           (peers (loop for i below 3
+                        collect (list (format nil "f~d" i) "127.0.0.1" (nth i ports))))
+           (gw (make-gateway :peers peers)))
+      ;; wire one synchronous replica per key: f0->f1, f1->f2, f2->f0
+      (loop for i below 3
+            for n in nodes
+            do (node-add-follower n (format nil "f~d" (mod (1+ i) 3))
+                                  (lambda (msg) (node-dispatch (nth (mod (1+ i) 3) nodes) msg))))
+      (unwind-protect
+           (progn
+             (dolist (k (loop for i below 30 collect (format nil "fail:~d" i)))
+               (gateway-put gw k (string-to-octets (format nil "v-~a" k))))
+             ;; kill node f2
+             (tcp-stop (nth 2 servers))
+             (let ((missing 0))
+               (dolist (k (loop for i below 30 collect (format nil "fail:~d" i)))
+                 (unless (deep-equal (gateway-get gw k) (string-to-octets (format nil "v-~a" k)))
+                   (incf missing)))
+               (check (zerop missing)
+                      (format nil "all keys readable after one node failure (~d missing)" missing))))
+        (dolist (s servers) (ignore-errors (tcp-stop s)))))))
+
+;;; ------------------------------------------------------------------
+
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)
   (test-consistent-hash)
@@ -242,5 +441,12 @@
   (test-replication)
   (test-cluster)
   (test-tcp)
+  (test-json)
+  (test-http)
+  (test-web-api)
+  (test-gateway)
+  (test-gateway-status)
+  (test-gateway-failover)
   (format t "~&~%Ran ~d checks, ~d failure~:p.~%" *checks* *failures*)
   (if (zerop *failures*) 0 1))
+

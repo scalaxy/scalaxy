@@ -22,14 +22,25 @@
     (loop for b across octets
           do (format out "~2,'0x" b))))
 
-(defun fnv1a-64 (data &key (seed #x84222325cbf29ce4))
-  "FNV-1a 64-bit hash of the octet vector DATA."
+(defun fnv1a-64 (data &key (seed #xcbf29ce484222325))
+  "FNV-1a 64-bit hash of the octet vector DATA.
+The seed is the standard FNV-1a offset basis (0xCBF29CE484222325)."
   (loop with hash = seed
         for b across data
         do (setf hash (logand (* (logxor hash b) #x100000001b3)
                               #xFFFFFFFFFFFFFFFF))
         finally (return hash)))
 
+(defun splitmix64 (x)
+  "SplitMix64 finalizer: bijective avalanche that scatters correlated
+64-bit inputs (e.g. FNV-1a of strings that differ in one byte)."
+  (let ((z (logand (+ x #x9e3779b97f4a7c15) #xFFFFFFFFFFFFFFFF)))
+    (setf z (logand (logxor z (ash z -30)) #xFFFFFFFFFFFFFFFF))
+    (setf z (logand (* z #xbf58476d1ce4e5b9) #xFFFFFFFFFFFFFFFF))
+    (setf z (logand (logxor z (ash z -27)) #xFFFFFFFFFFFFFFFF))
+    (setf z (logand (* z #x94d049bb133111eb) #xFFFFFFFFFFFFFFFF))
+    (logand (logxor z (ash z -31)) #xFFFFFFFFFFFFFFFF)))
+
 (defun hash-string (string)
-  "FNV-1a 64-bit hash of a string key."
-  (fnv1a-64 (string-to-octets string)))
+  "Uniform 64-bit hash of a string key (FNV-1a + SplitMix64 finalizer)."
+  (splitmix64 (fnv1a-64 (string-to-octets string))))

@@ -50,12 +50,24 @@ replicates to the next REPLICAS nodes in ring order."
   cluster)
 
 (defun cluster-remove-node (cluster id)
-  (remhash id (cluster-nodes cluster))
-  (setf (cluster-ring cluster)
-        (make-ring :nodes (cluster-node-ids cluster)
-                   :vnodes-per-node (ring-vnodes-per-node (cluster-ring cluster))))
-  (%wire-replication cluster)
-  cluster)
+  "Remove ID from the cluster, re-homing any keys it held to their new
+ring owners so no data is lost (with replicas >= 1)."
+  (let ((removed-store (node-store (gethash id (cluster-nodes cluster)))))
+    (remhash id (cluster-nodes cluster))
+    (setf (cluster-ring cluster)
+          (make-ring :nodes (cluster-node-ids cluster)
+                     :vnodes-per-node (ring-vnodes-per-node (cluster-ring cluster))))
+    (%wire-replication cluster)
+    ;; re-home keys that were stored on the removed node: for every key,
+    ;; if its new ring owner does not already hold it, copy it there
+    ;; (the owner's node-put re-replicates it onward).
+    (maphash (lambda (k v)
+               (let ((new-owner (ring-lookup (cluster-ring cluster) k)))
+                 (when (and new-owner
+                            (null (node-get (gethash new-owner (cluster-nodes cluster)) k)))
+                   (node-put (gethash new-owner (cluster-nodes cluster)) k v))))
+             (store-table removed-store))
+    cluster))
 
 (defun %primary (cluster key)
   (or (ring-lookup (cluster-ring cluster) key)
