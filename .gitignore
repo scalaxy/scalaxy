@@ -1,12 +1,18 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Common Lisp compiled artifacts
+*.fasl
+*.fas
+*.lx64fsl
+*.dx64fsl
+*.lx86fsl
+*.o
+*.core
+.cache/
+.qlot/
+local-projects/
 
-# Test binary, build with `go test -c`
-*.test
+# Runtime data
+scalaxy-data/
+*.log
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# OS noise
+.DS_Store

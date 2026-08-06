@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Scalaxy node launcher.
+# Usage: bin/scalaxy [--address HOST:PORT] [--data-dir DIR] [--id NAME]
+set -e
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+exec sbcl --script "$DIR/bin/run-node.lisp" "$@"

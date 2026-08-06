@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up SBCL
+        uses: 40ants/setup-lisp@v3
+        with:
+          sbcl-bin: true
+      - name: Run tests
+        run: sbcl --script scripts/run-tests.lisp
