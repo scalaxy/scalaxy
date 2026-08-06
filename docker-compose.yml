@@ -1,0 +1,56 @@
+services:
+  # Three-node Scalaxy cluster with the web console on scalaxy-0.
+  #   UI:  http://localhost:8080
+  #   Data plane: 127.0.0.1:7200-7202 (TCP binary protocol)
+  scalaxy-0:
+    build: .
+    image: scalaxy:latest
+    environment:
+      SCALAXY_NODE_ID: node-0
+      SCALAXY_ADDRESS: 0.0.0.0:7200
+      SCALAXY_HTTP_ADDRESS: 0.0.0.0:8080
+      SCALAXY_DATA_DIR: /var/lib/scalaxy
+      SCALAXY_PEERS: node-0=scalaxy-0:7200,node-1=scalaxy-1:7200,node-2=scalaxy-2:7200
+      SCALAXY_REPLICATE_TO: node-1=scalaxy-1:7200
+    volumes:
+      - scalaxy-data-0:/var/lib/scalaxy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  scalaxy-1:
+    image: scalaxy:latest
+    environment:
+      SCALAXY_NODE_ID: node-1
+      SCALAXY_ADDRESS: 0.0.0.0:7200
+      SCALAXY_HTTP_ADDRESS: 0.0.0.0:8080
+      SCALAXY_DATA_DIR: /var/lib/scalaxy
+      SCALAXY_PEERS: node-0=scalaxy-0:7200,node-1=scalaxy-1:7200,node-2=scalaxy-2:7200
+      SCALAXY_REPLICATE_TO: node-2=scalaxy-2:7200
+    volumes:
+      - scalaxy-data-1:/var/lib/scalaxy
+    depends_on:
+      - scalaxy-0
+
+  scalaxy-2:
+    image: scalaxy:latest
+    environment:
+      SCALAXY_NODE_ID: node-2
+      SCALAXY_ADDRESS: 0.0.0.0:7200
+      SCALAXY_HTTP_ADDRESS: 0.0.0.0:8080
+      SCALAXY_DATA_DIR: /var/lib/scalaxy
+      SCALAXY_PEERS: node-0=scalaxy-0:7200,node-1=scalaxy-1:7200,node-2=scalaxy-2:7200
+      SCALAXY_REPLICATE_TO: node-0=scalaxy-0:7200
+    volumes:
+      - scalaxy-data-2:/var/lib/scalaxy
+    depends_on:
+      - scalaxy-0
+
+volumes:
+  scalaxy-data-0:
+  scalaxy-data-1:
+  scalaxy-data-2:

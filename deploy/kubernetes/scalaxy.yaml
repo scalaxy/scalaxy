@@ -1,0 +1,142 @@
+# Scalaxy on Kubernetes
+#
+#   kubectl apply -f deploy/kubernetes/scalaxy.yaml
+#
+# A 3-node StatefulSet. Each pod:
+#   - data plane on port 7200 (binary protocol)
+#   - web console / REST API / health probes on port 8080
+#
+# Access the web console:
+#   kubectl -n scalaxy port-forward svc/scalaxy 8080:80
+#   -> http://localhost:8080
+#
+# Scale (after editing SCALAXY_PEERS / SCALAXY_REPLICATE_TO in the
+# ConfigMap to match the new replica count):
+#   kubectl -n scalaxy scale statefulset scalaxy --replicas=5
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scalaxy
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scalaxy-config
+  namespace: scalaxy
+data:
+  # Node ids are pod names (scalaxy-0..N); peers resolve through the
+  # headless service DNS: <pod>.<service>.<namespace>.svc
+  SCALAXY_ADDRESS: "0.0.0.0:7200"
+  SCALAXY_HTTP_ADDRESS: "0.0.0.0:8080"
+  SCALAXY_DATA_DIR: "/var/lib/scalaxy"
+  SCALAXY_PEERS: >-
+    node-0=scalaxy-0.scalaxy-headless:7200,
+    node-1=scalaxy-1.scalaxy-headless:7200,
+    node-2=scalaxy-2.scalaxy-headless:7200
+  SCALAXY_REPLICATE_TO: >-
+    node-1=scalaxy-1.scalaxy-headless:7200,
+    node-2=scalaxy-2.scalaxy-headless:7200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scalaxy-headless
+  namespace: scalaxy
+spec:
+  clusterIP: None
+  selector:
+    app: scalaxy
+  ports:
+    - name: data
+      port: 7200
+      targetPort: data
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scalaxy
+  namespace: scalaxy
+spec:
+  selector:
+    app: scalaxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: data
+      port: 7200
+      targetPort: data
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: scalaxy
+  namespace: scalaxy
+spec:
+  serviceName: scalaxy-headless
+  replicas: 3
+  selector:
+    matchLabels:
+      app: scalaxy
+  template:
+    metadata:
+      labels:
+        app: scalaxy
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: scalaxy
+          image: scalaxy:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: scalaxy-config
+          env:
+            - name: SCALAXY_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - name: data
+              containerPort: 7200
+              protocol: TCP
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/scalaxy
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

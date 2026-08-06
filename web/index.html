@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scalaxy Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234f8cff'/%3E%3Cpath d='M9 22V10l7 8 7-8v12' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><span class="logo">S</span><span class="brand-name">Scalaxy</span></div>
+  <div class="brand-sub">distributed database</div>
+  <nav class="nav">
+    <a class="nav-item active" data-page="overview"><span class="nav-ico">&#9635;</span>Overview</a>
+    <a class="nav-item" data-page="data"><span class="nav-ico">&#9776;</span>Data</a>
+    <a class="nav-item" data-page="cluster"><span class="nav-ico">&#9678;</span>Cluster</a>
+    <a class="nav-item" data-page="console"><span class="nav-ico">&#8250;_</span>Console</a>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="foot-line"><span class="dim">node</span> <span id="foot-node">-</span></div>
+    <div class="foot-line"><span class="dim">version</span> <span id="foot-version">-</span></div>
+    <div class="foot-line"><span class="dim">uptime</span> <span id="foot-uptime">-</span></div>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <h1 class="page-title" id="page-title">Overview</h1>
+    <div class="topbar-right">
+      <div class="pill" id="cluster-pill"><span class="dot ok"></span>checking&hellip;</div>
+      <button class="btn btn-ghost" id="btn-refresh" title="Refresh">&#8635;</button>
+    </div>
+  </header>
+
+  <!-- ============ OVERVIEW ============ -->
+  <section id="page-overview" class="page">
+    <div class="cards">
+      <div class="card stat"><div class="stat-label">Nodes</div><div class="stat-value" id="stat-nodes">-</div><div class="stat-sub" id="stat-nodes-sub">&nbsp;</div></div>
+      <div class="card stat"><div class="stat-label">Keys</div><div class="stat-value" id="stat-keys">-</div><div class="stat-sub" id="stat-keys-sub">distinct keys</div></div>
+      <div class="card stat"><div class="stat-label">Replicas</div><div class="stat-value" id="stat-replicas">-</div><div class="stat-sub">per write</div></div>
+      <div class="card stat"><div class="stat-label">Cluster status</div><div class="stat-value" id="stat-status">-</div><div class="stat-sub" id="stat-status-sub">&nbsp;</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">Keyspace distribution</div>
+        <div class="ring-wrap">
+          <svg id="ring-svg" viewBox="0 0 200 200" width="200" height="200"></svg>
+          <div class="ring-center"><div class="ring-total" id="ring-total">-</div><div class="ring-label">keys</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Nodes</div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Node</th><th>Keys</th><th>Uptime</th><th>Status</th></tr></thead>
+            <tbody id="overview-nodes"><tr><td colspan="4" class="empty">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DATA ============ -->
+  <section id="page-data" class="page hidden">
+    <div class="toolbar">
+      <input class="input" id="key-prefix" type="text" placeholder="Prefix filter&hellip;" value="">
+      <button class="btn" id="btn-search">Search</button>
+      <span class="spacer"></span>
+      <button class="btn btn-primary" id="btn-add">+ Add key</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Key</th><th>Size</th><th>Preview</th><th class="th-actions">Actions</th></tr></thead>
+          <tbody id="keys-body"><tr><td colspan="4" class="empty">loading&hellip;</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span id="keys-info" class="dim">-</span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost" id="btn-prev">&#9664; Prev</button>
+        <button class="btn btn-ghost" id="btn-next">Next &#9654;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER ============ -->
+  <section id="page-cluster" class="page hidden">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">Nodes</div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Node</th><th>Address</th><th>HTTP</th><th>Keys</th><th>Replicas</th><th>Status</th></tr></thead>
+            <tbody id="cluster-nodes"><tr><td colspan="6" class="empty">loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">Ring distribution</div>
+        <div id="ring-bars" class="bars"><div class="empty">loading&hellip;</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONSOLE ============ -->
+  <section id="page-console" class="page hidden">
+    <div class="card">
+      <div class="card-head">Command console</div>
+      <textarea id="console-input" class="console-input" rows="3" placeholder="put user:42 Hello world&#10;get user:42&#10;scan user:&#10;delete user:42"></textarea>
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btn-run">Run</button>
+        <span class="spacer"></span>
+        <div class="pill dim-pill" id="console-hint">put / get / delete / scan</div>
+      </div>
+      <pre id="console-output" class="console-output">Scalaxy console ready.</pre>
+    </div>
+  </section>
+</main>
+
+<!-- key detail modal -->
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title" id="modal-title">Key</span><button class="btn btn-ghost" id="modal-close">&times;</button></div>
+    <div class="modal-body">
+      <div class="kv"><span class="dim">size</span><span id="mv-size">-</span></div>
+      <div class="kv"><span class="dim">utf-8</span><pre id="mv-utf8" class="value-pre"></pre></div>
+      <div class="kv"><span class="dim">hex</span><pre id="mv-hex" class="value-pre hex"></pre></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="mv-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- add key modal -->
+<div class="modal-overlay hidden" id="add-overlay">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add key</span><button class="btn btn-ghost" id="add-close">&times;</button></div>
+    <div class="modal-body">
+      <label class="field-label" for="add-key">Key</label>
+      <input class="input" id="add-key" type="text" placeholder="user:42">
+      <label class="field-label" for="add-value">Value</label>
+      <textarea class="input" id="add-value" rows="5" placeholder="value"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="add-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/app.js"></script>
+</body>
+</html>

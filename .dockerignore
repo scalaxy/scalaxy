@@ -1,0 +1,12 @@
+.git
+.gitignore
+*.log
+scalaxy-data/
+*.fasl
+.cache/
+web/node_modules
+deploy/
+Makefile
+README.md
+LICENSE
+docker-compose.yml
