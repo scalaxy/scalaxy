@@ -8,10 +8,11 @@ consistent hashing, writes are synchronously replicated to follower nodes,
 and every mutation is durably recorded in an append-only log that is replayed
 on startup.
 
-> **Independence notice.** Scalaxy is an independent open-source software
-> project. It is not affiliated with, sponsored by, endorsed by, or operated
-> by Scalaxy B.V. or scalaxy.com. The project is maintained by its original
-> author since 2014 (see the project site at <https://scalaxy.org>).
+> **Independence notice.** Scalaxy is an independent open source distributed
+> database project associated with scalaxy.org, a domain registered by the
+> project owner in 2014. This project is **not affiliated with, sponsored by,
+> endorsed by, authorized by, or operated by Scalaxy B.V. or scalaxy.com**.
+> Project site: <https://scalaxy.org>
 
 ## Features
 
