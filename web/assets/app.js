@@ -61,6 +61,7 @@ function showPage(name) {
   const titles = { overview: "Overview", data: "Data", cluster: "Cluster", console: "Console" };
   $("page-title").textContent = titles[name];
   if (name === "data") loadKeys();
+  else if (name === "console") setTimeout(() => $("console-input").focus(), 50);
   else loadStatus();
 }
 
@@ -235,22 +236,33 @@ $("add-save").addEventListener("click", async () => {
 });
 
 /* ---------- console ---------- */
-$("btn-run").addEventListener("click", runQuery);
+$("btn-run").addEventListener("click", () => runQuery());
 $("console-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) runQuery();
+  // Enter runs the command; Shift+Enter inserts a newline
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    runQuery();
+  }
 });
 
 async function runQuery() {
   const command = $("console-input").value.trim();
   if (!command) return;
-  $("console-output").textContent = "running: " + command + "\n";
+  const btn = $("btn-run");
+  const out = $("console-output");
+  btn.disabled = true;
+  out.textContent = "running: " + command + "\n";
   try {
     const d = await api("POST", "/api/query", { command });
-    $("console-output").textContent += (d.ok ? "" : "error: ") + (d.output || "");
+    out.textContent += (d.ok ? "" : "error: ") + (d.output || "");
+    out.scrollTop = out.scrollHeight;
     if (state.page === "data") loadKeys();
     if (state.page === "overview") loadStatus();
   } catch (e) {
-    $("console-output").textContent += "error: " + e.message;
+    out.textContent += "error: " + e.message;
+  } finally {
+    btn.disabled = false;
+    $("console-input").focus();
   }
 }
 
