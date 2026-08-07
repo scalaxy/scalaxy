@@ -8,6 +8,7 @@ abstract: >-
 authors:
   - family-names: Andreenko
     given-names: Artem
+    alias: miolini
     orcid: ""
 version: "1.6.7"
 date-released: "2026-08-07"

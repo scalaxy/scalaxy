@@ -20,6 +20,20 @@ on startup.
 > endorsed by, authorized by, or operated by Scalaxy B.V. or scalaxy.com**.
 > Project site: <https://scalaxy.org>
 
+## Screenshots
+
+The web console ships with every node. Click to enlarge.
+
+<p align="center">
+  <img src="screenshots/scalaxy1.jpg" alt="Scalaxy web console — cluster overview" width="80%">
+</p>
+<p align="center"><em>Cluster overview: nodes, keys, replication, and ring distribution.</em></p>
+
+<p align="center">
+  <img src="screenshots/scalaxy2.jpg" alt="Scalaxy web console — data browser" width="80%">
+</p>
+<p align="center"><em>Data browser: search, pagination, and key inspection.</em></p>
+
 ## Features
 
 - **Web console** — a professional dashboard (overview, data browser,
@@ -206,6 +220,7 @@ See [deploy/README.md](deploy/README.md) for details.
 
 ## Project
 
+- **Maintained by** [Artem Andreenko](https://github.com/miolini) (`miolini`)
 - [Contributing](CONTRIBUTING.md) — how to get involved
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Security policy](SECURITY.md) — how to report vulnerabilities
