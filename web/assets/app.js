@@ -96,6 +96,11 @@ async function loadStatus() {
   $("foot-node").textContent = node.id || "-";
   $("foot-version").textContent = node.version || "-";
   $("foot-uptime").textContent = fmtUptime(node.uptime);
+  const ver = $("brand-version");
+  if (ver) ver.textContent = (node.version ? "v" + node.version : "v?");
+  if (document.title && node.version) {
+    document.title = document.title.replace(/\bv\d+\.\d+\.\d+\b/, "v" + node.version);
+  }
 
   const nodes = data.nodes || [];
   const ring = data.ring || [];

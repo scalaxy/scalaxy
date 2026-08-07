@@ -37,9 +37,10 @@
         :headers (cons (cons "Content-Type" "application/json; charset=utf-8") headers)
         :body (json-encode obj)))
 
-(defun text-response (body &key (status 200) (content-type "text/plain; charset=utf-8"))
+(defun text-response (body &key (status 200) (content-type "text/plain; charset=utf-8")
+                              (headers nil))
   (list :status status
-        :headers (list (cons "Content-Type" content-type))
+        :headers (append (list (cons "Content-Type" content-type)) headers)
         :body body))
 
 (defun html-response (body &key (status 200))
@@ -150,7 +151,8 @@
        (let* ((name (second segments))
               (asset (web-read-asset web-dir (format nil "assets/~a" name))))
          (if asset
-             (text-response asset :content-type (mime-type name))
+             (text-response asset :content-type (mime-type name)
+                            :headers (list (cons "Cache-Control" "no-cache")))
              (json-response (list (cons "error" "asset not found")) :status 404))))
       ;; node-local status (used for cluster aggregation)
       ((and (string= path "/api/node-status") (string= method "GET"))
