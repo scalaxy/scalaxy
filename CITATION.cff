@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use Scalaxy in your research, please cite it as follows."
+title: "Scalaxy"
+abstract: >-
+  Multi-purpose, cloud-ready distributed database written in Common Lisp:
+  consistent-hash sharding, synchronous replication, durable append-only
+  log, and an embedded web console.
+authors:
+  - family-names: Andreenko
+    given-names: Artem
+    orcid: ""
+version: "1.6.7"
+date-released: "2026-08-07"
+url: "https://github.com/scalaxy/scalaxy"
+license: MIT
+keywords:
+  - database
+  - distributed-systems
+  - common-lisp
+  - key-value

@@ -2,6 +2,12 @@
 
 **Multi-purpose, cloud-ready distributed database.**
 
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-1.6.7-blue.svg)
+![Language: Common Lisp](https://img.shields.io/badge/language-Common%20Lisp-4f8cff.svg)
+![CI](https://github.com/scalaxy/scalaxy/actions/workflows/ci.yml/badge.svg)
+![Docs](https://img.shields.io/badge/docs-scalaxy.org-blueviolet.svg)
+
 Scalaxy is an open-source distributed key/value database written in
 [Common Lisp](https://common-lisp.net/). Keys are sharded across nodes with
 consistent hashing, writes are synchronously replicated to follower nodes,
@@ -197,6 +203,16 @@ kubectl -n scalaxy port-forward svc/scalaxy 8080:80
 ```
 
 See [deploy/README.md](deploy/README.md) for details.
+
+## Project
+
+- [Contributing](CONTRIBUTING.md) — how to get involved
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) — how to report vulnerabilities
+- [Changelog](CHANGELOG.md)
+- [Citing Scalaxy](CITATION.cff)
+- [Documentation portal](https://scalaxy.org/docs/) — in-repo reference:
+  [protocol](docs/protocol.md) and [REST API](docs/rest-api.md)
 
 ## License
 

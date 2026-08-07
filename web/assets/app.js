@@ -241,21 +241,52 @@ $("add-save").addEventListener("click", async () => {
 });
 
 /* ---------- console ---------- */
-$("btn-run").addEventListener("click", () => runQuery());
-$("console-input").addEventListener("keydown", (e) => {
-  // Enter runs the command; Shift+Enter inserts a newline
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
-    e.preventDefault();
-    runQuery();
+const CONSOLE_HELP =
+  "usage: put <key> <value> | get <key> | delete <key> | scan <prefix> [limit]\n" +
+  "example: scan user:" +
+  "\n\nEnter runs the command, Shift+Enter inserts a newline.";
+
+function bindRun() {
+  const btn = document.getElementById("btn-run");
+  const input = document.getElementById("console-input");
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      runQuery();
+    });
   }
+  if (input && !input.dataset.bound) {
+    input.dataset.bound = "1";
+    input.addEventListener("keydown", (e) => {
+      // Enter runs the command; Shift+Enter inserts a newline
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        runQuery();
+      }
+    });
+  }
+}
+// direct binding + delegation fallback so the button always works
+bindRun();
+document.addEventListener("click", (e) => {
+  const t = e.target && e.target.closest ? e.target.closest("#btn-run") : null;
+  if (t) runQuery();
 });
 
 async function runQuery() {
-  const command = $("console-input").value.trim();
-  if (!command) return;
-  const btn = $("btn-run");
-  const out = $("console-output");
-  btn.disabled = true;
+  const input = document.getElementById("console-input");
+  const btn = document.getElementById("btn-run");
+  const out = document.getElementById("console-output");
+  if (!input || !out) return;
+  const command = input.value.trim();
+  if (!command) {
+    out.textContent = CONSOLE_HELP;
+    out.scrollTop = out.scrollHeight;
+    if (input) input.focus();
+    return;
+  }
+  if (btn) btn.disabled = true;
   out.textContent = "running: " + command + "\n";
   try {
     const d = await api("POST", "/api/query", { command });
@@ -266,8 +297,8 @@ async function runQuery() {
   } catch (e) {
     out.textContent += "error: " + e.message;
   } finally {
-    btn.disabled = false;
-    $("console-input").focus();
+    if (btn) btn.disabled = false;
+    if (input) input.focus();
   }
 }
 
