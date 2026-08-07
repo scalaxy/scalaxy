@@ -9,7 +9,7 @@
 
 (defvar *web-asset-cache* (make-hash-table :test #'equal))
 
-(defparameter +version+ "0.1.0")
+(defparameter +version+ "1.6.7")
 
 (defun web-read-asset (web-dir rel)
   "Read an asset from WEB-DIR, cached in memory."
