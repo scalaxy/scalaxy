@@ -157,7 +157,7 @@ available via (http-server-port SERVER)."
            (stopped (list nil)))
       (setf (sb-bsd-sockets:sockopt-reuse-address socket) t)
       (sb-bsd-sockets:socket-bind socket
-                                  (sb-bsd-sockets:make-inet-address host)
+                                  (resolve-host host)
                                   port)
       (sb-bsd-sockets:socket-listen socket backlog)
       (let ((real-port (nth-value 1 (sb-bsd-sockets:socket-name socket))))
@@ -190,7 +190,7 @@ available via (http-server-port SERVER)."
     (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                                  :type :stream :protocol :tcp)))
       (sb-bsd-sockets:socket-connect socket
-                                     (sb-bsd-sockets:make-inet-address host)
+                                     (resolve-host host)
                                      port)
       (unwind-protect
            (let ((stream (sb-bsd-sockets:socket-make-stream

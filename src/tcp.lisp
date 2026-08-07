@@ -10,6 +10,19 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :sb-bsd-sockets))
 
+(defun ip-string-p (host)
+  "True when HOST looks like a dotted-quad IPv4 string."
+  (and (plusp (length host))
+       (every (lambda (c) (or (digit-char-p c) (char= c #\.))) host)))
+
+(defun resolve-host (host)
+  "Resolve HOST (an IPv4 string or a hostname) to an address octet vector
+usable by SOCKET-CONNECT / SOCKET-BIND."
+  (if (ip-string-p host)
+      (sb-bsd-sockets:make-inet-address host)
+      (first (sb-bsd-sockets:host-ent-addresses
+              (sb-bsd-sockets:get-host-by-name host)))))
+
 #-sbcl
 (progn
   (defun tcp-serve (&rest args) (declare (ignore args))
@@ -65,7 +78,7 @@ listening port is available via SERVER-PORT (useful when PORT is 0)."
            (stopped (list nil)))
       (setf (sb-bsd-sockets:sockopt-reuse-address socket) t)
       (sb-bsd-sockets:socket-bind socket
-                                  (sb-bsd-sockets:make-inet-address host)
+                                  (resolve-host host)
                                   port)
       (sb-bsd-sockets:socket-listen socket backlog)
       (let ((real-port (nth-value 1 (sb-bsd-sockets:socket-name socket)))
@@ -96,7 +109,7 @@ listening port is available via SERVER-PORT (useful when PORT is 0)."
     (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                                  :type :stream :protocol :tcp)))
       (sb-bsd-sockets:socket-connect socket
-                                     (sb-bsd-sockets:make-inet-address host)
+                                     (resolve-host host)
                                      port)
       (unwind-protect
            (let ((stream (sb-bsd-sockets:socket-make-stream

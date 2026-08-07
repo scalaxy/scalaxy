@@ -73,12 +73,17 @@ across the cluster and aggregates cluster status.  Returns
 (values tcp-server http-server gateway-or-nil)."
   (multiple-value-bind (host port) (parse-host-port address)
     (multiple-value-bind (http-host http-port) (parse-host-port http-address)
-      (let* ((node-id (or id (format nil "node-~d" (get-universal-time))))
+      (let* ((node-id (or id
+                          (or (env-get "SCALAXY_NODE_ID")
+                              (env-get "HOSTNAME")
+                              (format nil "node-~d" (get-universal-time)))))
+             ;; A fixed log name keeps data discoverable across restarts
+             ;; even if the node id or hostname changes.
              (node (make-node
                     :id node-id
                     :store (make-store
                             :path (merge-pathnames
-                                   (format nil "~a.log" node-id)
+                                   "scalaxy.log"
                                    (uiop:ensure-directory-pathname data-dir))))))
         ;; wire TCP replication followers
         (dolist (p replicate-to)

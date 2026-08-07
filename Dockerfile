@@ -19,6 +19,7 @@ COPY scalaxy.asd ./
 COPY src/ src/
 COPY tests/ tests/
 COPY scripts/ scripts/
+COPY web/ web/
 
 # Compile the systems and run the full test suite at build time so a
 # broken build never produces an image.
@@ -48,7 +49,6 @@ ENV HOME=/home/scalaxy \
 WORKDIR /opt/scalaxy
 
 COPY --from=builder /opt/scalaxy/ /opt/scalaxy/
-COPY web/ /opt/scalaxy/web/
 COPY bin/ /opt/scalaxy/bin/
 COPY scripts/ /opt/scalaxy/scripts/
 

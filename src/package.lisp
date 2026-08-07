@@ -24,6 +24,7 @@
    #:replicator #:replicator-seq #:replicator-record #:replicator-entries
    ;; TCP server / client
    #:server #:tcp-serve #:tcp-stop #:server-port #:tcp-request
+   #:resolve-host #:ip-string-p
    ;; JSON
    #:json-encode #:json-decode #:json-escape
    ;; HTTP server / client

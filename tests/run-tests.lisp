@@ -236,6 +236,19 @@
 
 
 ;;; ------------------------------------------------------------------
+;;; hostname resolution (needed for container/K8s peer discovery)
+
+(defun test-resolve-host ()
+  (deftest resolve-host
+    (check (ip-string-p "127.0.0.1") "ip-string-p true for dotted quad")
+    (check (not (ip-string-p "scalaxy-1")) "ip-string-p false for hostname")
+    #+sbcl
+    (progn
+      (check (equalp (resolve-host "127.0.0.1") #(127 0 0 1)) "resolve-host ip string")
+      (let ((addr (resolve-host "localhost")))
+        (check (and (vectorp addr) (= (length addr) 4)) "resolve-host hostname -> 4 octets")))))
+
+;;; ------------------------------------------------------------------
 ;;; JSON
 
 (defun test-json ()
@@ -441,6 +454,7 @@
   (test-replication)
   (test-cluster)
   (test-tcp)
+  (test-resolve-host)
   (test-json)
   (test-http)
   (test-web-api)
