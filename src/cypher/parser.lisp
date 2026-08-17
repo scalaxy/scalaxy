@@ -456,6 +456,8 @@ An optional 'var =' prefix binds the whole chain to a path variable."
       (when (%at-punct p "*")
         (%advance p)
         (setf var-length t)
+        (when (%at-punct p "-")
+          (%perr p "InvalidRelationshipPattern" "negative bound"))
         (when (%at-kind p :int)
           (setf min-hops (cytoken-value (%cur p)))
           (%advance p))
@@ -476,6 +478,10 @@ An optional 'var =' prefix binds the whole chain to a path variable."
         (unless min-hops (setf min-hops 1))
         (when (and max-hops (< max-hops min-hops))
           (%perr p "UnexpectedSyntax" "invalid variable-length range")))
+      (when (%at-punct p "{")
+        ;; property map may follow the var-length bounds:
+        ;; -[:T*1..2 {prop: val}]->  (openCypher grammar)
+        (setf props (append (parse-props p) props)))
       (%expect-punct p "]")
       (cond
         ((%at-punct p "->")

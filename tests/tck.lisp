@@ -414,7 +414,7 @@ equals null."
      (let ((as (cypher-list-elements a)) (es (cypher-list-elements e)))
        (and (= (length as) (length es))
             (if unordered
-                (%bag-match (lambda (x y) (%tck-value= x y :unordered t)) es as)
+                (%bag-match (lambda (x y) (%tck-value= y x :unordered t)) es as)
                 (every (lambda (x y) (%tck-value= x y :unordered unordered)) as es)))))
     ((and (cypher-map-p a) (cypher-map-p e))
      (let ((as (cypher-map-pairs a)) (es (cypher-map-pairs e)))
@@ -449,7 +449,7 @@ Returns T or NIL."
     ((and unordered (cypher-list-p actual) (cypher-list-p expected))
      (let ((as (cypher-list-elements actual)) (es (cypher-list-elements expected)))
        (and (= (length as) (length es))
-            (%bag-match (lambda (x y) (%tck-value= x y :unordered t)) es as))))
+            (%bag-match (lambda (x y) (%tck-value= y x :unordered t)) es as))))
     ((or (cypher-list-p actual) (cypher-map-p actual)
          (cypher-list-p expected) (cypher-map-p expected))
      (%tck-structural= actual expected :unordered unordered))
