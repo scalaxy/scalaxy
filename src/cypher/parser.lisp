@@ -210,18 +210,17 @@ parenthesized variable (n) is an expression, not a pattern)."
         (pos (cyparser-pos p)))
     (and (%at-pattern-start p)
          (let ((i (1+ pos)))
-           ;; skip to the node's closing paren: ( ident? :label* {props}? )
            (loop while (and (< i (length tokens))
                             (not (and (eql (cytoken-kind (nth i tokens)) :punct)
                                       (string= (cytoken-value (nth i tokens)) ")"))))
                  do (incf i))
            (incf i)
-           ;; the token after the node must start a relationship
            (let ((tok (nth i tokens)))
              (and tok
                   (eql (cytoken-kind tok) :punct)
                   (let ((v (cytoken-value tok)))
-                    (or (string= v "-") (string= v "<")))))))))
+                    (and (plusp (length v))
+                         (member (char v 0) '(#\- #\<))))))))))
 
 (defun %at-pattern-start (p)
   "True when the token stream begins a node pattern (used to recognize

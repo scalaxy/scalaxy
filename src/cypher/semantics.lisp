@@ -68,7 +68,7 @@ length() on a node surface as SyntaxError: InvalidArgumentType."
                ((string-equal fn "labels")
                 (when (member kind '(:rel :path)) (bad)))
                ((string-equal fn "keys")
-                (when (member kind '(:rel :path)) (bad)))
+                (when (eq kind :path) (bad)))
                ((string-equal fn "properties")
                 (when (eq kind :path) (bad)))
                ((string-equal fn "id")

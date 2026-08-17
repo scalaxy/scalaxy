@@ -523,7 +523,9 @@ rejected by the semantic checker)."
                      (list :seen seen :items (or (getf state :items) nil))
                      (progn (setf (gethash v seen) t)
                             (list :seen seen :items (cons v (or (getf state :items) nil)))))))
-           (list :items (cons v (or (getf state :items) nil))))))))
+           (if (cypher-null-p v)
+               (list :items (or (getf state :items) nil))
+               (list :items (cons v (or (getf state :items) nil)))))))))
 
 (defun %agg-finish (kind state)
   (case kind
