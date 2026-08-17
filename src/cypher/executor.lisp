@@ -237,7 +237,7 @@ repeats a relationship (openCypher paths are trails)."
          (labels ((walk (idx r path visited)
                     (if (>= idx (length elements))
                         (let ((r2 (if pv
-                                      (row-bind r pv (list :path (nreverse path)))
+                                      (row-bind r pv (list :path (reverse path)))
                                       r)))
                           (push r2 results))
                         (let ((el (nth idx elements)))
