@@ -128,7 +128,8 @@ a VariableAlreadyBound error."
             (let ((v (getf (cdr el) :var)))
               (when v
                 (if (member v rel-vars)
-                    (cypher-signal "VariableAlreadyBound" :detail (symbol-name v))
+                    (cypher-signal "RelationshipUniquenessViolation"
+                                   :detail (symbol-name v))
                     (push v rel-vars))))))
         (dolist (el chain)
           (let ((var (getf (cdr el) :var)))
@@ -162,7 +163,8 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
           (when (eq (car el) :rel)
             (when (getf (cdr el) :var-length)
               (cypher-signal "CreatingVarLength" :detail "variable-length relationships cannot be created"))
-            (when (null (getf (cdr el) :type))
+            (when (or (null (getf (cdr el) :type))
+                      (> (length (getf (cdr el) :types)) 1))
               (cypher-signal "NoSingleRelationshipType"
                              :detail "a relationship must have exactly one type"))
             (when (and require-directed (eq (getf (cdr el) :dir) :both))

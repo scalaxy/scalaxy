@@ -175,11 +175,8 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [6] Matching variable length patterns from a bound node :: result mismatch (list order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [5] Matching variable length pattern with property predicate :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [29] Fail when re-using a relationship in the same pattern :: expected SyntaxError: RelationshipUniquenessViolation, got "VariableAlreadyBound"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [25] Matching twice with an additional node label :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [16] Mixing directed and undirected pattern parts with self-relationship, undirected :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [15] Mixing directed and undirected pattern parts with self-relationship, simple :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [8] Matching using relationship predicate with multiples of the same type :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [6] Match relationships with multiple types :: result mismatch (any order)

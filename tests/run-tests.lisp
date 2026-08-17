@@ -447,6 +447,7 @@
       (let ((chain (first pat)))
         (check-equal (length chain) 3 "chain has 3 elements")
         (check (equal (second chain) (list :rel :var (ast-var "r") :type nil
+                                           :types nil
                                            :dir :out :props nil :min nil :max nil))
                "anonymous typed rel")))
     ;; undirected + in
@@ -510,8 +511,8 @@
              (handler-case (progn (cypher-parse s) nil)
                (cypher-error (e) (cypher-error-kind e)))))
       (check (equal (kind-of "MATCH (a RETURN a") "UnexpectedSyntax") "syntax error")
-      (check (equal (kind-of "MATCH (a)-[r:A|B]->(b) RETURN r") "NoSingleRelationshipType")
-             "multiple rel types")
+      (check (equal (kind-of "MATCH (a)-[r:A|B]->(b) RETURN r") nil)
+             "multiple rel types parse")
       (check (equal (kind-of "MATCH (a) RETURN") "UnexpectedSyntax") "return needs projection")
       (check (equal (kind-of "MATCH (a) MATCH (b) CREATE (c) MATCH (d) RETURN d")
                    "InvalidClauseComposition")

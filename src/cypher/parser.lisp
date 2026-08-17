@@ -392,17 +392,17 @@ An optional 'var =' prefix binds the whole chain to a path variable."
   (cond
     ((%at-punct p "--")
      (%advance p)
-     (list :rel :var nil :type nil :dir :both :props nil :min nil :max nil))
+     (list :rel :var nil :type nil :types nil :dir :both :props nil :min nil :max nil))
     ((%at-punct p "-->")
      (%advance p)
-     (list :rel :var nil :type nil :dir :out :props nil :min nil :max nil))
+     (list :rel :var nil :type nil :types nil :dir :out :props nil :min nil :max nil))
     ((%at-punct p "<-->")
      ;; TCK bidirectional shorthand: matches in both directions
      (%advance p)
-     (list :rel :var nil :type nil :dir :both :props nil :min nil :max nil))
+     (list :rel :var nil :type nil :types nil :dir :both :props nil :min nil :max nil))
     ((%at-punct p "<--")
      (%advance p)
-     (list :rel :var nil :type nil :dir :in :props nil :min nil :max nil))
+     (list :rel :var nil :type nil :types nil :dir :in :props nil :min nil :max nil))
     ((%at-punct p "-[")
      (%advance p)
      (parse-rel-detail p :out))
@@ -419,11 +419,10 @@ An optional 'var =' prefix binds the whole chain to a path variable."
     (loop while (%at-punct p ":")
           do (%advance p)
              (push (%expect-ident p) types)
-             (when (%at-punct p "|")
-               (%perr p "NoSingleRelationshipType"
-                      "legacy multiple relationship types unsupported")))
-    (when (> (length types) 1)
-      (%perr p "NoSingleRelationshipType" "a relationship has exactly one type"))
+             (loop while (%at-punct p "|")
+                   do (%advance p)
+                      (when (%at-punct p ":") (%advance p))
+                      (push (%expect-ident p) types)))
     (when (%at-punct p "{")
       (setf props (parse-props p)))
     (when (%at-punct p "..")
@@ -466,10 +465,10 @@ An optional 'var =' prefix binds the whole chain to a path variable."
            (setf dir :both)))
         (t (%perr p "UnexpectedSyntax" "expected -> or - after ]")))
       (if var-length
-          (list :rel :var-length t :var var :type (first types) :dir dir
-                :props props :min min-hops :max max-hops)
-          (list :rel :var var :type (first types) :dir dir :props props
-                :min min-hops :max max-hops)))))
+          (list :rel :var-length t :var var :type (first types) :types types
+                :dir dir :props props :min min-hops :max max-hops)
+          (list :rel :var var :type (first types) :types types
+                :dir dir :props props :min min-hops :max max-hops)))))
 
 ;;; ------------------------------------------------------------------
 ;;; expressions (precedence climbing)

@@ -49,6 +49,7 @@
 (define-cypher-error "NoSingleRelationshipType"      'cypher-syntax-error)
 (define-cypher-error "RequiresDirectedRelationship"  'cypher-syntax-error)
 (define-cypher-error "InvalidRelationshipPattern"    'cypher-syntax-error)
+(define-cypher-error "RelationshipUniquenessViolation" 'cypher-syntax-error)
 (define-cypher-error "InvalidDelete"                 'cypher-syntax-error)
 (define-cypher-error "CreatingVarLength"             'cypher-syntax-error)
 (define-cypher-error "DifferentColumnsInUnion"       'cypher-syntax-error)

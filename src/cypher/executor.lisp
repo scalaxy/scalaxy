@@ -115,11 +115,19 @@ empty, possibly one) for each input row."
 (defun %node-candidates (g node-el row graph params)
   "Candidate node values for NODE-EL in the context of ROW.
 Returns (values list already-bound?)"
-  (let ((var (getf (cdr node-el) :var)))
+  (let* ((var (getf (cdr node-el) :var))
+         (labels (getf (cdr node-el) :labels))
+         (props (getf (cdr node-el) :props)))
     (if (and var (assoc var row))
         (let ((v (row-get row var)))
           ;; a null anchor (e.g. WITH null AS a MATCH (a)) matches nothing
-          (if (%tv-null v) (values nil t) (values (list v) t)))
+          (if (%tv-null v)
+              (values nil t)
+              ;; a bound anchor must still satisfy the pattern's label
+              ;; and property constraints
+              (if (%entity-matches v labels props row graph params)
+                  (values (list v) t)
+                  (values nil t))))
         (let* ((labels (getf (cdr node-el) :labels))
                (props (getf (cdr node-el) :props))
                (label (first labels)))
@@ -199,11 +207,15 @@ Returns (values list already-bound?)"
   "One-step candidates from node SRC along REL-EL: ((rel2 . node) ...)."
   (let ((dir (getf (cdr rel-el) :dir))
         (rtype (getf (cdr rel-el) :type))
+        (rtypes (getf (cdr rel-el) :types))
         (rprops (getf (cdr rel-el) :props)))
-    (loop for (rid . neighbor) in (graph-expand g (getf src :id) :dir dir :type rtype)
+    (loop for (rid . neighbor) in (graph-expand g (getf src :id) :dir dir
+                                                :type (and (= (length rtypes) 1) rtype))
           for rel = (graph-relationship g rid)
           for node = (graph-node g neighbor)
           when (and rel node
+                    (or (null rtypes)
+                        (member (getf rel :type) rtypes :test #'string=))
                     (%entity-matches rel nil rprops row graph params))
             collect (cons (if (eq dir :in)
                               ;; incoming: the neighbor is the rel's start
