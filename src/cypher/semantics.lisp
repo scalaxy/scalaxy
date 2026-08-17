@@ -260,8 +260,8 @@ relationship variable that is already bound is an error."
                             items)))
         (dolist (spec order)
           (dolist (v (%expr-vars (getf (cdr spec) :expr)))
-            (unless (or (and (eq (car clause) :with) (%in-scope v scope))
-                        (%in-scope v new-scope))
+            (unless (or (%in-scope v scope)   ; input-scope variables
+                        (%in-scope v new-scope))  ; projected aliases
               (cypher-signal "UndefinedVariable" :detail (symbol-name v))))))
     new-scope)))
 

@@ -649,7 +649,18 @@ keyed by the printed expression name and by bare variable names."
                                                            full-lookup
                                                            graph params))
                                          order)
-                                        key))))
+                                        (append
+                                         key
+                                         (mapcar
+                                          (lambda (item)
+                                            (let ((expr (getf (cdr item) :expr)))
+                                              (cons (or (getf (cdr item) :as)
+                                                        (ast-var (ast-print
+                                                                  (list :expr expr))))
+                                                    (%agg-eval-with expr
+                                                                    full-lookup
+                                                                    graph params))))
+                                          agg-items))))))
                             order-keys)))
                      (mapcar #'cdr (%sort-keyed keyed order)))))))))))
 
@@ -792,8 +803,20 @@ keyed by the printed expression name and by bare variable names."
         (:return (setf out (%projection-clause out clause graph params)))
         (:unwind (setf out (%unwind-clause out clause graph params)))
         (:order (setf out (%sort-rows out (getf (cdr clause) :items) graph params)))
-        (:skip (setf out (nthcdr (or (eval-expr (getf (cdr clause) :expr) nil graph params) 0) out)))
-        (:limit (setf out (subseq out 0 (min (or (eval-expr (getf (cdr clause) :expr) nil graph params) 0) (length out)))))
+        (:skip (let ((n (eval-expr (getf (cdr clause) :expr) nil graph params)))
+                 (cond
+                   ((not (integerp n))
+                    (cypher-signal "InvalidArgumentType" :detail "SKIP must be an integer"))
+                   ((minusp n)
+                    (cypher-signal "NegativeIntegerArgument" :detail "SKIP must not be negative"))
+                   (t (setf out (nthcdr n out))))))
+        (:limit (let ((n (eval-expr (getf (cdr clause) :expr) nil graph params)))
+                  (cond
+                    ((not (integerp n))
+                     (cypher-signal "InvalidArgumentType" :detail "LIMIT must be an integer"))
+                    ((minusp n)
+                     (cypher-signal "NegativeIntegerArgument" :detail "LIMIT must not be negative"))
+                    (t (setf out (subseq out 0 (min n (length out))))))))
         (:union (%perr-union))
         (:create (setf out (%create-clause g out clause graph params)))
         (:merge (setf out (%merge-clause g out clause graph params)))
