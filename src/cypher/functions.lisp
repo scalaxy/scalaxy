@@ -495,6 +495,8 @@ pair values (pairs are (key . expr) conses)."
      (if (%aggregate-fn-p (getf (cdr expr) :fn))
          t
          (some #'expr-has-aggregate (getf (cdr expr) :args))))
+    ;; aggregation inside an EXISTS subquery is scoped to the subquery
+    ((member (car expr) '(:exists :exists-sub)) nil)
     (t (some #'expr-has-aggregate (%expr-direct-parts expr)))))
 
 (defun %coerce-number (v float?)
