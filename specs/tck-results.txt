@@ -110,7 +110,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With6.feature :: [8] Fail if not projected variables are used inside an expression which contains an aggregation expression :: expected SyntaxError: AmbiguousAggregationExpression, got "UndefinedVariable"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With6.feature :: [4] Implicit grouping with single path variable as grouping key and single aggregation :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-where/WithWhere4.feature :: [2] Join with disjunctive multi-part predicates including patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-skip-limit/WithSkipLimit3.feature :: [3] Limiting amount of rows when there are fewer left than the LIMIT argument :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy4.feature :: [16] Handle constants and parameters inside an order by item which contains an aggregation expression :: result mismatch (any order)
@@ -155,7 +154,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [18] Fail on projecting a non-existent function :: expected SyntaxError: UnknownFunction, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [14] Do not fail when returning type of deleted relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [12] Projecting a list of nodes and relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [8] Returning label predicate expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit2.feature :: [8] Limit to more rows than actual results 2 :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit2.feature :: [6] LIMIT with an expression that does not depend on variables :: result mismatch (any order)
@@ -183,9 +181,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [13] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [6] Matching relationships into a list and matching variable length using the list, with bound nodes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [4] Return relationships by collecting them as a list - undirected, starting from one extreme :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [3] Return relationships by collecting them as a list - undirected, starting from two extremes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [2] Return relationships by collecting them as a list - directed, one way :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [3] Matching and disregarding output, then matching again :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [20] Variable length relationship without bounds :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [19] Variable length relationship without lower bound :: result mismatch (any order)
@@ -197,7 +192,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [12] Matching path with multiple bidirectional relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [27] Handling mixed relationship patterns and directions 2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [10] Fail on negative bound :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [9] Fail when asterisk operator is missing :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [6] Matching variable length patterns from a bound node :: result mismatch (list order)

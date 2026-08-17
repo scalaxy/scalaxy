@@ -426,6 +426,9 @@ An optional 'var =' prefix binds the whole chain to a path variable."
       (%perr p "NoSingleRelationshipType" "a relationship has exactly one type"))
     (when (%at-punct p "{")
       (setf props (parse-props p)))
+    (when (%at-punct p "..")
+      ;; range without the asterisk: -[:T..2]- is invalid
+      (%perr p "InvalidRelationshipPattern" "expected * before .."))
     (let ((min-hops nil) (max-hops nil) (var-length nil))
       (when (%at-punct p "*")
         (%advance p)
@@ -436,9 +439,13 @@ An optional 'var =' prefix binds the whole chain to a path variable."
         (cond
           ((%at-punct p "..")
            (%advance p)
-           (when (%at-kind p :int)
-             (setf max-hops (cytoken-value (%cur p)))
-             (%advance p)))
+           (cond
+             ((%at-punct p "-")
+              (%perr p "InvalidRelationshipPattern" "negative bound"))
+             ((%at-kind p :int)
+              (setf max-hops (cytoken-value (%cur p)))
+              (%advance p))
+             (t nil)))
           (min-hops
            ;; *N means exactly N hops (min = max = N)
            (setf max-hops min-hops))

@@ -353,7 +353,8 @@ with dir :in/:out/:both."
              ;; a list literal containing entity literals (e.g. [()])
              (let ((inner (subseq text 1 (1- (length text)))))
                (cypher-list
-                (mapcar #'%tck-parse-cell
+                (mapcar (lambda (seg)
+                          (%tck-parse-cell (string-trim " " seg)))
                         (remove "" (split-sequence-on #\, inner) :test #'equal))))
              v)))))
 
