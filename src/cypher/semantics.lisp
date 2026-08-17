@@ -516,8 +516,8 @@ ORDER BY subclause."
                  (cypher-signal "NonConstantExpression"
                                 :detail "rand() is not allowed in aggregation"))
                (when (consp expr)
-                 (dolist (c expr)
-                   (when (consp c) (check-rand c))))))
+                 (dolist (c (%expr-direct-parts expr))
+                   (check-rand c)))))
       (dolist (item items)
         (when (expr-has-aggregate (getf (cdr item) :expr))
           (check-leaves (getf (cdr item) :expr))
