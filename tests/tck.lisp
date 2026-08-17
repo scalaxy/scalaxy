@@ -244,6 +244,22 @@ node/relationship literals (e.g. [()], [(:A {k: 1})], {x: (:B)})."
                          (getf (cdr expr) :pairs))))
     (t (eval-expr expr nil nil nil))))
 
+(defun %tck-split-top-level (text)
+  "Split TEXT on commas that are not inside nested brackets/parens."
+  (let ((out nil) (depth 0) (start 0) (instr nil))
+    (dotimes (i (length text))
+      (let ((c (char text i)))
+        (cond
+          (instr (when (char= c (code-char 39)) (setf instr nil)))
+          ((char= c (code-char 39)) (setf instr t))
+          ((member c (list (code-char 91) (code-char 40))) (incf depth))
+          ((member c (list (code-char 93) (code-char 41))) (decf depth))
+          ((and (char= c (code-char 44)) (zerop depth))
+           (push (subseq text start i) out)
+           (setf start (1+ i))))))
+    (push (subseq text start) out)
+    (nreverse out)))
+
 (defun %tck-eval-literal (text)
   "Parse a TCK result cell (Cypher literal) into a value."
   (let ((expr (cypher-parse-expr text)))
@@ -360,24 +376,22 @@ with dir :in/:out/:both."
     ((%tck-rel-p text)
      (handler-case (%tck-parse-entity text)
        (error () (format nil "<unparsable: ~a>" text))))
-    (t (let ((v (handler-case (%tck-eval-literal text)
-                   (error () (format nil "<unparsable: ~a>" text)))))
-         (if (and (stringp v)
-                  (not (zerop (length v)))
-                  (char= (char v 0) #\<)
-                  (>= (length text) 2)
-                  (char= (char text 0) #\[)
-                  (char= (char text (1- (length text))) #\]))
-             ;; a list literal containing entity literals (e.g. [()])
-             (let ((inner (subseq text 1 (1- (length text)))))
-               (cypher-list
-                (mapcar (lambda (seg)
-                          (%tck-parse-cell (string-trim " " seg)))
-                        (remove "" (split-sequence-on #\, inner) :test #'equal))))
-             v)))))
-
-;;; ------------------------------------------------------------------
-;;; TCK value comparison
+    (t
+     (let ((v (handler-case (%tck-eval-literal text)
+                (error () (format nil "<unparsable: ~a>" text)))))
+       (if (and (stringp v)
+                (not (zerop (length v)))
+                (char= (char v 0) (code-char 60))
+                (>= (length text) 2)
+                (char= (char text 0) (code-char 91))
+                (char= (char text (1- (length text))) (code-char 93)))
+           ;; a list literal containing entity literals (e.g. [()])
+           (let ((inner (subseq text 1 (1- (length text)))))
+             (cypher-list
+              (mapcar (lambda (seg)
+                        (%tck-parse-cell (string-trim " " seg)))
+                      (%tck-split-top-level inner))))
+           v)))))
 
 (defun %tck-props= (actual expected &key (unordered nil))
   "ACTUAL is an alist of (key . value) Cypher pairs; EXPECTED is the
