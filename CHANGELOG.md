@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Graph database layered on the replicated key/value store, with the
+  **openCypher query language** implemented fully in Common Lisp (SBCL),
+  zero external dependencies:
+  - property-graph storage over the KV store: nodes, relationships,
+    labels/types, properties, adjacency/type/label indexes, id minting, and
+    blob spills for large binary properties (`src/graph.lisp`,
+    `src/db.lisp`, `src/codec.lisp`);
+  - the Cypher compiler pipeline (`src/cypher/`): lexer, parser, AST with
+    canonical printer, semantic analysis, expression evaluator, updates,
+    executor, wire format, and a metacircular reference oracle for
+    differential testing;
+  - the openCypher core: `MATCH` / `OPTIONAL MATCH` / `WHERE` / `WITH` /
+    `RETURN` / `UNWIND` / `ORDER BY` / `SKIP` / `LIMIT` / `DISTINCT` /
+    `UNION`, `CREATE` / `MERGE … ON CREATE/ON MATCH` / `SET` (incl. map
+    `=`/`+=` with null-removal) / `REMOVE` / `DELETE` / `DETACH DELETE`;
+  - named paths (`MATCH p = …`) and variable-length relationships
+    (`-[:T*1..3]->`), with relationship-list binding;
+  - full core expressions: list comprehensions, pattern comprehensions,
+    list predicates (`all`/`any`/`none`/`single`), `EXISTS { }`, `CASE`,
+    chained comparisons, maps, list concatenation/append/prepend;
+  - symbolic aggregation: aggregates nested in arbitrary expressions
+    (`count(a) * 10 + count(b) * 5`, `head(collect(…))`), implicit
+    grouping, `DISTINCT` aggregates, per-group `ORDER BY`;
+  - the openCypher error taxonomy: ~35 named error kinds as CLOS
+    conditions;
+  - cluster/API/web integration: `+op-cypher+` wire opcode, gateway
+    routing, client `cypher`, `POST /api/cypher`, web-console command.
+- **openCypher TCK runner** (`tests/tck.lisp`, `scripts/run-tck.lisp`):
+  Gherkin-subset parser, scenario-outline expansion, side-effect
+  accounting per the TCK observability definitions, result-table
+  comparison (any-order/ordered/list-order-insensitive), error-expectation
+  matching, and unsupported-feature classification.  3,897 scenarios
+  executed; see `docs/cypher-certification.md`.
+- Documentation: `docs/cypher-implementation-plan.md` (axiomatic design),
+  `docs/cypher-reference.md` (language reference),
+  `docs/cypher-certification.md` (conformance report).
+
+### Changed
+
+- Queries without a `RETURN` now produce no result rows (openCypher
+  semantics for updating queries).
+- `SET` refreshes bound entity values in the rows (so `SET … WITH …
+  WHERE …` sees the new values).
+- Unit suite now runs 9,018 checks.
+
 ## [1.6.7] - 2026-08-07
 
 First open-source release.

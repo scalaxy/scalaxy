@@ -12,6 +12,14 @@ const state = {
   status: null,
 };
 
+/* current database (per browser, per cluster) */
+function currentDb() { return localStorage.getItem("scalaxy-db") || "default"; }
+function setDb(name) {
+  localStorage.setItem("scalaxy-db", name);
+  const hint = document.getElementById("console-hint");
+  if (hint) hint.textContent = "Enter \u23ce to run \u00b7 Shift+Enter for newline \u00b7 db: " + name;
+}
+
 const PALETTE = ["#4f8cff", "#3fb950", "#d29922", "#f85149", "#a371f7",
                  "#39c5cf", "#ffa657", "#f778ba", "#7ee787", "#e3b341"];
 
@@ -157,7 +165,7 @@ function renderNodes(nodes, clusterStatus) {
 /* ---------- data ---------- */
 async function loadKeys() {
   const prefix = $("key-prefix").value;
-  const q = new URLSearchParams({ prefix, limit: state.limit, offset: state.offset });
+  const q = new URLSearchParams({ prefix, limit: state.limit, offset: state.offset, db: currentDb() });
   let data;
   try { data = await api("GET", "/api/keys?" + q.toString()); }
   catch (e) { $("keys-body").innerHTML = '<tr><td colspan="4" class="empty">' + esc(e.message) + "</td></tr>"; return; }
@@ -201,7 +209,7 @@ $("btn-next").addEventListener("click", () => { state.offset += state.limit; loa
 /* ---------- key view / add / delete ---------- */
 async function viewKey(key) {
   try {
-    const d = await api("GET", "/api/keys/" + encodeURIComponent(key));
+    const d = await api("GET", "/api/keys/" + encodeURIComponent(key) + "?db=" + encodeURIComponent(currentDb()));
     $("modal-title").textContent = key;
     $("mv-size").textContent = fmtBytes(d.size);
     $("mv-utf8").textContent = d.utf8;
@@ -218,7 +226,7 @@ function closeModal() {
 
 async function deleteKey(key) {
   if (!confirm('Delete key "' + key + '"?')) return;
-  try { await api("DELETE", "/api/keys/" + encodeURIComponent(key)); loadKeys(); }
+  try { await api("DELETE", "/api/keys/" + encodeURIComponent(key) + "?db=" + encodeURIComponent(currentDb())); loadKeys(); }
   catch (e) { alert(e.message); }
 }
 
@@ -233,7 +241,7 @@ $("add-save").addEventListener("click", async () => {
   const value = $("add-value").value;
   if (!key) { alert("key required"); return; }
   try {
-    await api("PUT", "/api/keys/" + encodeURIComponent(key), { value });
+    await api("PUT", "/api/keys/" + encodeURIComponent(key) + "?db=" + encodeURIComponent(currentDb()), { value });
     $("add-key").value = ""; $("add-value").value = "";
     closeModal();
     loadKeys();
@@ -243,6 +251,7 @@ $("add-save").addEventListener("click", async () => {
 /* ---------- console ---------- */
 const CONSOLE_HELP =
   "usage: put <key> <value> | get <key> | delete <key> | scan <prefix> [limit]\n" +
+  "db: use <name> | databases   (current: " + currentDb() + ")\n" +
   "example: scan user:" +
   "\n\nEnter runs the command, Shift+Enter inserts a newline.";
 
@@ -289,8 +298,14 @@ async function runQuery() {
   if (btn) btn.disabled = true;
   out.textContent = "running: " + command + "\n";
   try {
-    const d = await api("POST", "/api/query", { command });
-    out.textContent += (d.ok ? "" : "error: ") + (d.output || "");
+    const d = await api("POST", "/api/query", { command, db: currentDb() });
+    if (d.ok && /^use\s+\S+/.test(command)) {
+      const name = (d.output || "").trim();
+      setDb(name);
+      out.textContent += "switched to database: " + name;
+    } else {
+      out.textContent += (d.ok ? "" : "error: ") + (d.output || "");
+    }
     out.scrollTop = out.scrollHeight;
     if (state.page === "data") loadKeys();
     if (state.page === "overview") loadStatus();

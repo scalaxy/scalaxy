@@ -19,6 +19,7 @@
 (defconstant +op-pong+      9)
 (defconstant +op-snapshot+  10)
 (defconstant +op-response+  11)
+(defconstant +op-cypher+    12)
 
 (defconstant +status-ok+        0)
 (defconstant +status-not-found+ 1)
@@ -117,7 +118,11 @@
          (buf-write-u32 buf (length pairs))
          (dolist (p pairs)
            (buf-write-string buf (car p))
-           (buf-write-octets buf (cdr p))))))
+           (buf-write-octets buf (cdr p)))))
+      (#.+op-cypher+
+       (buf-write-string buf (or (getf msg :db) +default-db+))
+       (buf-write-string buf (getf msg :query))
+       (buf-write-octets buf (or (getf msg :params) #()))))
     buf))
 
 (defun decode-message (v)
@@ -165,6 +170,11 @@
                         (push (cons key value) pairs)
                         (setf pos q))))
            (list :op op :pairs (nreverse pairs)))))
+      (#.+op-cypher+
+       (multiple-value-bind (db j) (read-string v i)
+         (multiple-value-bind (query k) (read-string v j)
+           (multiple-value-bind (params m) (read-octets v k)
+             (list :op op :db db :query query :params params)))))
       (#.+op-response+
        (multiple-value-bind (status j) (read-u8 v i)
          (multiple-value-bind (value k) (read-octets v j)

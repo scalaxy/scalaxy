@@ -100,3 +100,20 @@ Returns the id of the primary node that accepted the write."
                    (push p pairs))))
              (cluster-nodes cluster))
     (sort pairs #'string< :key #'car)))
+
+(defun cluster-create-database (cluster name)
+  "Create database NAME in the in-process cluster."
+  (unless (db-valid-name-p name)
+    (error "Scalaxy: invalid database name ~s" name))
+  (cluster-put cluster (db-key name "") #())
+  name)
+
+(defun cluster-list-databases (cluster)
+  (mapcar #'car (db-list (cluster-scan cluster "d:"))))
+
+(defun cluster-drop-database (cluster name)
+  (when (equal name +default-db+)
+    (error "Scalaxy: cannot drop the implicit database \"default\""))
+  (dolist (p (cluster-scan cluster (db-key name "")))
+    (cluster-delete cluster (car p)))
+  (cluster-list-databases cluster))

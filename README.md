@@ -53,6 +53,11 @@ The web console ships with every node. Click to enlarge.
 - **Gateway routing** — with `SCALAXY_PEERS` configured, any node routes key
   operations to the ring owner and aggregates cluster status, so every node
   exposes the full cluster UI.
+- **Graph database with Cypher** — a property-graph layer over the same
+  replicated store, queried with the openCypher language (`MATCH`, `CREATE`,
+  `MERGE`, paths, aggregation, the full core expression language), all in
+  pure Common Lisp.  See [docs/cypher-reference.md](docs/cypher-reference.md)
+  and the [certification report](docs/cypher-certification.md).
 - **No external dependencies** — pure ANSI Common Lisp (plus the SBCL
   socket/thread facilities for the network layer).
 
@@ -91,6 +96,12 @@ src/web.lisp           web console: dashboard, REST API, /healthz
 src/gateway.lisp       cluster gateway: ring routing + failover + status
 src/cluster.lisp       in-process cluster: routing + replication
 src/api.lisp           high-level client API
+src/db.lisp            multi-database registry
+src/graph.lisp         property-graph storage over the KV store
+src/codec.lisp         binary codec for Cypher values
+src/cypher/            the Cypher engine: conditions, AST, lexer, parser,
+                       functions, semantics, updates, executor, wire,
+                       reference oracle
 src/main.lisp          standalone node entry point (CLI + env config)
 web/                   console assets (HTML/CSS/JS)
 tests/                 self-contained test suite (no frameworks)
@@ -103,7 +114,7 @@ deploy/                Docker / docker-compose / Kubernetes manifests
 Requirements: [SBCL](https://www.sbcl.org/) 2.x (any recent version).
 
 ```sh
-# run the test suite (8042 checks)
+# run the test suite (9018 checks)
 make test
 
 # or, from the repo root:
@@ -162,6 +173,7 @@ make test
 - [ ] Snapshot-based catch-up for lagging replicas
 - [ ] Membership/join protocol for nodes to discover each other
 - [ ] Multi-key transactions
+- [x] Graph database with the openCypher query language (see docs/cypher-*)
 
 ## Web console
 

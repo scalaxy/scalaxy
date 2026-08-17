@@ -6,6 +6,30 @@
   (:export
    ;; generic helpers
    #:string-to-octets #:octets-to-string #:hex-digest #:fnv1a-64 #:hash-string
+   ;; databases (logical namespaces over physical keys)
+   #:+default-db+ #:db-valid-name-p #:db-prefix #:db-key #:db-parse-name
+   #:db-strip #:db-list #:create-database #:drop-database #:list-databases
+   #:gateway-create-database #:gateway-drop-database #:gateway-list-databases
+   #:cluster-create-database #:cluster-drop-database #:cluster-list-databases
+   ;; value codec
+   #:codec-encode #:codec-decode #:cypher-null-p #:cypher-false-p
+   #:cypher-true-p #:cypher-list #:cypher-list-p #:cypher-list-elements
+   #:cypher-map #:cypher-map-p #:cypher-map-pairs
+   #:cypher-empty-list-p #:cypher-value= #:double-float-bits #:bits-double-float
+   ;; graph storage (property graph over the KV store)
+   #:graph-view #:local-graph-view #:gateway-graph-view
+   #:make-local-graph #:make-gateway-graph
+   #:g-put #:g-get #:g-delete #:g-scan #:g-counter
+   #:graph-mint-id #:graph-create-node #:graph-create-relationship
+   #:graph-node #:graph-relationship #:graph-node-property
+   #:graph-relationship-property
+   #:graph-set-node-property #:graph-set-relationship-property
+   #:graph-remove-node-property #:graph-remove-relationship-property
+   #:graph-add-node-label #:graph-remove-node-label
+   #:graph-delete-node #:graph-delete-relationship
+   #:graph-scan-node-ids #:graph-scan-rel-ids #:graph-expand
+   #:graph-rebuild-indexes #:graph-check-invariants
+   #:graph-count-nodes #:graph-count-rels #:+blob-inline-limit+
    ;; protocol / wire format
    #:+op-put+ #:+op-get+ #:+op-delete+ #:+op-scan+ #:+op-replicate+
    #:+op-ack+ #:+op-error+ #:+op-ping+ #:+op-pong+ #:+op-snapshot+
@@ -44,5 +68,17 @@
    #:cluster-nodes #:cluster-replicas
    ;; client API
    #:client #:connect #:put #:get #:delete #:scan
+   ;; cypher front end
+   #:cypher-lex #:cypher-parse #:cypher-parse-expr #:ast-print #:ast-var
+   #:ast-var-name #:cytoken #:cytoken-kind #:cytoken-value #:cytoken-line
+   #:cytoken-col #:cypher-error #:cypher-syntax-error #:cypher-type-error
+   #:cypher-argument-error #:cypher-entity-not-found #:cypher-signal
+   #:cypher-error-kind #:cypher-error-detail #:cypher-error-query
+   #:cypher-type-name #:cypher-= #:cypher-compare #:eval-expr
+   #:expr-has-aggregate #:cypher-query #:row-get #:row-bind
+   #:cursor #:cursor-next #:cursor-drain #:reference-eval
+   #:cypher-check #:cypher-check-query #:cypher #:gateway-cypher
+   #:cypher-value->json #:cypher-result->json #:cypher-print-value
+   #:+op-cypher+
    ;; entry points
    #:start-node #:main #:parse-args #:parse-host-port))

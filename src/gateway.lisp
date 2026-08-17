@@ -95,6 +95,33 @@ when the owner is unreachable the data can still be served."
   "Total number of distinct keys across the cluster."
   (length (gateway-scan gateway "")))
 
+(defun gateway-create-database (gateway name)
+  "Create database NAME in the cluster by writing its marker key
+through the ring.  Returns the write reply."
+  (unless (db-valid-name-p name)
+    (error "Scalaxy: invalid database name ~s" name))
+  (gateway-put gateway (db-key name "") #()))
+
+(defun gateway-list-databases (gateway)
+  "Names of all databases across the cluster, sorted."
+  (mapcar #'car (db-list (gateway-scan gateway "d:"))))
+
+(defun gateway-drop-database (gateway name)
+  "Delete database NAME and every key it holds.  The implicit
+\"default\" database cannot be dropped.  Returns the remaining names."
+  (when (equal name +default-db+)
+    (error "Scalaxy: cannot drop the implicit database \"default\""))
+  (dolist (p (gateway-scan gateway (db-key name "")))
+    (gateway-delete gateway (car p)))
+  (gateway-list-databases gateway))
+
+(defun gateway-cypher (gateway query &key (db +default-db+) params)
+  "Evaluate a Cypher QUERY across the cluster: the executor runs on the
+coordinator with a gateway graph-view, so every scan/expand/point-read
+routes to the ring owners with the existing failover order; writes go
+through the normal replicated path (plan section 10, Phase A)."
+  (cypher-query query (make-gateway-graph gateway :db db) :params params))
+
 (defun gateway-status (gateway)
   "Aggregate per-node status over each node's HTTP endpoint.
 Returns a plist with :nodes (list of status plists) and :total-keys."

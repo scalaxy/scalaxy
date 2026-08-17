@@ -12,7 +12,9 @@
   :components ((:module "src"
                 :components ((:file "package")
                              (:file "util")
+                             (:file "db")
                              (:file "protocol")
+                             (:file "codec")
                              (:file "storage")
                              (:file "consistent-hash")
                              (:file "replication")
@@ -24,6 +26,18 @@
                              (:file "gateway")
                              (:file "cluster")
                              (:file "api")
+                             (:file "graph")
+                             (:module "cypher"
+                              :components ((:file "conditions")
+                                           (:file "ast")
+                                           (:file "lexer")
+                                           (:file "parser")
+                                           (:file "functions")
+                                           (:file "semantics")
+                                           (:file "updates")
+                                           (:file "executor")
+                                           (:file "wire")
+                                           (:file "reference")))
                              (:file "main")))))
 
 (defsystem "scalaxy/tests"

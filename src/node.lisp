@@ -7,7 +7,8 @@
   store
   replicator
   followers   ; list of (follower-id . transport-fn)
-  started-at) ; universal time when the node was created
+  started-at  ; universal time when the node was created
+  (graphs (make-hash-table :test #'equal))) ; db name -> cached graph-view
 
 (defvar *node-counter* 0)
 
@@ -92,6 +93,19 @@ node's followers (in-process or TCP) before the client is acknowledged."
      (list :op #.+op-ack+ :seq (getf msg :seq) :status #.+status-ok+))
     (#.+op-snapshot+
      (list :op #.+op-snapshot+ :pairs (store-snapshot (node-store node))))
+    (#.+op-cypher+
+     (handler-case
+         (let* ((db (getf msg :db))
+                (graph (or (gethash db (node-graphs node))
+                           (setf (gethash db (node-graphs node))
+                                 (make-local-graph (node-store node) :db db))))
+                (params (and (plusp (length (getf msg :params)))
+                             (json-decode (octets-to-string (getf msg :params)))))
+                (rows (cypher-query (getf msg :query) graph :params params)))
+           (list :op #.+op-response+ :status #.+status-ok+
+                 :value (string-to-octets (cypher-result->json rows))))
+       (error (e)
+         (list :op #.+op-error+ :message (format nil "~a" e)))))
     (#.+op-ping+
      (list :op #.+op-pong+))
     (t (list :op #.+op-error+ :message (format nil "unknown opcode ~a"
