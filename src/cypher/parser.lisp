@@ -212,11 +212,31 @@ bare pattern predicates in WHERE)."
                                   (member (cytoken-value t2) '(")" ":") :test #'string=)))))))))))
 
 (defun parse-where-pred (p)
-  "Parse a WHERE predicate, recognizing a bare pattern chain as a
-pattern predicate (EXISTS form)."
-  (if (%at-pattern-start p)
-      (list :exists :chain (parse-chain p))
-      (parse-or p)))
+  "Parse a WHERE predicate: a boolean expression whose operands may be
+bare pattern chains (pattern predicates, EXISTS form)."
+  (labels ((operand ()
+             (if (%at-pattern-start p)
+                 (list :exists :chain (parse-chain p))
+                 (parse-not p)))
+           (and-level ()
+             (let ((e (operand)))
+               (loop while (%at-keyword p "and")
+                     do (%advance p)
+                        (setf e (list :bin :and e (operand))))
+               e))
+           (xor-level ()
+             (let ((e (and-level)))
+               (loop while (%at-keyword p "xor")
+                     do (%advance p)
+                        (setf e (list :bin :xor e (and-level))))
+               e))
+           (or-level ()
+             (let ((e (xor-level)))
+               (loop while (%at-keyword p "or")
+                     do (%advance p)
+                        (setf e (list :bin :or e (xor-level))))
+               e)))
+    (or-level)))
 
 (defun parse-match (p)
   (let ((optional? nil))
@@ -501,7 +521,9 @@ An optional 'var =' prefix binds the whole chain to a path variable."
 (defun parse-not (p)
   (if (%at-keyword p "not")
       (progn (%advance p)
-             (list :not (parse-not p)))
+             (if (%at-pattern-start p)
+                 (list :not (list :exists :chain (parse-chain p)))
+                 (list :not (parse-not p))))
       (parse-comparison p)))
 
 (defun parse-comp-operand (p)

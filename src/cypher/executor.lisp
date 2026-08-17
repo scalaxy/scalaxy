@@ -152,6 +152,7 @@ Returns (values list already-bound?)"
 (defun %expand-cursor (g inner rel-el node-el src-var graph params)
   (let ((dir (getf (cdr rel-el) :dir))
         (rtype (getf (cdr rel-el) :type))
+        (rtypes (getf (cdr rel-el) :types))
         (rprops (getf (cdr rel-el) :props))
         (rvar (getf (cdr rel-el) :var))
         (nvar (getf (cdr node-el) :var))
@@ -165,6 +166,8 @@ Returns (values list already-bound?)"
          (labels
              ((try (rel node)
                 (when (and rel node
+                           (or (null rtypes)
+                               (member (getf rel :type) rtypes :test #'string=))
                            (%entity-matches rel nil rprops row graph params)
                            (%entity-matches node nlabels nprops row graph params))
                   (let* ((rel2 (if (eq dir :in)
@@ -177,7 +180,8 @@ Returns (values list already-bound?)"
              (if (null bound)
                  ;; unbound relationship: expand over all incident rels
                  (loop for (rid . neighbor)
-                         in (graph-expand g (getf src :id) :dir dir :type rtype)
+                         in (graph-expand g (getf src :id) :dir dir
+                                          :type (and (= (length rtypes) 1) rtype))
                        for rel = (graph-relationship g rid)
                        for node = (graph-node g neighbor)
                        nconc (try rel node))

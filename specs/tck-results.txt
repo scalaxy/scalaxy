@@ -1,5 +1,3 @@
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/triadicSelection/TriadicSelection1.feature :: [15] Handling triadic friend of a friend that is a friend with explicit subset of relationship type :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/triadicSelection/TriadicSelection1.feature :: [6] Handling triadic friend of a friend that is not a friend with explicit subset of relationship type :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/countingSubgraphMatches/CountingSubgraphMatches1.feature :: [11] Mixing directed and undirected pattern parts with self-relationship, undirected count :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/countingSubgraphMatches/CountingSubgraphMatches1.feature :: [10] Mixing directed and undirected pattern parts with self-relationship, count :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/typeConversion/TypeConversion4.feature :: [8] `toString()` should accept potentially correct types 1 :: result mismatch (any order)
@@ -23,10 +21,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [11] Use a pattern comprehension and ORDER BY :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [9] Use a variable-length pattern comprehension in WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [8] Use a pattern comprehension in WITH :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [21] Using two existential pattern predicates in a disjunction :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [20] Using two existential pattern predicates in a conjunction :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [19] Using a negated existential pattern predicate :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [13] Fail on matching two nodes on a single undirected connection between them :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [2] Return relationships by fetching them from the path - starting from the end :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [1] Return relationships by fetching them from the path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [3] Property not null check on null node :: result mismatch (any order)
@@ -66,10 +60,12 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #3 :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [8] De Morgan's law on non-null: the negation of a conjunction is the disjunction of the negations :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [7] De Morgan's law on non-null: the negation of a disjunction is the conjunction of the negations :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-where/WithWhere4.feature :: [2] Join with disjunctive multi-part predicates including patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-skip-limit/WithSkipLimit3.feature :: [3] Limiting amount of rows when there are fewer left than the LIMIT argument :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy4.feature :: [19] Fail if not projected variables are used inside an order by item which contains an aggregation expression :: expected SyntaxError: UndefinedVariable, got "AmbiguousAggregationExpression"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy4.feature :: [16] Handle constants and parameters inside an order by item which contains an aggregation expression :: result mismatch (any order)
@@ -125,6 +121,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [6] Matching relationships into a list and matching variable length using the list, with bound nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [3] Matching and disregarding output, then matching again :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [25] Optionally matching self-loops without matches :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [18] Undirected named path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [14] Named path with undirected fixed variable length pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [13] Matching path with both directions should respect other directions :: result mismatch (any order)
@@ -138,8 +135,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [15] Mixing directed and undirected pattern parts with self-relationship, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [6] Match relationships with multiple types :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere4.feature :: [2] Join with disjunctive multi-part predicates including patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [7] Delete paths from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [5] Detach delete nodes from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete3.feature :: [1] Detach deleting paths :: side effects mismatch

@@ -177,6 +177,9 @@ are subquery-local; the WHERE predicate may reference them."
      (%check-exists-pattern expr scope))
     ((and (consp expr) (eq (car expr) :exists-sub))
      (%check-exists-sub expr scope))
+    ((and (consp expr) (member (car expr) '(:not :bin)))
+     (dolist (x (rest expr))
+       (when (consp x) (%check-expr-vars x scope))))
     (t (dolist (v (%expr-vars expr))
          (%check-var v scope)))))
 
