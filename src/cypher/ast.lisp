@@ -186,8 +186,9 @@
             (ecase dir (:in "-") (:out "->") (:both "-")))))
 
 (defun %print-chain (chain)
-  (let ((parts nil))
-    (dolist (el chain)
+  (let ((parts nil)
+        (els (if (eq (car chain) :path-var) (cddr chain) chain)))
+    (dolist (el els)
       (push (ecase (car el) (:node (%print-node el)) (:rel (%print-rel el))) parts))
     (format nil "~{~a~^~}" (nreverse parts))))
 

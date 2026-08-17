@@ -635,7 +635,7 @@ engine does not implement, or NIL."
       ((search "EXISTS(" up) "exists()")
       ((or (search "DATE(" up) (search "TIME(" up) (search "DATETIME(" up)
            (search "LOCALTIME(" up) (search "LOCALDATETIME(" up)
-           (search "DURATION(" up)
+           (search "DURATION." up) (search "DURATION(" up)
            (search ".TRANSACTION(" up) (search ".STATEMENT(" up)
            (search ".REALTIME(" up))
        "temporal functions")
