@@ -91,7 +91,7 @@ length() on a node surface as SyntaxError: InvalidArgumentType."
 (defun %elem-kind (el)
   (ecase (car el) (:node :node) (:rel :rel)))
 
-(defun %bind-pattern-var (scope var kind)
+(defun %bind-pattern-var (scope var kind &key (allow-value nil))
   (let ((existing (%in-scope var scope)))
     (cond
       ((null existing) (acons var kind scope))
@@ -99,6 +99,9 @@ length() on a node surface as SyntaxError: InvalidArgumentType."
       ;; a variable with unknown type (null literal, parameter) may be
       ;; anchored as a node/rel/path and simply fails to match at runtime
       ((eq (cdr existing) :other) (acons var kind scope))
+      ;; a value (e.g. a list of relationships) may anchor a var-length
+      ;; relationship variable: MATCH (first)-[rs*]->(second)
+      ((and allow-value (eq (cdr existing) :value)) (acons var kind scope))
       ((eq kind :path)
        (cypher-signal "VariableAlreadyBound" :detail (symbol-name var)))
       (t (cypher-signal "VariableTypeConflict"
@@ -179,7 +182,9 @@ bare-pattern subquery is a pattern predicate."
      (%check-exists-sub expr scope))
     ((and (consp expr) (member (car expr) '(:not :bin)))
      (dolist (x (rest expr))
-       (when (consp x) (%check-expr-vars x scope))))
+       (cond ((consp x) (%check-expr-vars x scope))
+             ((and x (symbolp x) (not (keywordp x)))
+              (%check-var x scope)))))
     (t (dolist (v (%expr-vars expr))
          (%check-var v scope)))))
 
@@ -218,7 +223,9 @@ a VariableAlreadyBound error."
                 (cypher-signal "VariableAlreadyBound" :detail (symbol-name var)))
               (if (and in-path? (eq (cdr (%in-scope var s)) :path))
                   (cypher-signal "VariableAlreadyBound" :detail (symbol-name var))
-                  (setf s (%bind-pattern-var s var (%elem-kind el)))))
+                  (setf s (%bind-pattern-var s var (%elem-kind el)
+                                             :allow-value (and (eq (car el) :rel)
+                                                               (getf (cdr el) :var-length))))))
             (dolist (p (getf (cdr el) :props))
               (let ((expr (cdr p)))
                 (unless (atom expr)
