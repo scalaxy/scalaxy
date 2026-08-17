@@ -175,7 +175,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [14] Named path with undirected fixed variable length pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [13] Matching path with both directions should respect other directions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [12] Matching path with multiple bidirectional relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [27] Handling mixed relationship patterns and directions 2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [10] Fail on negative bound :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
@@ -200,8 +199,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [23] Fail when creating a relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [20] Fail when creating a relationship with two directions :: expected SyntaxError: RequiresDirectedRelationship, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [19] Fail when creating a relationship without a direction :: expected SyntaxError: RequiresDirectedRelationship, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [17] Create a single relationship with null properties should not return those properties :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [11] Create a single node with null properties should not return those properties :: side effects mismatch

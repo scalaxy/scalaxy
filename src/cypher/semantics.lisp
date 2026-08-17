@@ -146,12 +146,13 @@ a VariableAlreadyBound error."
                       (%check-var v scope))))))))))
     s))
 
-(defun %check-create-pattern (pattern scope)
+(defun %check-create-pattern (pattern scope &key (require-directed nil))
   "CREATE/MERGE pattern check.  A node variable bound before this clause
 is legal only as a relationship anchor; a variable created within this
 clause cannot be reused (VariableAlreadyBound), a standalone bound node
 pattern would create a second entity (VariableAlreadyBound), and a
-relationship variable that is already bound is an error."
+relationship variable that is already bound is an error.  When
+REQUIRE-DIRECTED (CREATE), relationships must be directed."
   (let ((s scope)
         (created nil))
     (dolist (chain pattern)
@@ -164,6 +165,10 @@ relationship variable that is already bound is an error."
             (when (null (getf (cdr el) :type))
               (cypher-signal "NoSingleRelationshipType"
                              :detail "a relationship must have exactly one type"))
+            (when (and require-directed (eq (getf (cdr el) :dir) :both))
+              ;; CREATE relationships must have a single direction
+              (cypher-signal "RequiresDirectedRelationship"
+                             :detail "a created relationship must have a direction"))
             (when (and (consp (getf (cdr el) :props))
                        (eq (car (getf (cdr el) :props)) :param))
               (cypher-signal "InvalidParameterUse"
@@ -390,7 +395,8 @@ ORDER BY subclause."
            ;; UNWIND rebinding shadows the previous binding (legal)
            (setf scope (acons var :other scope))))
         (:create
-         (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope)))
+         (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope
+                                           :require-directed t)))
         (:merge
          (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope)))
         (:set (%check-set-items (getf (cdr clause) :items) scope))

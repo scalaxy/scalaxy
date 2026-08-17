@@ -455,7 +455,11 @@ An optional 'var =' prefix binds the whole chain to a path variable."
           (%perr p "UnexpectedSyntax" "invalid variable-length range")))
       (%expect-punct p "]")
       (cond
-        ((%at-punct p "->") (%advance p))
+        ((%at-punct p "->")
+         (%advance p)
+         (when (eq dir :in)
+           ;; <-...-> expresses both directions
+           (setf dir :both)))
         ((%at-punct p "-")
          (%advance p)
          (when (eq dir :out)
