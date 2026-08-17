@@ -24,12 +24,11 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [5] Label expression on null :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [3] Nested full existential subquery with pattern predicate :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [2] Nested full existential subquery :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [1] Nested simple existential subquery :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [3] Full existential subquery with update clause should fail :: expected SyntaxError: InvalidClauseComposition, got "UnexpectedSyntax"
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [3] Full existential subquery with update clause should fail :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [2] Full existential subquery with aggregation :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [1] Full existential subquery :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [2] Simple subquery with WHERE clause :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [1] Simple subquery without WHERE clause :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [8] De Morgan's law on non-null: the negation of a conjunction is the disjunction of the negations :: result mismatch (any order)
@@ -70,7 +69,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [11] Use outgoing direction when unspecified :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [10] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge3.feature :: [5] Fail when using undefined variable in ON MATCH :: expected SyntaxError: UndefinedVariable, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [13] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [6] Matching relationships into a list and matching variable length using the list, with bound nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [3] Matching and disregarding output, then matching again :: result mismatch (any order)

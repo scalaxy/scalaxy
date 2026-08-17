@@ -161,15 +161,9 @@ single-node pattern is invalid (InvalidArgumentType)."
       (cypher-signal "InvalidArgumentType" :detail "self-pattern predicate"))))
 
 (defun %check-exists-sub (expr scope)
-  "Check an EXISTS { chain [WHERE pred] } subquery: pattern variables
-are subquery-local; the WHERE predicate may reference them."
-  (let* ((chain (getf (cdr expr) :chain))
-         (local (%pattern-chain-vars chain))
-         (where (getf (cdr expr) :where)))
-    (when where
-      (dolist (v (%expr-vars where))
-        (unless (member v local)
-          (%check-var v scope))))))
+  "Check an EXISTS { <clauses> } subquery: MATCH patterns may
+reference outer-scope variables; subquery variables are local."
+  (%check-clauses (getf (cdr expr) :clauses) scope))
 
 (defun %check-expr-vars (expr scope)
   (cond
@@ -238,6 +232,11 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
         (created nil))
     (dolist (chain pattern)
       (let ((elements (if (eq (car chain) :path-var) (cddr chain) chain)))
+        ;; a path variable is bound to the matched/created path
+        (when (eq (car chain) :path-var)
+          (when (%in-scope (second chain) s)
+            (cypher-signal "VariableAlreadyBound" :detail (symbol-name (second chain))))
+          (setf s (acons (second chain) :path s)))
         ;; relationship variables: always create fresh
         (dolist (el elements)
           (when (eq (car el) :rel)
@@ -516,10 +515,10 @@ ORDER BY subclause."
   (dolist (item items)
     (%check-var (getf (cdr item) :var) scope)))
 
-(defun cypher-check (ast)
-  "Validate AST; signal the spec's errors.  Returns the AST."
-  (let ((scope nil))
-    (dolist (clause (rest ast))
+(defun %check-clauses (clauses &optional (scope nil))
+  "Validate CLAUSES against an initial variable SCOPE."
+  (let ((scope scope))
+    (dolist (clause clauses)
       (ecase (car clause)
         (:match
          (setf scope (%check-pattern (getf (cdr clause) :pattern) scope))
@@ -572,7 +571,12 @@ ORDER BY subclause."
         (:skip (%check-constant (getf (cdr clause) :expr) scope))
         (:limit (%check-constant (getf (cdr clause) :expr) scope))
         (:union (cypher-signal "UnexpectedSyntax" :detail "UNION checked at query level"))))
-    ast))
+    scope))
+
+(defun cypher-check (ast)
+  "Validate AST; signal the spec's errors.  Returns the AST."
+  (%check-clauses (rest ast))
+  ast)
 
 (defun %return-width (query)
   "Number of result columns of a single query (for union checks)."

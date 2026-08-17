@@ -75,37 +75,38 @@ modified by the clause)."
     (dolist (row rows)
       (let ((row2 row))
         (dolist (chain (getf (cdr clause) :pattern))
-          (let ((ids nil))
-            (loop for el in chain when (eq (car el) :node)
-                  do (multiple-value-bind (r eid) (%instantiate-node g row2 el graph params)
-                       (push (cons el eid) ids)
-                       (setf row2 r)))
-            (loop for idx from 1 below (length chain) by 2
-                  for rel = (nth idx chain)
-                  for node-el = (nth (1+ idx) chain)
-                  for src-el = (nth (1- idx) chain)
-                  do (let ((src-id (cdr (assoc src-el ids)))
-                           (end-id (cdr (assoc node-el ids)))
-                           (r row2))
-                       (let* ((props (%filter-null-props
-                                       (mapcar (lambda (p)
-                                                 (cons (car p)
-                                                       (eval-expr (cdr p) r graph params)))
-                                               (getf (cdr rel) :props))))
-                              (start-id (if (eq (getf (cdr rel) :dir) :in)
-                                            end-id src-id))
-                              (finish-id (if (eq (getf (cdr rel) :dir) :in)
-                                             src-id end-id))
-                              (rid (graph-create-relationship g (getf (cdr rel) :type)
-                                                              start-id finish-id
-                                                              :props props))
-                              (rvar (getf (cdr rel) :var)))
-                         (setf row2 (if rvar
-                                        (row-bind r rvar (graph-relationship g rid))
-                                        r)))))))
+          (let ((elements (if (eq (car chain) :path-var) (cddr chain) chain)))
+            (let ((ids nil))
+              (loop for el in elements when (eq (car el) :node)
+                    do (multiple-value-bind (r eid)
+                           (%instantiate-node g row2 el graph params)
+                         (push (cons el eid) ids)
+                         (setf row2 r)))
+              (loop for idx from 1 below (length elements) by 2
+                    for rel = (nth idx elements)
+                    for node-el = (nth (1+ idx) elements)
+                    for src-el = (nth (1- idx) elements)
+                    do (let ((src-id (cdr (assoc src-el ids)))
+                             (end-id (cdr (assoc node-el ids)))
+                             (r row2))
+                         (let* ((props (%filter-null-props
+                                        (mapcar (lambda (p)
+                                                  (cons (car p)
+                                                        (eval-expr (cdr p) r graph params)))
+                                                (getf (cdr rel) :props))))
+                                (start-id (if (eq (getf (cdr rel) :dir) :in)
+                                              end-id src-id))
+                                (finish-id (if (eq (getf (cdr rel) :dir) :in)
+                                               src-id end-id))
+                                (rid (graph-create-relationship
+                                      g (getf (cdr rel) :type)
+                                      start-id finish-id :props props))
+                                (rvar (getf (cdr rel) :var)))
+                           (setf row2 (if rvar
+                                          (row-bind r rvar (graph-relationship g rid))
+                                          r))))))))
         (push row2 out)))
     (nreverse out)))
-
 
 (defun %merge-clause (g rows clause graph params)
   "MERGE: match the whole pattern anchored to bound vars; bind or create.
@@ -130,6 +131,25 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
                 (setf r (first (%set-clause g (list r)
                                             (list :set :items (getf (cdr clause) :on-create))
                                             graph params))))
+              ;; bind the path variable to the created path
+              (let ((pat (getf (cdr clause) :pattern)))
+                (when (and pat (eq (car (first pat)) :path-var))
+                  (let* ((pv (second (first pat)))
+                         (els (cddr (first pat)))
+                         (nodes (loop for el in els
+                                      when (eq (car el) :node)
+                                        collect (row-get r (getf (cdr el) :var))))
+                         (rels (loop for el in els
+                                     when (eq (car el) :rel)
+                                       collect (graph-relationship
+                                                g (getf (row-get r (getf (cdr el) :var)) :id))))
+                         (path (list :path
+                                     (loop for n in nodes
+                                           for i from 0
+                                           append (if (zerop i)
+                                                      (list n)
+                                                      (list (nth (1- i) rels) n))))))
+                    (setf r (row-bind r pv path)))))
               (push r out)))))
     (nreverse out)))
 
