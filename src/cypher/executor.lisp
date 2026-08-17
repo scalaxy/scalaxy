@@ -366,7 +366,12 @@ already-projected columns, so later items may reference earlier ones
     (dolist (item items)
       (let* ((expr (getf (cdr item) :expr))
              (as (getf (cdr item) :as))
-             (v (eval-expr expr (append proj row) graph params)))
+             ;; later items may reference earlier aliases, but an alias
+             ;; never shadows an input variable (a.id AS a, a.id)
+             (lookup (append (loop for p in proj
+                                   unless (assoc (car p) row) collect p)
+                             row))
+             (v (eval-expr expr lookup graph params)))
         (push (cons (or as (ast-var (ast-print (list :expr expr)))) v) proj)))
     (nreverse proj)))
 
