@@ -111,7 +111,9 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
                                           :where nil)
                                     graph params)))
         (if matches
-            (let ((r (first matches)))
+            ;; one output row per matched pattern (bound variables are
+            ;; anchored, so MERGE matches every existing pattern instance)
+            (dolist (r matches)
               (when (getf (cdr clause) :on-match)
                 (setf r (first (%set-clause g (list r)
                                             (list :set :items (getf (cdr clause) :on-match))

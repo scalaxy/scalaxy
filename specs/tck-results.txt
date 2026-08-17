@@ -4,16 +4,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/countingSubgraphMatches/CountingSubgraphMatches1.feature :: [10] Mixing directed and undirected pattern parts with self-relationship, count :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/useCases/countingSubgraphMatches/CountingSubgraphMatches1.feature :: [7] Counting distinct undirected self-relationships in self-relationship graph :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/typeConversion/TypeConversion4.feature :: [8] `toString()` should accept potentially correct types 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #19 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #18 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #15 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #14 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #11 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #10 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #7 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #6 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal4.feature :: [13] Should propagate null #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #2 :: result mismatch (any order)
@@ -204,13 +194,10 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [3] Remove a single relationship property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [2] Remove multiple node properties :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [1] Remove a single node property :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [28] Fail when using variable length relationship in MERGE :: expected SyntaxError: CreatingVarLength, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [27] Fail when using parameter as relationship predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [24] Fail when merging relationship without type, no colon :: expected SyntaxError: NoSingleRelationshipType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [23] Fail when merging relationship without type :: expected SyntaxError: NoSingleRelationshipType, got "LispError:SIMPLE-ERROR"
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [26] Fail when merging relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [11] Use outgoing direction when unspecified :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [10] Merge should bind a path :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [3] Matching two relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge3.feature :: [5] Fail when using undefined variable in ON MATCH :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [13] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
@@ -219,7 +206,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [3] Return relationships by collecting them as a list - undirected, starting from two extremes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [2] Return relationships by collecting them as a list - directed, one way :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [3] Matching and disregarding output, then matching again :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [2] Counting rows after MATCH, MERGE, OPTIONAL MATCH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [25] Optionally matching self-loops without matches :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [20] Variable length relationship without bounds :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [19] Variable length relationship without lower bound :: result mismatch (any order)
@@ -269,10 +255,9 @@ CREATE (b)-[:LIKES]->(a)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [3] Delete relationship with bidirectional matching :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [22] Fail when creating a variable-length relationship :: expected SyntaxError: CreatingVarLength, got NIL
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [23] Fail when creating a relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [20] Fail when creating a relationship with two directions :: expected SyntaxError: RequiresDirectedRelationship, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [19] Fail when creating a relationship without a direction :: expected SyntaxError: RequiresDirectedRelationship, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [18] Fail when creating a relationship without a type :: expected SyntaxError: NoSingleRelationshipType, got "LispError:SIMPLE-ERROR"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [17] Create a single relationship with null properties should not return those properties :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [11] Create a single node with null properties should not return those properties :: side effects mismatch

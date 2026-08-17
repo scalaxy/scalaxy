@@ -155,6 +155,15 @@ relationship variable that is already bound is an error."
         ;; relationship variables: always create fresh
         (dolist (el elements)
           (when (eq (car el) :rel)
+            (when (getf (cdr el) :var-length)
+              (cypher-signal "CreatingVarLength" :detail "variable-length relationships cannot be created"))
+            (when (null (getf (cdr el) :type))
+              (cypher-signal "NoSingleRelationshipType"
+                             :detail "a relationship must have exactly one type"))
+            (when (and (consp (getf (cdr el) :props))
+                       (eq (car (getf (cdr el) :props)) :param))
+              (cypher-signal "InvalidParameterUse"
+                             :detail "parameter is not allowed as a relationship pattern"))
             (let ((v (getf (cdr el) :var)))
               (when v
                 (when (or (%in-scope v s) (member v created))
