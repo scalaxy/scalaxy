@@ -25,8 +25,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [22] Sort distinct types in descending order :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [10] Failing when setting a list of maps as a property :: expected TypeError: InvalidPropertyType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [8] Ignore null when setting property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [7] Keeping used expression 4 :: result mismatch (any order)
@@ -42,12 +40,11 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [11] ORDER BY should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [3] Remove two labels from a node with three labels :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [4] Remove multiple relationship properties :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [27] Fail when using parameter as relationship predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [10] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge3.feature :: [5] Fail when using undefined variable in ON MATCH :: expected SyntaxError: UndefinedVariable, got NIL
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge2.feature :: [6] Fail when using undefined variable in ON CREATE :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL

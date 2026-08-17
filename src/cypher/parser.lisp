@@ -493,6 +493,8 @@ An optional 'var =' prefix binds the whole chain to a path variable."
                       (push (%expect-ident p) types)))
     (when (%at-punct p "{")
       (setf props (parse-props p)))
+    (when (%at-kind p :param)
+      (%perr p "InvalidParameterUse" "parameter is not allowed as a relationship pattern"))
     (when (%at-punct p "..")
       ;; range without the asterisk: -[:T..2]- is invalid
       (%perr p "InvalidRelationshipPattern" "expected * before .."))

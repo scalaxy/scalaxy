@@ -52,6 +52,29 @@ modified by the clause)."
   "CREATE ignores null property values (openCypher)."
   (remove-if (lambda (p) (%tv-null (cdr p))) props))
 
+(defun %valid-prop-value-p (v)
+  "Property values may be scalars or lists of scalars, not maps or
+entities (openCypher InvalidPropertyType)."
+  (cond
+    ((%tv-null v) t)
+    ((%node-p v) nil)
+    ((%rel-p v) nil)
+    ((%path-p v) nil)
+    ((cypher-map-p v) nil)
+    ((cypher-list-p v)
+     (every (lambda (x)
+              (and (not (cypher-map-p x)) (not (%node-p x)) (not (%rel-p x))))
+            (cypher-list-elements v)))
+    (t t)))
+
+(defun %check-prop-values (props)
+  "Signal InvalidPropertyType when a property map contains an invalid
+value."
+  (dolist (p props)
+    (unless (%valid-prop-value-p (cdr p))
+      (cypher-signal "InvalidPropertyType"
+                     :detail (format nil "property ~a" (car p))))))
+
 (defun %instantiate-node (g row node-el graph params)
   "Resolve or create the node of NODE-EL; returns (values row id)."
   (let* ((var (getf (cdr node-el) :var))
@@ -161,7 +184,11 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
              (prop (getf (cdr item) :prop)))
          (dolist (row rows)
            (let ((entity (%row-entity row var)))
+             (when (or (null entity) (%tv-null entity))
+               ;; SET on a null entity (OPTIONAL MATCH miss) is a no-op
+               (return))
              (let ((v (eval-expr (getf (cdr item) :expr) row graph params)))
+               (%check-prop-values (list (cons prop v)))
                (cond
                  ((%node-p entity)
                   (if (%tv-null v)
