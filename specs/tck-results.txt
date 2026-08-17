@@ -17,7 +17,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [2] Full existential subquery with aggregation :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [2] Simple subquery with WHERE clause :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [5] Comparing relationships to relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)

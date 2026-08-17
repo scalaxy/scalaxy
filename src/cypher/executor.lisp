@@ -149,7 +149,7 @@ Returns (values list already-bound?)"
            (already? (list row))
            (t (loop for n in cands collect (row-bind row var n)))))))))
 
-(defun %expand-cursor (g inner rel-el node-el src-var graph params)
+(defun %expand-cursor (g inner rel-el node-el src-var graph params &key (used-vars nil))
   (let ((dir (getf (cdr rel-el) :dir))
         (rtype (getf (cdr rel-el) :type))
         (rtypes (getf (cdr rel-el) :types))
@@ -178,11 +178,12 @@ Returns (values list already-bound?)"
                       (if (eq row3 :fail) nil (list row3)))))))
            (let ((bound (and rvar (assoc rvar row)))
              (used-rels
-               ;; relationships already bound in this row cannot be
-               ;; used again in the same pattern (relationship
-               ;; uniqueness within a pattern)
+               ;; relationships bound earlier in this chain cannot be
+               ;; used again (relationship uniqueness within a pattern)
                (loop for (k . v) in row
-                     when (and (not (eq k rvar)) (%rel-p v))
+                     when (and (not (eq k rvar))
+                               (member k used-vars)
+                               (%rel-p v))
                        collect (getf v :id))))
              (if (null bound)
                  ;; unbound relationship: expand over all incident rels
@@ -336,13 +337,18 @@ repeats a relationship (openCypher paths are trails)."
                                                (cdddr el))))
                                   el))
                             chain)))
-        (let ((cur (%node-start-cursor g inner (first keyed) graph params)))
+        (let* ((chain-rel-vars
+                 (loop for el in chain
+                       when (and (eq (car el) :rel) (getf (cdr el) :var))
+                         collect (getf (cdr el) :var)))
+               (cur (%node-start-cursor g inner (first keyed) graph params)))
           (loop for idx from 1 below (length keyed) by 2
                 for rel = (nth idx keyed)
                 for node = (nth (1+ idx) keyed)
                 for src = (nth (1- idx) keyed)
                 do (setf cur (%expand-cursor g cur rel node (getf (cdr src) :var)
-                                             graph params)))
+                                             graph params
+                                             :used-vars chain-rel-vars)))
           cur))))
 
 (defun %pattern-cursor (g inner pattern graph params)
