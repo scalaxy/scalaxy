@@ -164,7 +164,11 @@ null), nulls last."
   (cond
     ((or (%tv-null a) (%tv-null b)) :null)
     ((and (numberp a) (numberp b))
-     (cond ((< a b) :lt) ((> a b) :gt) (t :eq)))
+     ;; NaN compares greater than every number (openCypher ORDER BY)
+     (cond ((and (floatp a) (not (= a a)))
+            (if (and (floatp b) (not (= b b))) :eq :gt))
+           ((and (floatp b) (not (= b b))) :lt)
+           ((< a b) :lt) ((> a b) :gt) (t :eq)))
     ((and (stringp a) (stringp b))
      (cond ((string< a b) :lt) ((string> a b) :gt) (t :eq)))
     ((and (or (eq a t) (cypher-false-p a))

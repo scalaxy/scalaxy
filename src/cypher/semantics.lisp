@@ -487,9 +487,12 @@ ORDER BY subclause."
              (check-order-agg-calls e)
              (check-order-leaves e))
             ((and has-agg? (not (expr-has-aggregate e)))
-             (dolist (v (%expr-vars e))
-               (unless (member v projected-names)
-                 (cypher-signal "UndefinedVariable" :detail (symbol-name v)))))))))))
+             ;; the whole expression may be a grouping key (ORDER BY
+             ;; a.name after WITH a.name AS name, ...)
+             (unless (member e key-exprs :test #'equal)
+               (dolist (v (%expr-vars e))
+                 (unless (member v projected-names)
+                   (cypher-signal "UndefinedVariable" :detail (symbol-name v))))))))))))
 
 (defun %check-set-items (items scope)
   (dolist (item items)

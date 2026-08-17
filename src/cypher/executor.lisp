@@ -517,7 +517,7 @@ rejected by the semantic checker)."
                 (or (getf state :nn) 0)))
     (:sum (or (getf state :total) 0))
     (:avg (let ((n (getf state :n)))
-            (if (zerop n) :cypher-null
+            (if (or (null n) (zerop n)) :cypher-null
                 ;; avg always yields a float (openCypher)
                 (float (/ (or (getf state :total) 0) n)))))
     (:min (or (getf state :best) :cypher-null))
@@ -629,7 +629,7 @@ keyed by the printed expression name and by bare variable names."
             (let ((key (%agg-group-key key-items row graph params)))
               (let ((entry (gethash key groups)))
                 (unless entry
-                  (setf entry (list (make-hash-table) key))
+                  (setf entry (list (make-hash-table) key row))
                   (setf (gethash key groups) entry)
                   (push entry order-keys))
                 (let ((states (first entry)))
@@ -684,6 +684,7 @@ keyed by the printed expression name and by bare variable names."
                             (lambda (entry)
                               (let* ((states (first entry))
                                      (key (second entry))
+                                     (first-row (third entry))
                                      (*agg-states* states))
                                 (declare (special *agg-states*))
                                 ;; ORDER BY may reference grouping keys AND
@@ -701,7 +702,8 @@ keyed by the printed expression name and by bare variable names."
                                                      (%agg-eval-with expr
                                                                      key-lookup
                                                                      graph params))))
-                                           agg-items))))
+                                           agg-items)
+                                          first-row)))
                                   (cons (mapcar
                                          (lambda (spec)
                                            (%agg-eval-with (getf (cdr spec) :expr)
