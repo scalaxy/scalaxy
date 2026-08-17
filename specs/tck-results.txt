@@ -31,7 +31,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [6] Keeping used expression 3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [4] Keeping used expression 1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy3.feature :: [1] Sort on aggregate function and normal property :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [13] Fail when sorting on variable removed by DISTINCT :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [12] Aggregation of named paths :: result mismatch (list order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [12] ORDER BY DESC should order distinct types in the expected order :: result mismatch (ordered)

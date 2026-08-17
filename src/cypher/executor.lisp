@@ -531,7 +531,7 @@ rejected by the semantic checker)."
                 (float (/ (or (getf state :total) 0) n)))))
     (:min (or (getf state :best) :cypher-null))
     (:max (or (getf state :best) :cypher-null))
-    (:collect (cypher-list (nreverse (or (getf state :items) nil))))))
+    (:collect (cypher-list (reverse (or (getf state :items) nil))))))
 
 (defun %agg-group-key (key-items row graph params)
   "The grouping key for ROW: an alist of (projected-name . value)."
@@ -616,7 +616,7 @@ keyed by the printed expression name and by bare variable names."
         (mapcar (lambda (row) (%project-row row items graph params)) rows)
         (let ((groups (make-hash-table :test #'equal))
               (order-keys nil)
-              (*agg-sites* (make-hash-table))
+              (*agg-sites* (make-hash-table :test #'equal))
               (*agg-site-info* (make-hash-table)))
           (declare (special *agg-sites* *agg-site-info*))
           ;; register every aggregate call site (projection items and
