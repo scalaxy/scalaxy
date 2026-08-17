@@ -527,8 +527,9 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
     ((cypher-list-p v)
      (cond
        ((not (integerp i))
-        (cypher-signal "InvalidArgumentValue"
-                       :detail (format nil "indexing a list with ~a" (cypher-type-name i))))
+        (cypher-signal "InvalidArgumentType"
+                       :detail (format nil "indexing a list with ~a" (cypher-type-name i))
+                       :family "TypeError"))
        ((and (>= i 0) (< i (length (cypher-list-elements v))))
         (nth i (cypher-list-elements v)))
        (t :cypher-null)))
@@ -537,13 +538,15 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
          (string (char v i))
          :cypher-null))
     ((stringp v)
-     (cypher-signal "InvalidArgumentValue"
-                    :detail (format nil "indexing a string with ~a" (cypher-type-name i))))
+     (cypher-signal "InvalidArgumentType"
+                    :detail (format nil "indexing a string with ~a" (cypher-type-name i))
+                    :family "TypeError"))
     ((cypher-map-p v)
      (cypher-signal "MapElementAccessByNonString"
                     :detail (format nil "indexing a map with ~a" (cypher-type-name i))))
-    (t (cypher-signal "InvalidArgumentValue"
-                      :detail (format nil "indexing a ~a" (cypher-type-name v))))))
+    (t (cypher-signal "InvalidArgumentType"
+                      :detail (format nil "indexing a ~a" (cypher-type-name v))
+                      :family "TypeError"))))
 
 (defun %map-access (m k)
   (cond

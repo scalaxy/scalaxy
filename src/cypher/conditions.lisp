@@ -62,6 +62,9 @@
 ;;; TypeError subtypes
 (define-cypher-error "InvalidArgumentValue"          'cypher-type-error)
 (define-cypher-error "MapElementAccessByNonString"   'cypher-type-error)
+;;; InvalidArgumentType exists under both SyntaxError (compile-time)
+;;; and TypeError (runtime) families (openCypher TCK).
+(define-cypher-error "InvalidArgumentType"           'cypher-type-error)
 
 ;;; ArgumentError subtypes
 (define-cypher-error "NumberOutOfRange"              'cypher-argument-error)
@@ -69,13 +72,26 @@
 ;;; EntityNotFound subtypes
 (define-cypher-error "DeletedEntityAccess"           'cypher-entity-not-found)
 
-(defun cypher-signal (kind &key (query nil) (detail nil))
+(defun cypher-signal (kind &key (query nil) (detail nil) (family nil))
   "Signal the Cypher error of KIND (spec name, e.g. \"UnexpectedSyntax\")
-or a generic error of the matching family."
-  (error (or (gethash (string-downcase kind) *cypher-error-classes*)
-             (cond ((member kind '("SyntaxError") :test #'string-equal) 'cypher-syntax-error)
-                   ((string-equal kind "TypeError") 'cypher-type-error)
-                   ((string-equal kind "ArgumentError") 'cypher-argument-error)
-                   ((string-equal kind "EntityNotFound") 'cypher-entity-not-found)
-                   (t 'cypher-error)))
-         :kind kind :query query :detail detail))
+or a generic error of the matching family.  FAMILY selects among the
+families that share KIND (e.g. InvalidArgumentType under SyntaxError
+vs TypeError); the class registry records the most recently defined
+class per kind."
+  (let* ((key (string-downcase kind))
+         (class (cond
+                  ((string-equal kind "InvalidArgumentType")
+                   ;; shared kind: SyntaxError by default, TypeError when
+                   ;; signalled with :family "TypeError" (runtime typing)
+                   (if (and family (string-equal family "TypeError"))
+                       'cypher-type-error
+                       'cypher-syntax-error))
+                  (t
+                   (or (gethash key *cypher-error-classes*)
+                       (cond ((member kind '("SyntaxError") :test #'string-equal)
+                              'cypher-syntax-error)
+                             ((string-equal kind "TypeError") 'cypher-type-error)
+                             ((string-equal kind "ArgumentError") 'cypher-argument-error)
+                             ((string-equal kind "EntityNotFound") 'cypher-entity-not-found)
+                             (t 'cypher-error)))))))
+    (error class :kind kind :query query :detail detail)))

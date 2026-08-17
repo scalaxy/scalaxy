@@ -44,7 +44,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null1.feature :: [2] Property null check on optional non-null node :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null1.feature :: [1] Property null check on non-null node :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical3.feature :: [1] Fail for invalid Unicode hyphen in subtraction :: expected SyntaxError: InvalidUnicodeCharacter, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [8] Fail at runtime when trying to index something which is not a map :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [4] Dynamically access a field with null results in null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [3] Statically access a field of a map resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [19] Fail on a map containing key starting with a number :: expected SyntaxError: UnexpectedSyntax, got "InvalidNumberLiteral"
@@ -67,9 +66,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [3] Size of list comprehension :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #4 :: expected TypeError: *, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #4 :: expected TypeError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #3 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #2 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #1 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [8] Using `keys()` and `IN` to check property existence :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
