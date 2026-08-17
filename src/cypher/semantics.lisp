@@ -191,7 +191,12 @@ bare-pattern subquery is a pattern predicate."
               (dolist (v (%expr-vars where))
                 (unless (or (member v local) (%in-scope v scope))
                   (cypher-signal "UndefinedVariable" :detail (symbol-name v)))))))
-        (%check-clauses (getf (cdr expr) :clauses) scope))))
+        (let ((clauses (getf (cdr expr) :clauses)))
+          (when (some (lambda (c) (member (car c) '(:create :merge :set :remove :delete)))
+                      clauses)
+            (cypher-signal "InvalidClauseComposition"
+                           :detail "update clause inside EXISTS subquery"))
+          (%check-clauses clauses scope)))))
 
 (defun %check-expr-vars (expr scope)
   (cond
