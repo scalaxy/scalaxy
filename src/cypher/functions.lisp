@@ -123,6 +123,41 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
                (if seen-null :cypher-null t)))))
       (t :cypher-false))))
 
+(defun %sort-rank (v)
+  "Total type order for ORDER BY across heterogeneous values
+(openCypher TCK WithOrderBy): map < node < rel < list < path <
+string < boolean < number < NaN < null."
+  (cond
+    ((%tv-null v) 9)
+    ((and (floatp v) (not (= v v))) 8)  ; NaN
+    ((numberp v) 7)
+    ((or (eq v t) (cypher-false-p v)) 6)
+    ((stringp v) 5)
+    ((%path-p v) 4)
+    ((cypher-list-p v) 3)
+    ((%rel-p v) 2)
+    ((%node-p v) 1)
+    (t 0)))  ; maps and anything else
+
+(defun %sort-compare (a b)
+  "Ordering for ORDER BY: cross-type values order by type rank
+(map < node < rel < list < path < string < boolean < number < NaN <
+null), nulls last."
+  (cond
+    ((and (cypher-list-p a) (cypher-list-p b))
+     (let ((as (cypher-list-elements a)) (bs (cypher-list-elements b)))
+       (loop for x in as for y in bs
+             for c = (%sort-compare x y)
+             do (when (member c '(:lt :gt)) (return c))
+             finally (return (cond ((< (length as) (length bs)) :lt)
+                                   ((> (length as) (length bs)) :gt)
+                                   (t :eq))))))
+    (t (let ((c (cypher-compare a b)))
+         (if (eq c :null)
+             (let ((ra (%sort-rank a)) (rb (%sort-rank b)))
+               (cond ((< ra rb) :lt) ((> ra rb) :gt) (t :eq)))
+             c)))))
+
 (defun cypher-compare (a b)
   "Total order for ORDER BY and < <= > >=.  Returns :lt :eq :gt or
 :null when the values are incomparable."
