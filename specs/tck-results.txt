@@ -128,7 +128,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [8] Returning label predicate expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit2.feature :: [8] Limit to more rows than actual results 2 :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit2.feature :: [6] LIMIT with an expression that does not depend on variables :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit1.feature :: [3] SKIP with an expression that does not depend on variables :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy6.feature :: [4] Fail if not returned variables are used inside an order by item which contains an aggregation expression :: expected SyntaxError: UndefinedVariable, got "AmbiguousAggregationExpression"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy6.feature :: [1] Handle constants and parameters inside an order by item which contains an aggregation expression :: result mismatch (any order)
