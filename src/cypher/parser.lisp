@@ -192,6 +192,32 @@
       (%perr p "UnexpectedSyntax" "empty query"))
     (cons :query (nreverse clauses))))
 
+(defun %at-pattern-start (p)
+  "True when the token stream begins a node pattern (used to recognize
+bare pattern predicates in WHERE)."
+  (let ((tokens (cyparser-tokens p))
+        (pos (cyparser-pos p)))
+    (let ((t0 (nth pos tokens)))
+      (and t0
+           (eql (cytoken-kind t0) :punct)
+           (string= (cytoken-value t0) "(")
+           (let ((t1 (nth (1+ pos) tokens)))
+             (and t1
+                  (or (and (eql (cytoken-kind t1) :punct)
+                           (member (cytoken-value t1) '(")" ":" "{") :test #'string=))
+                      (and (eql (cytoken-kind t1) :ident)
+                           (let ((t2 (nth (+ 2 pos) tokens)))
+                             (and t2
+                                  (eql (cytoken-kind t2) :punct)
+                                  (member (cytoken-value t2) '(")" ":") :test #'string=)))))))))))
+
+(defun parse-where-pred (p)
+  "Parse a WHERE predicate, recognizing a bare pattern chain as a
+pattern predicate (EXISTS form)."
+  (if (%at-pattern-start p)
+      (list :exists :chain (parse-chain p))
+      (parse-or p)))
+
 (defun parse-match (p)
   (let ((optional? nil))
     (when (%at-keyword p "optional")
@@ -201,7 +227,7 @@
     (let ((pattern (parse-pattern p)))
       (let ((where (when (%at-keyword p "where")
                      (%advance p)
-                     (parse-or p))))
+                     (parse-where-pred p))))
         (list (if optional? :optional-match :match)
               :pattern pattern :where where)))))
 
@@ -215,7 +241,7 @@
                      (parse-projection-items p))))
       (let ((where (when (and (eq kind :with) (%at-keyword p "where"))
                      (%advance p)
-                     (parse-or p)))
+                     (parse-where-pred p)))
             (order (when (%at-keyword p "order")
                      (%advance p)
                      (%expect-keyword p "by")
@@ -330,6 +356,8 @@ An optional 'var =' prefix binds the whole chain to a path variable."
     (loop while (%at-punct p ":")
           do (%advance p)
              (push (%expect-ident p) labels))
+    (when (%at-kind p :param)
+      (%perr p "InvalidParameterUse" "parameter is not allowed as a node pattern"))
     (when (%at-punct p "{")
       (setf props (parse-props p)))
     (%expect-punct p ")")
@@ -368,6 +396,10 @@ An optional 'var =' prefix binds the whole chain to a path variable."
     ((%at-punct p "-->")
      (%advance p)
      (list :rel :var nil :type nil :dir :out :props nil :min nil :max nil))
+    ((%at-punct p "<-->")
+     ;; TCK bidirectional shorthand: matches in both directions
+     (%advance p)
+     (list :rel :var nil :type nil :dir :both :props nil :min nil :max nil))
     ((%at-punct p "<--")
      (%advance p)
      (list :rel :var nil :type nil :dir :in :props nil :min nil :max nil))
@@ -394,17 +426,23 @@ An optional 'var =' prefix binds the whole chain to a path variable."
       (%perr p "NoSingleRelationshipType" "a relationship has exactly one type"))
     (when (%at-punct p "{")
       (setf props (parse-props p)))
-    (let ((min-hops nil) (max-hops nil))
+    (let ((min-hops nil) (max-hops nil) (var-length nil))
       (when (%at-punct p "*")
         (%advance p)
+        (setf var-length t)
         (when (%at-kind p :int)
           (setf min-hops (cytoken-value (%cur p)))
           (%advance p))
-        (when (%at-punct p "..")
-          (%advance p)
-          (when (%at-kind p :int)
-            (setf max-hops (cytoken-value (%cur p)))
-            (%advance p)))
+        (cond
+          ((%at-punct p "..")
+           (%advance p)
+           (when (%at-kind p :int)
+             (setf max-hops (cytoken-value (%cur p)))
+             (%advance p)))
+          (min-hops
+           ;; *N means exactly N hops (min = max = N)
+           (setf max-hops min-hops))
+          (t nil))
         (unless min-hops (setf min-hops 1))
         (when (and max-hops (< max-hops min-hops))
           (%perr p "UnexpectedSyntax" "invalid variable-length range")))
@@ -416,8 +454,11 @@ An optional 'var =' prefix binds the whole chain to a path variable."
          (when (eq dir :out)
            (setf dir :both)))
         (t (%perr p "UnexpectedSyntax" "expected -> or - after ]")))
-      (list :rel :var var :type (first types) :dir dir :props props
-            :min min-hops :max max-hops))))
+      (if var-length
+          (list :rel :var-length t :var var :type (first types) :dir dir
+                :props props :min min-hops :max max-hops)
+          (list :rel :var var :type (first types) :dir dir :props props
+                :min min-hops :max max-hops)))))
 
 ;;; ------------------------------------------------------------------
 ;;; expressions (precedence climbing)
@@ -540,9 +581,24 @@ means a < b AND b < c)."
          (setf e (list :prop :expr e :prop (%expect-ident p))))
         ((%at-punct p "[")
          (%advance p)
-         (let ((idx (parse-or p)))
-           (%expect-punct p "]")
-           (setf e (list :idx :expr e :index idx))))
+         (cond
+           ((%at-punct p "..")
+            ;; list slice with implicit start: list[..end], list[..]
+            (%advance p)
+            (let ((end (unless (%at-punct p "]") (parse-or p))))
+              (%expect-punct p "]")
+              (setf e (list :slice :expr e :start nil :end end))))
+           (t
+            (let ((start (parse-or p)))
+              (cond
+                ((%at-punct p "..")
+                 (%advance p)
+                 (let ((end (unless (%at-punct p "]") (parse-or p))))
+                   (%expect-punct p "]")
+                   (setf e (list :slice :expr e :start start :end end))))
+                (t
+                 (%expect-punct p "]")
+                 (setf e (list :idx :expr e :index start))))))))
         (t (return))))
     e))
 
@@ -626,10 +682,22 @@ means a < b AND b < c)."
      (list :lit :cypher-null))
     ((%at-keyword p "exists")
      (%advance p)
-     (%expect-punct p "(")
-     (let ((chain (parse-chain p)))
-       (%expect-punct p ")")
-       (list :exists :chain chain)))
+     (cond
+       ((%at-punct p "(")
+        (%advance p)
+        (let ((chain (parse-chain p)))
+          (%expect-punct p ")")
+          (list :exists :chain chain)))
+       ((%at-punct p "{")
+        ;; EXISTS { pattern [WHERE pred] } subquery form
+        (%advance p)
+        (let ((chain (parse-chain p)))
+          (let ((where (when (%at-keyword p "where")
+                         (%advance p)
+                         (parse-or p))))
+            (%expect-punct p "}")
+            (list :exists-sub :chain chain :where where))))
+       (t (%perr p "UnexpectedSyntax" "expected ( or { after EXISTS"))))
     ((%at-keyword p "count")
      (%advance p)
      (%expect-punct p "(")

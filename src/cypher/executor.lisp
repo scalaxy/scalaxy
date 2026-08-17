@@ -117,7 +117,9 @@ empty, possibly one) for each input row."
 Returns (values list already-bound?)"
   (let ((var (getf (cdr node-el) :var)))
     (if (and var (assoc var row))
-        (values (list (row-get row var)) t)
+        (let ((v (row-get row var)))
+          ;; a null anchor (e.g. WITH null AS a MATCH (a)) matches nothing
+          (if (%tv-null v) (values nil t) (values (list v) t)))
         (let* ((labels (getf (cdr node-el) :labels))
                (props (getf (cdr node-el) :props))
                (label (first labels)))
@@ -151,6 +153,7 @@ Returns (values list already-bound?)"
      inner
      (lambda (row)
        (let ((src (row-get row src-var)))
+          (when (%tv-null src) (return-from %expand-cursor nil))
          (labels
              ((try (rel node)
                 (when (and rel node
@@ -205,14 +208,15 @@ Returns (values list already-bound?)"
 (defun %path-chain-cursor (g inner chain graph params)
   "Chain cursor supporting a path variable and variable-length
 relationships (plan Tier 3): walks the chain breadth-first, binding
-the path variable to (:path (node rel node ...))."
+the path variable to (:path (node rel node ...)).  A path never
+repeats a relationship (openCypher paths are trails)."
   (let* ((pv (and (eq (car chain) :path-var) (second chain)))
          (elements (if (eq (car chain) :path-var) (cddr chain) chain)))
     (%map-cursor
      inner
      (lambda (row)
        (let ((results nil))
-         (labels ((walk (idx r path)
+         (labels ((walk (idx r path visited)
                     (if (>= idx (length elements))
                         (let ((r2 (if pv
                                       (row-bind r pv (list :path (nreverse path)))
@@ -229,15 +233,19 @@ the path variable to (:path (node rel node ...))."
                                                  r
                                                  (%bind-entity-var r var n))))
                                      (unless (eq r2 :fail)
-                                       (walk (1+ idx) r2 (cons n path))))))))
+                                       (walk (1+ idx) r2 (cons n path) visited)))))))
                             (:rel
                              (let* ((next-el (nth (1+ idx) elements))
-                                    (min-hops (or (getf (cdr el) :min) 1))
-                                    (max-hops (or (getf (cdr el) :max) 999999))
+                                    (min-hops (if (getf (cdr el) :var-length)
+                                                  (or (getf (cdr el) :min) 1)
+                                                  1))
+                                    (max-hops (if (getf (cdr el) :var-length)
+                                                  (or (getf (cdr el) :max) 999999)
+                                                  1))
                                     (rvar (getf (cdr el) :var)))
-                               (let ((queue (list (list r 0 path nil nil))))
+                               (let ((queue (list (list r 0 path visited nil))))
                                  (loop while queue
-                                       do (destructuring-bind (cur hops p visited rels) (pop queue)
+                                       do (destructuring-bind (cur hops p v rels) (pop queue)
                                             (let ((src (first p)))
                                               (when (>= hops min-hops)
                                                 ;; the reached node is the end node:
@@ -261,31 +269,46 @@ the path variable to (:path (node rel node ...))."
                                                                                 (cypher-list
                                                                                  (nreverse rels)))
                                                                       r2)))
-                                                          (walk (+ idx 2) r3 p)))))))
+                                                          (walk (+ idx 2) r3 p v)))))))
                                               (when (< hops max-hops)
                                                 (dolist (pair (%rel-step-pairs g el src cur graph params))
-                                                  (unless (member (getf (car pair) :id) visited :test #'equal)
+                                                  (unless (member (getf (car pair) :id) v :test #'equal)
                                                     (push (list cur (1+ hops)
                                                                 (cons (cdr pair)
                                                                       (cons (car pair) p))
-                                                                (cons (getf (car pair) :id) visited)
+                                                                (cons (getf (car pair) :id) v)
                                                                 (cons (car pair) rels))
                                                           queue)))))))))))))))
-           (walk 0 row nil))
+           (walk 0 row nil nil))
          (nreverse results))))))
 
 (defun %chain-cursor (g inner chain graph params)
   (if (or (eq (car chain) :path-var)
           (loop for el in chain thereis (and (eq (car el) :rel)
-                                             (getf (cdr el) :min))))
+                                             (getf (cdr el) :var-length))))
       (%path-chain-cursor g inner chain graph params)
-      (let ((cur (%node-start-cursor g inner (first chain) graph params)))
-        (loop for idx from 1 below (length chain) by 2
-              for rel = (nth idx chain)
-              for node = (nth (1+ idx) chain)
-              for src = (nth (1- idx) chain)
-              do (setf cur (%expand-cursor g cur rel node (getf (cdr src) :var) graph params)))
-        cur)))
+      ;; give anonymous nodes stable internal keys so multi-hop chains
+      ;; like (a)-[:R]->()-[:R]->(c) can expand through the middle node
+      (let* ((anon 0)
+             (keyed (mapcar (lambda (el)
+                              (if (eq (car el) :node)
+                                  (let ((v (getf (cdr el) :var)))
+                                    (if v
+                                        el
+                                        (list* :node :var
+                                               (intern (format nil "~a" (incf anon))
+                                                       "SCALAXY")
+                                               (cdddr el))))
+                                  el))
+                            chain)))
+        (let ((cur (%node-start-cursor g inner (first keyed) graph params)))
+          (loop for idx from 1 below (length keyed) by 2
+                for rel = (nth idx keyed)
+                for node = (nth (1+ idx) keyed)
+                for src = (nth (1- idx) keyed)
+                do (setf cur (%expand-cursor g cur rel node (getf (cdr src) :var)
+                                             graph params)))
+          cur))))
 
 (defun %pattern-cursor (g inner pattern graph params)
   (let ((cur inner))
@@ -296,6 +319,8 @@ the path variable to (:path (node rel node ...))."
 (defun %pattern-vars (pattern)
   (let ((vars nil))
     (dolist (chain pattern)
+      (when (eq (car chain) :path-var)
+        (pushnew (second chain) vars))
       (dolist (el (if (eq (car chain) :path-var) (cddr chain) chain))
         (let ((v (getf (cdr el) :var)))
           (when (and v (not (member v vars)))
@@ -798,7 +823,20 @@ queries produce a result only through RETURN)."
                (initial (list nil))
                (*exists-matcher*
                  (lambda (row exists-form)
-                   (%pattern-exists row (list (getf (cdr exists-form) :chain)) graph params)))
+                   (if (eq (car exists-form) :exists-sub)
+                       (let ((where (getf (cdr exists-form) :where))
+                             (matches (cursor-drain
+                                       (%pattern-cursor
+                                        graph (%list-cursor (list row))
+                                        (list (getf (cdr exists-form) :chain))
+                                        graph params))))
+                         (if (some (lambda (r)
+                                     (or (null where)
+                                         (%tv-true (eval-expr where r graph params))))
+                                   matches)
+                             t
+                             nil))
+                       (%pattern-exists row (list (getf (cdr exists-form) :chain)) graph params))))
                (*pcomp-matcher*
                  (lambda (row pcomp)
                    (let ((matches (cursor-drain

@@ -22,6 +22,9 @@
     (cond
       ((null existing) (acons var kind scope))
       ((eq (cdr existing) kind) scope)
+      ;; a variable with unknown type (null literal, parameter) may be
+      ;; anchored as a node/rel/path and simply fails to match at runtime
+      ((eq (cdr existing) :other) (acons var kind scope))
       ((eq kind :path)
        (cypher-signal "VariableAlreadyBound" :detail (symbol-name var)))
       (t (cypher-signal "VariableTypeConflict"
@@ -53,20 +56,58 @@
              (append (%expr-vars (getf (cdr expr) :list))
                      (%expr-vars (getf (cdr expr) :pred)))))
     ((eq (car expr) :exists) nil)
+    ((eq (car expr) :exists-sub) nil)
     (t (loop for x in (rest expr)
              when (listp x) append (%expr-vars x)))))
 
+(defun %pattern-chain-vars (chain)
+  "All variables bound by a pattern chain (nodes and relationships)."
+  (let ((vars nil))
+    (dolist (el chain)
+      (let ((v (getf (cdr el) :var)))
+        (when (and v (not (member v vars)))
+          (push v vars))))
+    (nreverse vars)))
+
+(defun %check-exists-pattern (expr scope)
+  "Check a bare pattern predicate (WHERE (chain) / EXISTS (chain)):
+every pattern variable must be pre-bound (UndefinedVariable), and a
+single-node pattern is invalid (InvalidArgumentType)."
+  (let ((chain (getf (cdr expr) :chain)))
+    (dolist (v (%pattern-chain-vars chain))
+      (%check-var v scope))
+    (when (null (rest chain))
+      (cypher-signal "InvalidArgumentType" :detail "self-pattern predicate"))))
+
+(defun %check-exists-sub (expr scope)
+  "Check an EXISTS { chain [WHERE pred] } subquery: pattern variables
+are subquery-local; the WHERE predicate may reference them."
+  (let* ((chain (getf (cdr expr) :chain))
+         (local (%pattern-chain-vars chain))
+         (where (getf (cdr expr) :where)))
+    (when where
+      (dolist (v (%expr-vars where))
+        (unless (member v local)
+          (%check-var v scope))))))
+
 (defun %check-expr-vars (expr scope)
-  (dolist (v (%expr-vars expr))
-    (%check-var v scope)))
+  (cond
+    ((and (consp expr) (eq (car expr) :exists))
+     (%check-exists-pattern expr scope))
+    ((and (consp expr) (eq (car expr) :exists-sub))
+     (%check-exists-sub expr scope))
+    (t (dolist (v (%expr-vars expr))
+         (%check-var v scope)))))
 
 (defun %check-constant (expr scope)
   "SKIP/LIMIT must be constant (no variables, per spec NonConstantExpression)."
   (when (%expr-vars expr)
     (cypher-signal "NonConstantExpression" :detail "SKIP/LIMIT must be constant")))
 
-(defun %check-pattern (pattern scope &key (bind t))
-  "Check MATCH/CREATE pattern variables; returns the extended scope."
+(defun %check-pattern (pattern scope &key (bind t) (fresh nil))
+  "Check MATCH/CREATE pattern variables; returns the extended scope.
+When FRESH is true (CREATE/MERGE), a variable that is already bound is
+a VariableAlreadyBound error."
   (let ((s scope)
         (rel-vars nil))
     (dolist (chain pattern)
@@ -88,6 +129,8 @@
         (dolist (el chain)
           (let ((var (getf (cdr el) :var)))
             (when var
+              (when (and fresh (%in-scope var s))
+                (cypher-signal "VariableAlreadyBound" :detail (symbol-name var)))
               (if (and in-path? (eq (cdr (%in-scope var s)) :path))
                   (cypher-signal "VariableAlreadyBound" :detail (symbol-name var))
                   (setf s (%bind-pattern-var s var (%elem-kind el)))))
@@ -97,6 +140,53 @@
                   (dolist (v (%expr-vars expr))
                     (unless (%in-scope v s)
                       (%check-var v scope))))))))))
+    s))
+
+(defun %check-create-pattern (pattern scope)
+  "CREATE/MERGE pattern check.  A node variable bound before this clause
+is legal only as a relationship anchor; a variable created within this
+clause cannot be reused (VariableAlreadyBound), a standalone bound node
+pattern would create a second entity (VariableAlreadyBound), and a
+relationship variable that is already bound is an error."
+  (let ((s scope)
+        (created nil))
+    (dolist (chain pattern)
+      (let ((elements (if (eq (car chain) :path-var) (cddr chain) chain)))
+        ;; relationship variables: always create fresh
+        (dolist (el elements)
+          (when (eq (car el) :rel)
+            (let ((v (getf (cdr el) :var)))
+              (when v
+                (when (or (%in-scope v s) (member v created))
+                  (cypher-signal "VariableAlreadyBound" :detail (symbol-name v)))
+                (push v created)))))
+        ;; node variables
+        (let ((single? (= (length elements) 1)))
+          (dolist (el elements)
+            (when (eq (car el) :node)
+              (let ((v (getf (cdr el) :var)))
+                (when v
+                  (cond
+                    ((and single? (or (%in-scope v s) (member v created)))
+                     ;; standalone node pattern would create a second entity
+                     (cypher-signal "VariableAlreadyBound" :detail (symbol-name v)))
+                    ((and (not single?) (or (%in-scope v s) (member v created)))
+                     ;; reuse as an anchor: legal only for a bare node
+                     ;; pattern (no new labels/properties)
+                     (when (or (getf (cdr el) :labels) (getf (cdr el) :props))
+                       (cypher-signal "VariableAlreadyBound" :detail (symbol-name v))))
+                    (t (push v created)))))
+              ;; property expressions may reference pre-scope variables
+              ;; or variables created earlier in this clause
+              (dolist (pr (getf (cdr el) :props))
+                (let ((expr (cdr pr)))
+                  (unless (atom expr)
+                    (dolist (v (%expr-vars expr))
+                      (unless (or (%in-scope v s) (member v created))
+                        (%check-var v scope)))))))))))
+    ;; created entities are bound for subsequent clauses
+    (dolist (v created)
+      (setf s (acons v :node s)))
     s))
 
 (defun %check-projection (clause scope)
@@ -147,10 +237,17 @@
               (let ((alias (or as (ast-var (ast-print (list :expr expr))))))
                 (when (%in-scope alias new-scope)
                   (cypher-signal "ColumnNameConflict" :detail (symbol-name alias)))
-                (let ((kind (if (symbolp expr)
-                                (let ((old (%in-scope expr scope)))
-                                  (if old (cdr old) :other))
-                                :other)))
+                (let ((kind (cond
+                              ((symbolp expr)
+                               (let ((old (%in-scope expr scope)))
+                                 (if old (cdr old) :other)))
+                              ;; a null literal has unknown type; any other
+                              ;; value (literals, lists, maps, calls) is a
+                              ;; concrete non-entity
+                              ((and (consp expr) (eq (car expr) :lit)
+                                    (%tv-null (second expr)))
+                               :other)
+                              (t :value))))
                   (push (cons alias kind) new-scope)))))
           (setf new-scope (nreverse new-scope))))
     ;; ORDER BY (non-aggregating): RETURN may only reference projected
@@ -273,9 +370,9 @@ ORDER BY subclause."
            ;; UNWIND rebinding shadows the previous binding (legal)
            (setf scope (acons var :other scope))))
         (:create
-         (setf scope (%check-pattern (getf (cdr clause) :pattern) scope)))
+         (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope)))
         (:merge
-         (setf scope (%check-pattern (getf (cdr clause) :pattern) scope)))
+         (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope)))
         (:set (%check-set-items (getf (cdr clause) :items) scope))
         (:remove (%check-remove-items (getf (cdr clause) :items) scope))
         (:delete

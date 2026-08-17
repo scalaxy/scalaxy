@@ -91,15 +91,28 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
       ((and (%rel-p a) (%rel-p b)) (b (equal (getf a :id) (getf b :id))))
       ((and (cypher-map-p a) (cypher-map-p b))
        (let ((as (cypher-map-pairs a)) (bs (cypher-map-pairs b)))
-         (b (and (= (length as) (length bs))
-                 (every (lambda (p)
-                          (let ((q (assoc (car p) bs :test #'equal)))
-                            (and q (%tv-true (cypher-= (cdr p) (cdr q))))))
-                        as)))))
+         (if (/= (length as) (length bs))
+             :cypher-false
+             (let ((seen-null nil))
+               (dolist (p as)
+                 (let ((q (assoc (car p) bs :test #'equal)))
+                   (cond ((null q) (return-from cypher-= :cypher-false))
+                         (t (let ((e (cypher-= (cdr p) (cdr q))))
+                              (cond ((%tv-null e) (setf seen-null t))
+                                    ((%tv-true e))
+                                    (t (return-from cypher-= :cypher-false))))))))
+               (if seen-null :cypher-null t)))))
       ((and (cypher-list-p a) (cypher-list-p b))
        (let ((as (cypher-list-elements a)) (bs (cypher-list-elements b)))
-         (b (and (= (length as) (length bs))
-                 (every (lambda (x y) (%tv-true (cypher-= x y))) as bs)))))
+         (if (/= (length as) (length bs))
+             :cypher-false
+             (let ((seen-null nil))
+               (dolist (x as)
+                 (let ((e (cypher-= x (pop bs))))
+                   (cond ((%tv-null e) (setf seen-null t))
+                         ((%tv-true e))
+                         (t (return-from cypher-= :cypher-false)))))
+               (if seen-null :cypher-null t)))))
       (t :cypher-false))))
 
 (defun cypher-compare (a b)
@@ -371,13 +384,22 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
                    (subseq arg0 start end)))
              (if (or (%tv-null arg0) (%tv-null (a1))) :cypher-null (%fn-error name args))))
         ((string-equal name "range")
-         (if (and (integerp arg0) (integerp (a1)))
-             (let ((step (if (a2) (a2) 1)))
-               (cypher-list
-                (loop for x = arg0 then (+ x step)
-                      while (if (plusp step) (<= x (a1)) (>= x (a1)))
-                      collect x)))
-             (if (or (%tv-null arg0) (%tv-null (a1))) :cypher-null (%fn-error name args))))
+         (cond
+           ((or (%tv-null arg0) (%tv-null (a1)) (%tv-null (a2))) :cypher-null)
+           ((not (and (integerp arg0) (integerp (a1))))
+            (cypher-signal "InvalidArgumentType"
+                           :detail "range: start and end must be integers"))
+           ((and (a2) (not (integerp (a2))))
+            (cypher-signal "InvalidArgumentType"
+                           :detail "range: step must be an integer"))
+           ((and (a2) (zerop (a2)))
+            (cypher-signal "NumberOutOfRange"
+                           :detail "range: step must not be zero"))
+           (t (let ((step (if (a2) (a2) 1)))
+                (cypher-list
+                 (loop for x = arg0 then (+ x step)
+                       while (if (plusp step) (<= x (a1)) (>= x (a1)))
+                       collect x))))))
         ((string-equal name "exists")
          (%fn-error name args))
         (t (cypher-signal "InvalidArgumentType"
@@ -418,12 +440,17 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
      (cypher-list (cons a (cypher-list-elements b))))
     ((and (eq op :+) (cypher-list-p a) (%tv-null b)) a)
     ((and (eq op :+) (%tv-null a) (cypher-list-p b)) b)
+    ((and (eq op :+) (numberp a) (stringp b))
+     (concatenate 'string (format nil "~a" a) b))
     ((stringp a)
      (if (and (stringp b) (eq op :+))
          (concatenate 'string a b)
          (if (and (eq op :+) (numberp b))
              (concatenate 'string a (format nil "~a" b))
-             (%fn-error (string op) (list a b)))))
+             (cypher-signal "InvalidArgumentType"
+                            :detail (format nil "~a(~a, ~a)" op
+                                            (cypher-type-name a)
+                                            (cypher-type-name b))))))
     ((and (numberp a) (numberp b))
      (let ((float? (or (floatp a) (floatp b))))
        (case op
@@ -433,23 +460,54 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
          (:/ (if (zerop b) :cypher-null (/ (%coerce-number a t) (%coerce-number b t))))
          (:% (if (zerop b) :cypher-null (mod a b)))
          (:^ (expt (%coerce-number a float?) (%coerce-number b float?))))))
-    (t (%fn-error (string op) (list a b)))))
+    (t (cypher-signal "InvalidArgumentType"
+                      :detail (format nil "~a(~a, ~a)" op
+                                      (cypher-type-name a)
+                                      (cypher-type-name b))))))
+
+(defun %slice-list (v start end)
+  "openCypher list/string slice V[START..END] with implicit bounds as NIL.
+START is inclusive, END exclusive; negative bounds count from the end;
+out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
+  (let ((len (if (cypher-list-p v) (length (cypher-list-elements v)) (length v))))
+    (flet ((resolve (b implicit)
+             (cond ((null b) implicit)
+                   ((%tv-null b) :cypher-null)
+                   ((integerp b) b)
+                   (t :cypher-null))))
+      (let ((from (resolve start 0))
+            (to (resolve end len)))
+        (when (or (%tv-null from) (%tv-null to)) (return-from %slice-list :cypher-null))
+        (let ((from (if (minusp from) (max 0 (+ len from)) (min from len)))
+              (to (if (minusp to) (max 0 (+ len to)) (min to len))))
+          (if (>= from to)
+              (if (cypher-list-p v) (cypher-list nil) "")
+              (if (cypher-list-p v)
+                  (cypher-list (subseq (cypher-list-elements v) from to))
+                  (subseq v from to))))))))
 
 (defun %list-index (v i)
   (cond
     ((%tv-null v) :cypher-null)
     ((cypher-list-p v)
-     (if (and (integerp i) (>= i 0) (< i (length (cypher-list-elements v))))
-         (nth i (cypher-list-elements v))
-         :cypher-null))
+     (cond
+       ((not (integerp i))
+        (cypher-signal "InvalidArgumentValue"
+                       :detail (format nil "indexing a list with ~a" (cypher-type-name i))))
+       ((and (>= i 0) (< i (length (cypher-list-elements v))))
+        (nth i (cypher-list-elements v)))
+       (t :cypher-null)))
     ((and (stringp v) (integerp i))
      (if (and (>= i 0) (< i (length v)))
          (string (char v i))
          :cypher-null))
+    ((stringp v)
+     (cypher-signal "InvalidArgumentValue"
+                    :detail (format nil "indexing a string with ~a" (cypher-type-name i))))
     ((cypher-map-p v)
      (cypher-signal "MapElementAccessByNonString"
                     :detail (format nil "indexing a map with ~a" (cypher-type-name i))))
-    (t (cypher-signal "InvalidArgumentType"
+    (t (cypher-signal "InvalidArgumentValue"
                       :detail (format nil "indexing a ~a" (cypher-type-name v))))))
 
 (defun %map-access (m k)
@@ -500,13 +558,10 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
     ((cypher-list-p b)
      (let ((found-null? nil))
        (dolist (x (cypher-list-elements b))
-         (cond ((%tv-null x) (setf found-null? t))
-               ((%tv-true (cypher-= a x)) (return-from %in-op t))))
+         (let ((eq? (cypher-= a x)))
+           (cond ((%tv-true eq?) (return-from %in-op t))
+                 ((%tv-null eq?) (setf found-null? t)))))
        (if found-null? :cypher-null :cypher-false)))
-    ((cypher-map-p b)
-     (if (and (stringp a) (assoc a (cypher-map-pairs b) :test #'equal))
-         t
-         :cypher-false))
     ((%tv-null a) :cypher-null)
     (t (cypher-signal "InvalidArgumentType"
                       :detail (format nil "IN on non-list ~a" (cypher-type-name b))))))
@@ -522,7 +577,9 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
              (:starts (if (and pos (zerop pos)) t :cypher-false))
              (:ends (if (and pos (= (+ pos (length b)) (length a))) t :cypher-false))
              (:contains (if pos t :cypher-false))))))
-    (t (%fn-error (format nil "~a" which) (list a b)))))
+    ;; a string predicate with a non-string (non-null) operand is null,
+    ;; not an error (openCypher string predicates)
+    (t :cypher-null)))
 
 (defun %eval-case (form row graph params)
   (let ((base-expr (getf (cdr form) :base)))
@@ -598,6 +655,17 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
                   (%map-access v i))
                  ((%tv-null v) :cypher-null)
                  (t (%list-index v i)))))
+       (:slice (let ((v (eval-expr (getf (cdr expr) :expr) row graph params))
+                     (start (when (getf (cdr expr) :start)
+                              (eval-expr (getf (cdr expr) :start) row graph params)))
+                     (end (when (getf (cdr expr) :end)
+                            (eval-expr (getf (cdr expr) :end) row graph params))))
+                 (cond
+                   ((%tv-null v) :cypher-null)
+                   ((or (cypher-list-p v) (stringp v)) (%slice-list v start end))
+                   (t (cypher-signal "InvalidArgumentType"
+                                     :detail (format nil "slicing a ~a"
+                                                     (cypher-type-name v)))))))
        (:bin (%eval-bin (second expr)
                         (eval-expr (third expr) row graph params)
                         (eval-expr (fourth expr) row graph params)))
@@ -649,7 +717,11 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
        (:exists (if *exists-matcher*
                     (if (funcall *exists-matcher* row expr) t :cypher-false)
                     (cypher-signal "InvalidArgumentType"
-                                   :detail "exists() unavailable")))))))
+                                   :detail "exists() unavailable")))
+       (:exists-sub (if *exists-matcher*
+                        (if (funcall *exists-matcher* row expr) t :cypher-false)
+                        (cypher-signal "InvalidArgumentType"
+                                       :detail "exists() unavailable")))))))
 
 (defvar *exists-matcher* nil
   "Function (ROW PATTERN) -> boolean, bound by the executor.")

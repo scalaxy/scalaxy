@@ -70,9 +70,6 @@ modified by the clause)."
     (dolist (row rows)
       (let ((row2 row))
         (dolist (chain (getf (cdr clause) :pattern))
-          ;; nodes first (bind/verify), then relationships.  Anonymous
-          ;; nodes are tracked in an element->id alist so that a
-          ;; relationship's endpoints are always resolvable.
           (let ((ids nil))
             (loop for el in chain when (eq (car el) :node)
                   do (multiple-value-bind (r eid) (%instantiate-node g row2 el graph params)
@@ -82,21 +79,27 @@ modified by the clause)."
                   for rel = (nth idx chain)
                   for node-el = (nth (1+ idx) chain)
                   for src-el = (nth (1- idx) chain)
-                  do (let ((src-id (cdr (assoc src-el ids))))
-                       (multiple-value-bind (r end-id)
-                           (%instantiate-node g row2 node-el graph params)
-                         (let* ((props (mapcar (lambda (p)
-                                                 (cons (car p)
-                                                       (eval-expr (cdr p) r graph params)))
-                                               (getf (cdr rel) :props)))
-                                (rid (graph-create-relationship g (getf (cdr rel) :type)
-                                                                src-id end-id :props props))
-                                (rvar (getf (cdr rel) :var)))
-                           (setf row2 (if rvar
-                                          (row-bind r rvar (graph-relationship g rid))
-                                          r))))))))
+                  do (let ((src-id (cdr (assoc src-el ids)))
+                           (end-id (cdr (assoc node-el ids)))
+                           (r row2))
+                       (let* ((props (mapcar (lambda (p)
+                                               (cons (car p)
+                                                     (eval-expr (cdr p) r graph params)))
+                                             (getf (cdr rel) :props)))
+                              (start-id (if (eq (getf (cdr rel) :dir) :in)
+                                            end-id src-id))
+                              (finish-id (if (eq (getf (cdr rel) :dir) :in)
+                                             src-id end-id))
+                              (rid (graph-create-relationship g (getf (cdr rel) :type)
+                                                              start-id finish-id
+                                                              :props props))
+                              (rvar (getf (cdr rel) :var)))
+                         (setf row2 (if rvar
+                                        (row-bind r rvar (graph-relationship g rid))
+                                        r)))))))
         (push row2 out)))
     (nreverse out)))
+
 
 (defun %merge-clause (g rows clause graph params)
   "MERGE: match the whole pattern anchored to bound vars; bind or create.

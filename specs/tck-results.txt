@@ -16,14 +16,8 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal1.feature :: [11] Should construct date time from epoch :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String9.feature :: [8] Handling non-string operands for ENDS WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String9.feature :: [5] Finding strings ending with newline :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String9.feature :: [4] Finding strings ending with whitespace :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String8.feature :: [8] Handling non-string operands for STARTS WITH :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String10.feature :: [8] Handling non-string operands for CONTAINS :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [15] Fail all quantifier on type mismatch between list elements and predicate #3 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [15] Fail all quantifier on type mismatch between list elements and predicate #2 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [15] Fail all quantifier on type mismatch between list elements and predicate #1 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [10] All quantifier on lists containing nulls #8 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [10] All quantifier on lists containing nulls #5 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [10] All quantifier on lists containing nulls #4 :: result mismatch (any order)
@@ -31,18 +25,12 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [10] All quantifier on lists containing nulls #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [9] All quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [8] All quantifier on list containing nodes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [15] Fail any quantifier on type mismatch between list elements and predicate #3 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [15] Fail any quantifier on type mismatch between list elements and predicate #2 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [15] Fail any quantifier on type mismatch between list elements and predicate #1 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [10] Any quantifier on lists containing nulls #7 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [10] Any quantifier on lists containing nulls #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [10] Any quantifier on lists containing nulls #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [10] Any quantifier on lists containing nulls #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [9] Any quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [8] Any quantifier on list containing nodes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [16] Fail single quantifier on type mismatch between list elements and predicate #3 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [16] Fail single quantifier on type mismatch between list elements and predicate #2 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [16] Fail single quantifier on type mismatch between list elements and predicate #1 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [10] Single quantifier on lists containing nulls #7 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [10] Single quantifier on lists containing nulls #5 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [10] Single quantifier on lists containing nulls #4 :: result mismatch (any order)
@@ -51,20 +39,15 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [10] Single quantifier on lists containing nulls #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [9] Single quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [8] Single quantifier on list containing nodes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [15] Fail none quantifier on type mismatch between list elements and predicate #3 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [15] Fail none quantifier on type mismatch between list elements and predicate #2 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [15] Fail none quantifier on type mismatch between list elements and predicate #1 :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [10] None quantifier on lists containing nulls #7 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [10] None quantifier on lists containing nulls #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [10] None quantifier on lists containing nulls #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [10] None quantifier on lists containing nulls #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [9] None quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [8] None quantifier on list containing nodes :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/precedence/Precedence4.feature :: [4] String predicate takes precedence over binary boolean operator :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/precedence/Precedence4.feature :: [1] Null predicate takes precedence over comparison operator #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/precedence/Precedence4.feature :: [1] Null predicate takes precedence over comparison operator #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/precedence/Precedence4.feature :: [1] Null predicate takes precedence over comparison operator #1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/precedence/Precedence3.feature :: [3] List slicing takes precedence over list concatenation :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [11] Use a pattern comprehension and ORDER BY :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [10] Use a pattern comprehension in RETURN :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [9] Use a variable-length pattern comprehension in WITH :: result mismatch (any order)
@@ -76,45 +59,11 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [21] Using two existential pattern predicates in a disjunction :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [20] Using two existential pattern predicates in a conjunction :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [19] Using a negated existential pattern predicate :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [18] Matching two nodes on a specific type of undirected connection with length 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [17] Matching two nodes on a specific type of variable length undirected connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [16] Matching two nodes on a specific type of a variable length outgoing directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [15] Matching two nodes on a specific type of single undirected connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [14] Matching two nodes on a specific type of single outgoing directed connection :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [13] Fail on matching two nodes on a single undirected connection between them :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [12] Matching two nodes on a single directed connection between them :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [11] Fail on checking self pattern :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #15 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #14 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #13 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #12 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #11 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #10 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #9 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #8 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #7 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #6 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #5 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #4 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #3 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Fail on introducing unbounded variables in pattern #2 :: expected SyntaxError: UndefinedVariable, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [10] Matching on a specific type of undirected connection with length 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [9] Matching on a specific type of variable length incoming directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [8] Matching on a specific type of variable length undirected connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [7] Matching on a specific type of a variable length outgoing directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [6] Matching on a specific type of single incoming directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [5] Matching on a specific type of single undirected connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [4] Matching on a specific type of single outgoing directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [3] Matching on any single incoming directed connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [2] Matching on a single undirected connection :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [1] Matching on any single outgoing directed connection :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path3.feature :: [3] Failing when using `length()` on a relationship :: expected SyntaxError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path3.feature :: [2] Failing when using `length()` on a node :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [3] `relationships()` on null path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [2] Return relationships by fetching them from the path - starting from the end :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [1] Return relationships by fetching them from the path :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path1.feature :: [1] `nodes()` on null path :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null3.feature :: [4] Using null in IN #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [3] Property not null check on null node :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [2] Property not null check on optional non-null node :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [1] Property not null check on non-null node :: result mismatch (any order)
@@ -125,6 +74,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical8.feature :: [1] Arithmetic precedence test :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical3.feature :: [1] Fail for invalid Unicode hyphen in subtraction :: expected SyntaxError: InvalidUnicodeCharacter, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical2.feature :: [1] Allow addition :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [8] Fail at runtime when trying to index something which is not a map :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [4] Dynamically access a field with null results in null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [5] Statically access a field with a delimited identifier #6 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [5] Statically access a field with a delimited identifier #5 :: result mismatch (any order)
@@ -135,103 +85,30 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [3] Statically access a field of a map resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [19] Fail on a map containing key starting with a number :: expected SyntaxError: UnexpectedSyntax, got "InvalidNumberLiteral"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [12] Return a map containing a string :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [10] Return a map containing a octal integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [16] Return a list containing multiple mixed values :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [14] Return a list containing multiple integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [8] Return a list containing a string :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [6] Return a list containing a octal integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals6.feature :: [13] Failing on incorrect unicode literal :: expected SyntaxError: InvalidUnicodeLiteral, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [27] Fail when float value is too large :: expected SyntaxError: FloatingPointOverflow, got "InvalidNumberLiteral"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [26] Return a positive float with nine integer digit and maximum positive exponent :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [25] Return a positive float with one integer digit and maximum positive exponent :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [11] Return a very long negative float :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [5] Return a very long positive float :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [10] Fail on a too small octal integer :: expected SyntaxError: IntegerOverflow, got "InvalidNumberLiteral"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [9] Fail on a too large octal integer :: expected SyntaxError: IntegerOverflow, got "InvalidNumberLiteral"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [8] Return the smallest octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [7] Return a long negative octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [6] Return a short negative octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [5] Return a negative octal zero :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [4] Return a positive octal zero :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [3] Return the largest octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [2] Return a long positive octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [1] Return a short positive octal integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [17] Fail on a too small hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [16] Fail on a too large hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [12] Fail on an integer containing a invalid symbol character :: expected SyntaxError: UnexpectedSyntax, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [8] Return the smallest integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List6.feature :: [5] Fail for `size()` on paths :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [42] Failing when using IN on a non-list literal #5 :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [34] IN should return null if comparison with null is required, list version 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [31] IN should return null when comparing two so-called identical lists where one element is null :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [29] IN should return null if comparison with null is required, list version :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [21] IN should return null if LHS and RHS are null - list version :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [4] IN should work with literal list slices :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List5.feature :: [3] IN should work with list slices :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List3.feature :: [7] Equality between almost equal nested lists with null should return null :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List3.feature :: [4] Equality between almost equal lists with null should return null :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [11] List slice with parameterised invalid range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [10] List slice with parameterised range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [9] List slice with null range #5 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [9] List slice with null range #4 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [9] List slice with null range #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [9] List slice with null range #2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [9] List slice with null range #1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [8] List slice with exceeding range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [7] List slice with invalid range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [6] List slice with negative range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [5] List slice with empty range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [4] List slice with singleton range :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [3] List slice with implicit start :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [2] List slice with implicit end :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List2.feature :: [1] List slice :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [7] Fail when using aggregation in list comprehension :: expected SyntaxError: InvalidAggregation, got "UndefinedVariable"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [5] Using a list comprehension in a WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [4] Returning a list comprehension :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [3] Size of list comprehension :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #22 :: expected ArgumentError: InvalidArgumentType, got "LispError:TYPE-ERROR"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #21 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #20 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #19 :: expected ArgumentError: InvalidArgumentType, got "LispError:TYPE-ERROR"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #18 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #17 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #16 :: expected ArgumentError: InvalidArgumentType, got "LispError:TYPE-ERROR"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #15 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #14 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #13 :: expected ArgumentError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #12 :: expected ArgumentError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #11 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #10 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #9 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #8 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #7 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #6 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #5 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #4 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #3 :: expected ArgumentError: InvalidArgumentType, got "LispError:TYPE-ERROR"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #2 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [5] Fail on invalid argument types for `range()` #1 :: expected ArgumentError: InvalidArgumentType, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [4] Fail on invalid arguments for `range()` #4 :: expected ArgumentError: NumberOutOfRange, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [4] Fail on invalid arguments for `range()` #3 :: expected ArgumentError: NumberOutOfRange, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [4] Fail on invalid arguments for `range()` #2 :: expected ArgumentError: NumberOutOfRange, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [4] Fail on invalid arguments for `range()` #1 :: expected ArgumentError: NumberOutOfRange, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [3] Create an empty list if range direction and step direction are inconsistent :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [9] Fail when indexing with a non-integer given by a parameter #5 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [9] Fail when indexing with a non-integer given by a parameter #4 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [9] Fail when indexing with a non-integer given by a parameter #3 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [9] Fail when indexing with a non-integer given by a parameter #2 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [9] Fail when indexing with a non-integer given by a parameter #1 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [8] Fail when indexing with a non-integer #5 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [8] Fail when indexing with a non-integer #4 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [8] Fail when indexing with a non-integer #3 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [8] Fail when indexing with a non-integer #2 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [8] Fail when indexing with a non-integer #1 :: expected TypeError: *, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #4 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #3 :: expected TypeError: *, got "InvalidArgumentType"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #2 :: expected TypeError: *, got "InvalidArgumentType"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #1 :: expected TypeError: *, got "InvalidArgumentType"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #4 :: expected TypeError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph9.feature :: [3] `properties()` on null :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #3 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #2 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #1 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [5] Label expression on null :: result mismatch (any order)
@@ -243,8 +120,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [3] Conjunctive labels expression on nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [2] Single-labels expression on relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph4.feature :: [7] Failing when using `type()` on a node :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph4.feature :: [4] `type()` on mixed null and non-null relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph4.feature :: [2] `type()` on two relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph3.feature :: [8] `labels()` failing on a path :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [3] Nested full existential subquery with pattern predicate :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [2] Nested full existential subquery :: result mismatch (any order)
@@ -252,8 +127,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [3] Full existential subquery with update clause should fail :: expected SyntaxError: InvalidClauseComposition, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [2] Full existential subquery with aggregation :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [1] Full existential subquery :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [2] Simple subquery with WHERE clause :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [1] Simple subquery without WHERE clause :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #1 :: result mismatch (any order)
@@ -269,13 +142,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [7] Comparing maps to maps #16 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [7] Comparing maps to maps #15 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [7] Comparing maps to maps #14 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [7] Comparing maps to maps #13 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [7] Comparing maps to maps #12 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [6] Comparing lists to lists #5 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [6] Comparing lists to lists #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [6] Conjunction is not distributive over exclusive disjunction on null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [4] Conjunction is distributive over disjunction on null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [2] Disjunction is distributive over conjunction on null :: result mismatch (any order)
@@ -318,7 +184,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [21] Sort distinct types in ascending order :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [10] Sort lists in descending order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [9] Sort lists in ascending order :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/unwind/Unwind1.feature :: [12] Unwind does not remove variables from scope :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [2] Failing when mixing UNION ALL and UNION :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [1] Failing when mixing UNION and UNION ALL :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union2.feature :: [5] Failing when UNION ALL has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
@@ -385,41 +250,26 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [2] Remove a single label from a node with two labels :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [28] Fail when using variable length relationship in MERGE :: expected SyntaxError: CreatingVarLength, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [27] Fail when using parameter as relationship predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [26] Fail when merging relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [24] Fail when merging relationship without type, no colon :: expected SyntaxError: NoSingleRelationshipType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [23] Fail when merging relationship without type :: expected SyntaxError: NoSingleRelationshipType, got "LispError:SIMPLE-ERROR"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [22] Fail when imposing new predicates on a variable that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [11] Use outgoing direction when unspecified :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [10] Merge should bind a path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge3.feature :: [5] Fail when using undefined variable in ON MATCH :: expected SyntaxError: UndefinedVariable, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [16] Fail when using parameter as node predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [15] Fail when merge a node that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [13] Merge should bind a path :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [9] Optionally matching named paths with variable length patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [6] Matching relationships into a list and matching variable length using the list, with bound nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [4] Return relationships by collecting them as a list - undirected, starting from one extreme :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [3] Return relationships by collecting them as a list - undirected, starting from two extremes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [2] Return relationships by collecting them as a list - directed, one way :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [25] Optionally matching self-loops without matches :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [21] Handling optional matches between nulls :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [20] Variable length optional relationships with bound nodes, no matches :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [19] Optionally matching named paths with single and variable length patterns :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [18] Named paths inside optional matches with node predicates :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [17] Optionally matching named paths - existing result :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [16] Optionally matching named paths - null result :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [15] Variable length patterns and nulls :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [10] Optionally matching from null nodes should return null :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [7] MATCH with OPTIONAL MATCH in longer pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [18] Undirected named path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [17] Return a named var length path of length zero :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [16] Return a var length path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [14] Named path with undirected fixed variable length pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [13] Matching path with both directions should respect other directions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [12] Matching path with multiple bidirectional relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [11] Named path with multiple alternating directed/undirected relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [10] Named path with alternating directed/undirected relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [9] Longer path query should return results in written order :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [8] Respecting direction when matching non-existent path with multiple directions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [6] Handling direction of named paths :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [5] Path query should return results in written order :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [29] Handling mixed relationship patterns 2 :: result mismatch (any order)
@@ -430,56 +280,26 @@ WHERE NOT a:A
 DELETE r
 CREATE (b)-[:LIKES]->(a)
 "
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [26] Handling mixed relationship patterns and directions 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [25] Handling a variable length relationship and a standard relationship in chain, longer 3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [24] Handling a variable length relationship and a standard relationship in chain, longer 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [23] Handling a variable length relationship and a standard relationship in chain, longer 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [22] Handling a variable length relationship and a standard relationship in chain, single length 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [21] Handling a variable length relationship and a standard relationship in chain, single length 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [20] Handling a variable length relationship and a standard relationship in chain, zero length 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [19] Handling a variable length relationship and a standard relationship in chain, zero length 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [18] Handling lower bounded variable length match 3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [17] Handling lower bounded variable length match 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [16] Handling lower bounded variable length match 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [15] Handling upper bounded variable length match 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [14] Handling upper bounded variable length match 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [10] Handling symmetrically bounded variable length match, bounds are two :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [9] Handling symmetrically bounded variable length match, bounds are one :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [8] Handling symmetrically bounded variable length match, bounds are zero :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [7] Handling upper and lower bounded variable length match 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [6] Handling upper and lower bounded variable length match 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [5] Handling single bounded variable length match 3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [4] Handling single bounded variable length match 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [3] Handling single bounded variable length match 1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [2] Handling explicitly unbounded variable length match :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [10] Fail on negative bound :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [9] Fail when asterisk operator is missing :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [6] Matching variable length patterns from a bound node :: result mismatch (list order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [5] Matching variable length pattern with property predicate :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [4] Matching longer variable length paths :: setup failed: VariableTypeConflict [n1]
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [1] Handling fixed-length variable length pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [29] Fail when re-using a relationship in the same pattern :: expected SyntaxError: RelationshipUniquenessViolation, got "VariableAlreadyBound"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [25] Matching twice with an additional node label :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [19] Two bound nodes pointing to the same node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [17] Handling cyclic patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [16] Mixing directed and undirected pattern parts with self-relationship, undirected :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [15] Mixing directed and undirected pattern parts with self-relationship, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [8] Matching using relationship predicate with multiples of the same type :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [6] Match relationships with multiple types :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [5] Match relationship with inline property value :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match1.feature :: [6] Fail when using parameter as node predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere6.feature :: [8] Join nodes on non-equality of properties – Two OPTIONAL MATCH clauses and WHERE :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere6.feature :: [7] Join nodes on non-equality of properties – OPTIONAL MATCH on two relationships and WHERE :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere6.feature :: [2] Filter node with false node label predicate after OPTIONAL MATCH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere6.feature :: [1] Filter node with node label predicate on multi variables with multiple bindings after MATCH and OPTIONAL MATCH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere5.feature :: [2] Filter out on null if the AND'd predicate evaluates to false :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere4.feature :: [2] Join with disjunctive multi-part predicates including patterns :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [15] Fail on aggregation in WHERE :: expected SyntaxError: InvalidAggregation, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [14] Fail when filtering path with property predicate :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [8] Filter relationship with property predicate on multi variables with multiple bindings :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [1] Filter node with node label predicate on multi variables with multiple bindings :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [9] Failing when deleting an integer expression :: expected SyntaxError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [7] Delete paths from nested map/list :: side effects mismatch
@@ -489,17 +309,10 @@ CREATE (b)-[:LIKES]->(a)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [3] Delete relationship with bidirectional matching :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [23] Fail when creating a relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [22] Fail when creating a variable-length relationship :: expected SyntaxError: CreatingVarLength, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [20] Fail when creating a relationship with two directions :: expected SyntaxError: RequiresDirectedRelationship, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [19] Fail when creating a relationship without a direction :: expected SyntaxError: RequiresDirectedRelationship, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [18] Fail when creating a relationship without a type :: expected SyntaxError: NoSingleRelationshipType, got "LispError:SIMPLE-ERROR"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [17] Create a single relationship with null properties should not return those properties :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [18] Fail when adding new label predicate on a node that is already bound 4 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [17] Fail when adding new label predicate on a node that is already bound 3 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [16] Fail when adding new label predicate on a node that is already bound 2 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [15] Fail when adding a new label predicate on a node that is already bound 1 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [14] Fail when creating a node with properties that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [13] Fail when creating a node that is already bound :: expected SyntaxError: VariableAlreadyBound, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [11] Create a single node with null properties should not return those properties :: side effects mismatch

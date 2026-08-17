@@ -69,7 +69,7 @@
 Steps are (kw :text text [:doc s] [:table rows]); rows are cell lists
 in source order.  EXAMPLES is a list of tables (header row first)."
   (let ((scenarios nil) (name nil) (steps nil) (tags nil) (doc nil)
-        (examples nil))
+        (examples nil) (background nil))
     (labels
         ((finish-scenario ()
            (when name
@@ -90,19 +90,28 @@ in source order.  EXAMPLES is a list of tables (header row first)."
                    ((char= (char line 0) (code-char 64))
                     (dolist (tag (%split-tags line)) (push tag tags)))
                    ((%prefixp "Feature:" line))
+                   ((%prefixp "Background:" line)
+                    ;; steps before the first Scenario belong to every
+                    ;; scenario (openCypher TCK convention)
+                    (setf name :background))
                    ((%prefixp "Scenario Outline:" line)
                     (finish-scenario)
-                    (setf name (string-trim " " (subseq line 17))))
+                    (setf name (string-trim " " (subseq line 17)))
+                    (setf steps (copy-list background)))
                    ((%prefixp "Scenario:" line)
                     (finish-scenario)
-                    (setf name (string-trim " " (subseq line 9))))
+                    (setf name (string-trim " " (subseq line 9)))
+                    (setf steps (copy-list background)))
                    ((%prefixp "Examples:" line)
                     (push nil examples))
                    ((search "\"\"\"" line)
                     (if doc
                         (progn
-                          (setf (getf (cdr (first steps)) :doc)
-                                (format nil "~{~a~%~}" (nreverse doc)))
+                          (let ((target (if (or (null name) (eq name :background))
+                                             background steps)))
+                            (when target
+                              (setf (getf (cdr (first target)) :doc)
+                                    (format nil "~{~a~%~}" (nreverse doc)))))
                           (setf doc nil))
                         (setf doc (list ""))))
                    (doc
@@ -117,10 +126,20 @@ in source order.  EXAMPLES is a list of tables (header row first)."
                                     ((search "When " line) :when)
                                     ((search "Then " line) :then)
                                     ((or (search "And " line) (search "But " line))
-                                     (if steps (first (first steps)) :given))
+                                     (if (if (or (null name) (eq name :background))
+                                             background
+                                             steps)
+                                         (first (first (if (or (null name) (eq name :background))
+                                                           background
+                                                           steps)))
+                                         :given))
                                     (t nil))))
                       (when kw
-                        (push (list kw :text (%step-text line)) steps)))))))
+                        (let ((target (if (or (null name) (eq name :background))
+                                           background steps)))
+                          (if (or (null name) (eq name :background))
+                              (setf background (cons (list kw :text (%step-text line)) target))
+                              (setf steps (cons (list kw :text (%step-text line)) target))))))))))
       (finish-scenario)
       (nreverse scenarios))))
 ;;; ------------------------------------------------------------------
