@@ -299,7 +299,7 @@ null), nulls last."
         ((string-equal name "toFloat") (%to-float arg0))
         ((string-equal name "toString") (%to-string arg0))
         ((string-equal name "type")
-         (cond ((%rel-p arg0) (%check-entity-live arg0 graph) (getf arg0 :type))
+         (cond ((%rel-p arg0) (getf arg0 :type))
                ((%tv-null arg0) :cypher-null)
                (t (%fn-error name args))))
         ((string-equal name "labels")

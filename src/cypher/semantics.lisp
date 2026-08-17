@@ -14,6 +14,14 @@
   (when (and var (not (%in-scope var scope)))
     (cypher-signal "UndefinedVariable" :detail (symbol-name var))))
 
+(defparameter *known-scalar-fns*
+  '("abs" "ceil" "coalesce" "endNode" "exists" "floor" "head" "id"
+    "keys" "lTrim" "labels" "last" "left" "length" "nodes"
+    "properties" "rTrim" "rand" "range" "relationships" "replace"
+    "reverse" "right" "round" "sign" "size" "split" "sqrt"
+    "startNode" "substring" "tail" "toBoolean" "toFloat" "toInteger"
+    "toLower" "toString" "toUpper" "trim" "type"))
+
 (defun %entity-kind-of (expr scope)
   "Static entity kind of EXPR (:node/:rel/:path/:other) or nil if unknown."
   (cond
@@ -38,6 +46,9 @@ length() on a node surface as SyntaxError: InvalidArgumentType."
     ((eq (car expr) :call)
      (let ((fn (getf (cdr expr) :fn))
            (args (getf (cdr expr) :args)))
+       (unless (or (%aggregate-fn-p fn)
+                   (member fn *known-scalar-fns* :test #'string-equal))
+         (cypher-signal "UnknownFunction" :detail fn))
        (dolist (a args) (%check-expr-types a scope))
        (when (and (= (length args) 1)
                   (member fn '("length" "size" "type" "labels" "keys"
@@ -112,6 +123,9 @@ length() on a node surface as SyntaxError: InvalidArgumentType."
   (cond
     ((symbolp expr) (list expr))
     ((atom expr) nil)
+    ;; map pair (key . value) with a symbol value
+    ((and (consp expr) (atom (cdr expr)))
+     (if (and (cdr expr) (symbolp (cdr expr))) (list (cdr expr)) nil))
     ((eq (car expr) :var) (list (second expr)))
     ((member (car expr) '(:lit :param :count-*)) nil)
     ((eq (car expr) :prop) (%expr-vars (getf (cdr expr) :expr)))
