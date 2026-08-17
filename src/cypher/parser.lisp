@@ -294,8 +294,21 @@ bare pattern chains (pattern predicates, EXISTS form)."
 
 (defun parse-set-item (p)
   (if (%at-punct p "(")
-      ;; filter on a variable, e.g. (n)-[:R]->() ... not supported v1
-      (%perr p "UnexpectedSyntax" "set on sub-expression not supported")
+      ;; parenthesized variable target: SET (n).name = 'neo4j'
+      (progn
+        (%advance p)
+        (let ((var (ast-var (%expect-ident p))))
+          (%expect-punct p ")")
+          (%expect-punct p ".")
+          (let ((prop (%expect-ident p)))
+            (cond
+              ((%at-punct p "=")
+               (%advance p)
+               (list :set-prop :var var :prop prop :expr (parse-or p)))
+              ((%at-punct p "+=")
+               (%advance p)
+               (list :add-prop :var var :prop prop :expr (parse-or p)))
+              (t (%perr p "UnexpectedSyntax" "expected = or += in SET"))))))
       (let ((var (ast-var (%expect-ident p))))
         (cond
           ((%at-punct p ".")

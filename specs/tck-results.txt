@@ -47,13 +47,8 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [1] Failing when mixing UNION and UNION ALL :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union2.feature :: [5] Failing when UNION ALL has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union1.feature :: [5] Failing when UNION has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [3] Setting a relationship property to null removes the existing property :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [2] Setting a node property to null removes the existing property, but not before SET :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [1] Setting a node property to null removes the existing property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [10] Failing when setting a list of maps as a property :: expected TypeError: InvalidPropertyType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [8] Ignore null when setting property :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [4] Set a property by selecting the relationship using a simple expression :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [3] Set a property by selecting the node using a simple expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [16] Aggregation on complex expressions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [3] Aggregating by a list property has a correct definition of equality :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)

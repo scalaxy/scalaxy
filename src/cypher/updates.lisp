@@ -137,8 +137,14 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
            (let ((entity (%row-entity row var)))
              (let ((v (eval-expr (getf (cdr item) :expr) row graph params)))
                (cond
-                 ((%node-p entity) (graph-set-node-property g (getf entity :id) prop v))
-                 ((%rel-p entity) (graph-set-relationship-property g (getf entity :id) prop v))
+                 ((%node-p entity)
+                  (if (%tv-null v)
+                      (graph-remove-node-property g (getf entity :id) prop)
+                      (graph-set-node-property g (getf entity :id) prop v)))
+                 ((%rel-p entity)
+                  (if (%tv-null v)
+                      (graph-remove-relationship-property g (getf entity :id) prop)
+                      (graph-set-relationship-property g (getf entity :id) prop v)))
                  (t (cypher-signal "UndefinedVariable" :detail (symbol-name var)))))))))
       (:add-prop
        (let ((var (getf (cdr item) :var))
