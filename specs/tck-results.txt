@@ -22,7 +22,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [22] Sort distinct types in descending order :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [7] Keeping used expression 4 :: result mismatch (any order)
@@ -31,8 +30,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [13] Fail when sorting on variable removed by DISTINCT :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [12] Aggregation of named paths :: result mismatch (list order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [12] ORDER BY DESC should order distinct types in the expected order :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [11] ORDER BY should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [3] Remove two labels from a node with three labels :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [4] Remove multiple relationship properties :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [10] Merge should bind a path :: result mismatch (any order)

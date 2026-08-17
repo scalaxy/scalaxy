@@ -349,6 +349,8 @@ with dir :in/:out/:both."
 
 (defun %tck-parse-cell (text)
   (cond
+    ((string= text "NaN") (scalaxy::%nan))
+    ((string= text "Infinity") (scalaxy::%float-inf 1.0d0))
     ((and (>= (length text) 2) (char= (char text 0) (code-char 60)))
      (handler-case (%tck-parse-path text)
        (error () (format nil "<unparsable: ~a>" text))))
@@ -439,7 +441,10 @@ equals null."
                      (let ((q (assoc (car p) es :test #'equal)))
                         (and q (%tck-value= (cdr p) (cdr q) :unordered unordered))))
                    as))))
-    ((and (numberp a) (numberp e)) (= a e))
+    ((and (numberp a) (numberp e))
+     (if (and (floatp a) (floatp e) (/= a a) (/= e e))
+         t
+         (= a e)))
     ((and (or (eq a t) (cypher-false-p a)) (or (eq e t) (cypher-false-p e)))
      (eq (scalaxy::%tv-true a) (scalaxy::%tv-true e)))
     (t (equal a e))))
@@ -469,6 +474,12 @@ Returns T or NIL."
     ((or (cypher-list-p actual) (cypher-map-p actual)
          (cypher-list-p expected) (cypher-map-p expected))
      (%tck-structural= actual expected :unordered unordered))
+    ((and (numberp actual) (numberp expected)
+          (or (and (floatp actual) (/= actual actual))
+              (and (floatp expected) (/= expected expected))))
+     ;; NaN equals NaN for result comparison
+     (and (floatp actual) (floatp expected)
+          (/= actual actual) (/= expected expected)))
     (t (let ((e (cypher-= actual expected)))
          (and (not (cypher-null-p e)) (eq e t))))))
 
