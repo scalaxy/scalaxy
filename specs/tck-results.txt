@@ -17,12 +17,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [8] Use a pattern comprehension in WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [2] Return relationships by fetching them from the path - starting from the end :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [1] Return relationships by fetching them from the path :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [3] Property not null check on null node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [2] Property not null check on optional non-null node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [1] Property not null check on non-null node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null1.feature :: [3] Property null check on null node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null1.feature :: [2] Property null check on optional non-null node :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null1.feature :: [1] Property null check on non-null node :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical3.feature :: [1] Fail for invalid Unicode hyphen in subtraction :: expected SyntaxError: InvalidUnicodeCharacter, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [4] Dynamically access a field with null results in null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [3] Statically access a field of a map resulting from an expression :: result mismatch (any order)
@@ -31,6 +25,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [5] Using `keys()` on a relationship, non-empty result :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [5] Label expression on null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [3] Nested full existential subquery with pattern predicate :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [2] Nested full existential subquery :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [1] Nested simple existential subquery :: result mismatch (any order)
@@ -69,7 +64,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [18] Fail on projecting a non-existent function :: expected SyntaxError: UnknownFunction, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [14] Do not fail when returning type of deleted relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [8] Returning label predicate expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit1.feature :: [3] SKIP with an expression that does not depend on variables :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy3.feature :: [1] Sort on aggregate function and normal property :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [13] Fail when sorting on variable removed by DISTINCT :: expected SyntaxError: UndefinedVariable, got NIL
