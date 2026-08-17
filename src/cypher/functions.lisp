@@ -436,6 +436,22 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
       (if (integerp v) (float v) v)
       v))
 
+#+sbcl
+(defun %nan ()
+  "A quiet NaN double-float (SBCL: 0.0/0.0 with traps masked)."
+  (sb-int:with-float-traps-masked (:divide-by-zero :invalid)
+    (/ 0.0d0 0.0d0)))
+#-sbcl
+(defun %nan () 0.0d0)
+
+#+sbcl
+(defun %float-inf (x)
+  "Positive/negative infinity of the same float type as X."
+  (sb-int:with-float-traps-masked (:divide-by-zero)
+    (/ (coerce 1.0 (type-of x)) 0.0)))
+#-sbcl
+(defun %float-inf (x) (coerce 1.0 (type-of x)))
+
 (defun %arith (op a b)
   (cond
     ((or (%tv-null a) (%tv-null b)) :cypher-null)
@@ -466,7 +482,16 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
          (:+ (+ a b))
          (:- (- a b))
          (:* (* a b))
-         (:/ (if (zerop b) :cypher-null (/ (%coerce-number a t) (%coerce-number b t))))
+         (:/ (cond
+               ((zerop b)
+                (cond ((floatp a)
+                       ;; IEEE-754 float division by zero: 0.0/0.0 -> NaN,
+                       ;; x/0.0 -> infinity (integer division stays null)
+                       (if (zerop a)
+                           (scalaxy::%nan)
+                           (scalaxy::%float-inf a)))
+                      (t :cypher-null)))
+               (t (/ (%coerce-number a t) (%coerce-number b t)))))
          (:% (if (zerop b) :cypher-null (mod a b)))
          (:^ (expt (%coerce-number a float?) (%coerce-number b float?))))))
     (t (cypher-signal "InvalidArgumentType"
@@ -540,6 +565,9 @@ expressions (not trivial literals/variables/params).  The reference
 treats X = X as true for identical complex expressions."
   (and (consp a) (consp b)
        (not (member (car a) '(:lit :var :param :map :list)))
+       ;; division/modulo/power can produce NaN, and NaN /= NaN
+       (not (and (eq (car a) :bin)
+                 (member (second a) '(:/ :% :^))))
        (equal a b)))
 
 (defun %check-entity-live (v graph)

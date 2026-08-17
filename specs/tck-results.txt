@@ -96,12 +96,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #4 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation8.feature :: [4] Collect distinct values mixed with nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation8.feature :: [3] Collect distinct nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation8.feature :: [2] Distinct on null :: result mismatch (any order)
