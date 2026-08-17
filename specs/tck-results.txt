@@ -38,6 +38,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [7] De Morgan's law on non-null: the negation of a disjunction is the conjunction of the negations :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-skip-limit/WithSkipLimit3.feature :: [3] Limiting amount of rows when there are fewer left than the LIMIT argument :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #1 :: result mismatch (any order)
@@ -54,10 +55,9 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [4] Set a property by selecting the relationship using a simple expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [3] Set a property by selecting the node using a simple expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [16] Aggregation on complex expressions :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [15] Using `rand()` in aggregations :: expected SyntaxError: NonConstantExpression, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [3] Aggregating by a list property has a correct definition of equality :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [9] Handle subexpression in aggregation also occurring as standalone expression with nested aggregation in a literal map :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [7] Keeping used expression 4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [6] Keeping used expression 3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [4] Keeping used expression 1 :: result mismatch (any order)
@@ -93,7 +93,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [7] Delete paths from nested map/list :: side effects mismatch
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [5] Detach delete nodes from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete3.feature :: [1] Detach deleting paths :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [5] Failing when deleting a relationship type :: expected SyntaxError: InvalidDelete, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got NIL

@@ -458,8 +458,8 @@ rejected by the semantic checker)."
                                  (getf (cdr expr) :args)))))
            (push (cons site (cons (cons kind distinct?) vals))
                  *agg-contribs*)))))
-    (t (dolist (x expr)
-         (when (consp x) (%agg-tree x row graph params))))))
+    (t (dolist (x (%expr-direct-parts expr))
+         (%agg-tree x row graph params)))))
 
 (defun %agg-step (state kind distinct? args)
   "STATE is a plist of accumulator slots; update with one row's value."
@@ -619,7 +619,7 @@ keyed by the printed expression name and by bare variable names."
                              (%aggregate-fn-p (getf (cdr e) :fn)))
                         (%agg-site e))
                        ((eq (car e) :count-*) (%agg-site e))
-                       (t (dolist (x e) (register x))))))
+                       (t (dolist (x (%expr-direct-parts e)) (register x))))))
             (dolist (item agg-items)
               (register (getf (cdr item) :expr)))
             (dolist (spec order)

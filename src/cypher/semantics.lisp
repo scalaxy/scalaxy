@@ -385,7 +385,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
     ((eq (car expr) :count-*) (list expr))
     ((and (eq (car expr) :call) (%aggregate-fn-p (getf (cdr expr) :fn)))
      (list expr))
-    (t (loop for c in (cdr expr) when (consp c) append (%agg-calls-of c)))))
+    (t (loop for c in (%expr-direct-parts expr) append (%agg-calls-of c)))))
 
 (defun %expr-subexprs (expr)
   "All proper subexpressions of EXPR (cons cells inside it)."
@@ -471,7 +471,7 @@ ORDER BY subclause."
                  (cypher-signal "NonConstantExpression"
                                 :detail "rand() is not allowed in aggregation"))
                (when (consp expr)
-                 (dolist (c (cdr expr))
+                 (dolist (c expr)
                    (when (consp c) (check-rand c))))))
       (dolist (item items)
         (when (expr-has-aggregate (getf (cdr item) :expr))

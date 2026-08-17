@@ -460,6 +460,16 @@ null), nulls last."
 (defun %aggregate-fn-p (name)
   (member name '("count" "sum" "avg" "min" "max" "collect") :test #'string-equal))
 
+(defun %expr-direct-parts (expr)
+  "All direct subexpressions of EXPR.  Map literals contribute their
+pair values (pairs are (key . expr) conses)."
+  (if (and (consp expr) (eq (car expr) :map))
+      (mapcar #'cdr (getf (cdr expr) :pairs))
+      (let ((out nil))
+        (dolist (x expr)
+          (when (consp x) (push x out)))
+        (nreverse out))))
+
 (defun expr-has-aggregate (expr)
   "True when EXPR contains an aggregate call (or count(*))."
   (cond
@@ -469,7 +479,7 @@ null), nulls last."
      (if (%aggregate-fn-p (getf (cdr expr) :fn))
          t
          (some #'expr-has-aggregate (getf (cdr expr) :args))))
-    (t (some #'expr-has-aggregate (cdr expr)))))
+    (t (some #'expr-has-aggregate (%expr-direct-parts expr)))))
 
 (defun %coerce-number (v float?)
   (if float?
