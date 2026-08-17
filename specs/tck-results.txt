@@ -23,7 +23,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-skip-limit/WithSkipLimit3.feature :: [3] Limiting amount of rows when there are fewer left than the LIMIT argument :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [22] Sort distinct types in descending order :: result mismatch (any order)
@@ -32,7 +31,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [10] Failing when setting a list of maps as a property :: expected TypeError: InvalidPropertyType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [8] Ignore null when setting property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [16] Aggregation on complex expressions :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return6.feature :: [3] Aggregating by a list property has a correct definition of equality :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [7] Keeping used expression 4 :: result mismatch (any order)
@@ -41,7 +39,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [18] Fail on projecting a non-existent function :: expected SyntaxError: UnknownFunction, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [14] Do not fail when returning type of deleted relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-skip-limit/ReturnSkipLimit1.feature :: [3] SKIP with an expression that does not depend on variables :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy3.feature :: [1] Sort on aggregate function and normal property :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [13] Fail when sorting on variable removed by DISTINCT :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy2.feature :: [12] Aggregation of named paths :: result mismatch (list order)
