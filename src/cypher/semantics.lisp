@@ -183,9 +183,14 @@ reference outer-scope variables; subquery variables are local.  A
 bare-pattern subquery is a pattern predicate."
   (let ((chain (getf (cdr expr) :chain)))
     (if chain
-        (dolist (v (%pattern-chain-vars chain))
-          (unless (%in-scope v scope)
-            (cypher-signal "UndefinedVariable" :detail (symbol-name v))))
+        ;; EXISTS { pattern [WHERE pred] }: the pattern variables are
+        ;; subquery-local; the WHERE may reference them
+        (let ((local (%pattern-chain-vars chain)))
+          (let ((where (getf (cdr expr) :where)))
+            (when where
+              (dolist (v (%expr-vars where))
+                (unless (or (member v local) (%in-scope v scope))
+                  (cypher-signal "UndefinedVariable" :detail (symbol-name v)))))))
         (%check-clauses (getf (cdr expr) :clauses) scope))))
 
 (defun %check-expr-vars (expr scope)

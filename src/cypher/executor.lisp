@@ -934,9 +934,19 @@ queries produce a result only through RETURN)."
                  (lambda (row exists-form)
                    (if (eq (car exists-form) :exists-sub)
                        (let ((sub (getf (cdr exists-form) :clauses))
-                             (chain (getf (cdr exists-form) :chain)))
+                             (chain (getf (cdr exists-form) :chain))
+                             (where (getf (cdr exists-form) :where)))
                          (if chain
-                             (%pattern-exists row (list chain) graph params)
+                             (if where
+                                 (let ((matches (cursor-drain
+                                                 (%pattern-cursor
+                                                  graph (%list-cursor (list row))
+                                                  (list chain) graph params))))
+                                   (if (some (lambda (r)
+                                               (%tv-true (eval-expr where r graph params)))
+                                             matches)
+                                       t nil))
+                                 (%pattern-exists row (list chain) graph params))
                              (if (and sub
                                       (%eval-clauses graph (list row) sub graph params))
                                  t
