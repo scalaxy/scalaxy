@@ -159,7 +159,9 @@ Returns (values list already-bound?)"
                 (when (and rel node
                            (%entity-matches rel nil rprops row graph params)
                            (%entity-matches node nlabels nprops row graph params))
-                  (let* ((rel2 (list* :start-node src :end-node node rel))
+                  (let* ((rel2 (if (eq dir :in)
+                                   (list* :start-node node :end-node src rel)
+                                   (list* :start-node src :end-node node rel)))
                          (row2 (if rvar (row-bind row rvar rel2) row)))
                     (let ((row3 (%bind-entity-var row2 nvar node)))
                       (if (eq row3 :fail) nil (list row3)))))))
@@ -203,7 +205,11 @@ Returns (values list already-bound?)"
           for node = (graph-node g neighbor)
           when (and rel node
                     (%entity-matches rel nil rprops row graph params))
-            collect (cons (list* :start-node src :end-node node rel) node))))
+            collect (cons (if (eq dir :in)
+                              ;; incoming: the neighbor is the rel's start
+                              (list* :start-node node :end-node src rel)
+                              (list* :start-node src :end-node node rel))
+                          node))))
 
 (defun %path-chain-cursor (g inner chain graph params)
   "Chain cursor supporting a path variable and variable-length
@@ -256,13 +262,15 @@ repeats a relationship (openCypher paths are trails)."
                                                          (getf (cdr next-el) :labels)
                                                          (getf (cdr next-el) :props)
                                                          cur graph params)
-                                                    (let ((r2 (if (assoc (getf (cdr next-el) :var) cur)
-                                                                  (let ((old (row-get cur (getf (cdr next-el) :var))))
-                                                                    (if (%tv-true (cypher-= old end-node))
-                                                                        cur
-                                                                        :fail))
-                                                                  (row-bind cur (getf (cdr next-el) :var)
-                                                                            end-node))))
+                                                    (let* ((nvar (getf (cdr next-el) :var))
+                                                           (r2 (if (null nvar)
+                                                                   cur
+                                                                   (if (assoc nvar cur)
+                                                                       (let ((old (row-get cur nvar)))
+                                                                         (if (%tv-true (cypher-= old end-node))
+                                                                             cur
+                                                                             :fail))
+                                                                       (row-bind cur nvar end-node)))))
                                                       (unless (eq r2 :fail)
                                                         (let ((r3 (if rvar
                                                                       (row-bind r2 rvar

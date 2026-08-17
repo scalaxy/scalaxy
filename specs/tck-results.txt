@@ -208,11 +208,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [14] Named path with undirected fixed variable length pattern :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [13] Matching path with both directions should respect other directions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [12] Matching path with multiple bidirectional relationships :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [9] Longer path query should return results in written order :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [6] Handling direction of named paths :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match6.feature :: [5] Path query should return results in written order :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [29] Handling mixed relationship patterns 2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [28] Handling mixed relationship patterns 1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match5.feature :: [27] Handling mixed relationship patterns and directions 2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [10] Fail on negative bound :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [9] Fail when asterisk operator is missing :: expected SyntaxError: InvalidRelationshipPattern, got "UnexpectedSyntax"
