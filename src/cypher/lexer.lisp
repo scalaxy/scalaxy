@@ -301,6 +301,11 @@ input (InvalidNumberLiteral, IntegerOverflow, UnexpectedSyntax)."
                             #\+ #\- #\* #\/ #\% #\^ #\|) :test #'char=)
                 (lx-advance lx)
                 (lx-emit lx :punct (string ch)))
-               (t (lx-err lx "UnexpectedSyntax"
-                          (format nil "unexpected character ~c" ch)))))))))
+               (t (if (and (char>= ch (code-char #x2000))
+                           (char<= ch (code-char #x206F)))
+                      ;; unicode punctuation/dashes are not valid Cypher
+                      (lx-err lx "InvalidUnicodeCharacter"
+                              (format nil "invalid unicode character ~c" ch))
+                      (lx-err lx "UnexpectedSyntax"
+                              (format nil "unexpected character ~c" ch))))))))))
     (nreverse (lexer-ctx-tokens lx))))

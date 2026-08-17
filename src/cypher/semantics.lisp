@@ -575,7 +575,11 @@ ORDER BY subclause."
            (when (and (consp expr)
                       (member (car expr) '(:bin :un :lit :call)))
              (cypher-signal "InvalidArgumentType"
-                            :detail "DELETE of a non-entity expression"))))
+                            :detail "DELETE of a non-entity expression"))
+          (when (and (consp expr)
+                     (member (car expr) '(:has-labels)))
+            (cypher-signal "InvalidDelete"
+                           :detail "DELETE of a label/type expression"))))
         (:order
          (dolist (spec (getf (cdr clause) :items))
            (%check-expr-vars (getf (cdr spec) :expr) scope)
@@ -590,21 +594,35 @@ ORDER BY subclause."
   (%check-clauses (rest ast))
   ast)
 
-(defun %return-width (query)
-  "Number of result columns of a single query (for union checks)."
+(defun %return-columns (query)
+  "Column names of a single query (for union checks)."
   (let ((ret (car (last (rest query)))))
     (if (eq (car ret) :return)
         (let ((items (getf (cdr ret) :items)))
-          (if items (length items) (length (rest query))))  ; * approximated
-        (length (rest query)))))
+          (if items
+              (mapcar (lambda (item)
+                        (or (getf (cdr item) :as)
+                            (ast-var (ast-print
+                                      (list :expr (getf (cdr item) :expr))))))
+                      items)
+              ;; RETURN *: width-only placeholders (the names depend on
+              ;; the scope, resolved later)
+              (loop for i below (length (rest query))
+                    collect (ast-var (format nil "*column~d" i)))))
+        (loop for i below (length (rest query))
+              collect (ast-var (format nil "*column~d" i))))))
+
+(defun %return-width (query)
+  "Number of result columns of a single query (for union checks)."
+  (length (%return-columns query)))
 
 (defun cypher-check-query (ast)
   "Validate a (possibly union) query AST."
   (if (eq (car ast) :union)
-      (let ((widths (mapcar #'%return-width (getf (cdr ast) :queries))))
-        (unless (every (lambda (w) (= w (first widths))) widths)
+      (let ((cols (mapcar #'%return-columns (getf (cdr ast) :queries))))
+        (unless (every (lambda (c) (equal c (first cols))) cols)
           (cypher-signal "DifferentColumnsInUnion"
-                         :detail (format nil "column counts ~s differ" widths)))
+                         :detail (format nil "column names ~s differ" cols)))
         (dolist (q (getf (cdr ast) :queries))
           (cypher-check q))
         ast)
