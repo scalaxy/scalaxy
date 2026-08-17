@@ -20,7 +20,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [4] Dynamically access a field with null results in null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [3] Statically access a field of a map resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [19] Fail on a map containing key starting with a number :: expected SyntaxError: UnexpectedSyntax, got "InvalidNumberLiteral"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [8] Using `keys()` and `IN` to check property existence :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [5] Using `keys()` on a relationship, non-empty result :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
@@ -82,12 +81,8 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [15] Mixing directed and undirected pattern parts with self-relationship, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [8] Fail when using parameter as relationship predicate in MATCH :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [7] Delete paths from nested map/list :: side effects mismatch
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete3.feature :: [1] Detach deleting paths :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [5] Failing when deleting a relationship type :: expected SyntaxError: InvalidDelete, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [23] Fail when creating a relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [17] Create a single relationship with null properties should not return those properties :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [11] Create a single node with null properties should not return those properties :: side effects mismatch

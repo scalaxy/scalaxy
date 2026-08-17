@@ -48,14 +48,19 @@ modified by the clause)."
   (let ((v (cdr (assoc var row))))
     (if (or (%node-p v) (%rel-p v)) v nil)))
 
+(defun %filter-null-props (props)
+  "CREATE ignores null property values (openCypher)."
+  (remove-if (lambda (p) (%tv-null (cdr p))) props))
+
 (defun %instantiate-node (g row node-el graph params)
   "Resolve or create the node of NODE-EL; returns (values row id)."
   (let* ((var (getf (cdr node-el) :var))
          (bound (and var (cdr (assoc var row))))
          (labels (getf (cdr node-el) :labels))
-         (props (mapcar (lambda (p)
-                          (cons (car p) (eval-expr (cdr p) row graph params)))
-                        (getf (cdr node-el) :props))))
+         (props (%filter-null-props
+                 (mapcar (lambda (p)
+                           (cons (car p) (eval-expr (cdr p) row graph params)))
+                         (getf (cdr node-el) :props)))))
     (cond
       ((and bound (%node-p bound))
        (values row (getf bound :id)))
@@ -82,10 +87,11 @@ modified by the clause)."
                   do (let ((src-id (cdr (assoc src-el ids)))
                            (end-id (cdr (assoc node-el ids)))
                            (r row2))
-                       (let* ((props (mapcar (lambda (p)
-                                               (cons (car p)
-                                                     (eval-expr (cdr p) r graph params)))
-                                             (getf (cdr rel) :props)))
+                       (let* ((props (%filter-null-props
+                                       (mapcar (lambda (p)
+                                                 (cons (car p)
+                                                       (eval-expr (cdr p) r graph params)))
+                                               (getf (cdr rel) :props))))
                               (start-id (if (eq (getf (cdr rel) :dir) :in)
                                             end-id src-id))
                               (finish-id (if (eq (getf (cdr rel) :dir) :in)
@@ -241,11 +247,25 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
             (cond
               ((%node-p v) (graph-delete-node g (getf v :id) :detach detach?))
               ((%rel-p v) (graph-delete-relationship g (getf v :id)))
+              ((%path-p v)
+               ;; deleting a path deletes every element; relationships
+               ;; first (DETACH is implied for paths)
+               (let ((els (second v)))
+                 (loop for i from 1 below (length els) by 2
+                       do (graph-delete-relationship g (getf (nth i els) :id)))
+                 (loop for i from 0 below (length els) by 2
+                       do (graph-delete-node g (getf (nth i els) :id) :detach t))))
               ((cypher-list-p v)
                (dolist (x (cypher-list-elements v))
                  (cond
                    ((%node-p x) (graph-delete-node g (getf x :id) :detach detach?))
-                   ((%rel-p x) (graph-delete-relationship g (getf x :id))))))
+                   ((%rel-p x) (graph-delete-relationship g (getf x :id)))
+                   ((%path-p x)
+                    (let ((els (second x)))
+                      (loop for i from 1 below (length els) by 2
+                            do (graph-delete-relationship g (getf (nth i els) :id)))
+                      (loop for i from 0 below (length els) by 2
+                            do (graph-delete-node g (getf (nth i els) :id) :detach t)))))))
               (t (cypher-signal "InvalidArgumentValue"
                                 :detail (format nil "DELETE of ~a" (cypher-type-name v))))))))))
   rows)
