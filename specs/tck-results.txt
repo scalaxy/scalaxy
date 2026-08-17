@@ -61,11 +61,10 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [12] Fail on an integer containing a invalid symbol character :: expected SyntaxError: UnexpectedSyntax, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [8] Return the smallest integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List6.feature :: [5] Fail for `size()` on paths :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [7] Fail when using aggregation in list comprehension :: expected SyntaxError: InvalidAggregation, got "AmbiguousAggregationExpression"
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [7] Fail when using aggregation in list comprehension :: expected SyntaxError: InvalidAggregation, got "LispError:CASE-FAILURE"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [5] Using a list comprehension in a WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [4] Returning a list comprehension :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [3] Size of list comprehension :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List11.feature :: [3] Create an empty list if range direction and step direction are inconsistent :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #4 :: expected TypeError: *, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #4 :: expected TypeError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #3 :: expected TypeError: InvalidArgumentType, got "InvalidArgumentValue"
