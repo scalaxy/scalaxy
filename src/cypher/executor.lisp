@@ -330,21 +330,29 @@ repeats a relationship (openCypher paths are trails)."
       ;; like (a)-[:R]->()-[:R]->(c) can expand through the middle node
       (let* ((anon 0)
              (keyed (mapcar (lambda (el)
-                              (if (eq (car el) :node)
-                                  (let ((v (getf (cdr el) :var)))
-                                    (if v
-                                        el
-                                        ;; fresh gensym per chain so a
-                                        ;; previous match's anonymous
-                                        ;; node cannot anchor a later
-                                        ;; MERGE pattern
-                                        (list* :node :var
-                                               (gensym "ANON")
-                                               (cdddr el))))
-                                  el))
+                              (cond
+                                ((eq (car el) :node)
+                                 (let ((v (getf (cdr el) :var)))
+                                   (if v
+                                       el
+                                       ;; fresh gensym per chain so a
+                                       ;; previous match's anonymous
+                                       ;; node cannot anchor a later
+                                       ;; MERGE pattern
+                                       (list* :node :var
+                                              (gensym "ANON")
+                                              (cdddr el)))))
+                                ((eq (car el) :rel)
+                                 ;; anonymous relationships also get a
+                                 ;; hidden var so pattern-internal
+                                 ;; relationship uniqueness applies
+                                 (if (getf (cdr el) :var)
+                                     el
+                                     (list* :rel :var (gensym "ANONR") (cdddr el))))
+                                (t el)))
                             chain)))
         (let* ((chain-rel-vars
-                 (loop for el in chain
+                 (loop for el in keyed
                        when (and (eq (car el) :rel) (getf (cdr el) :var))
                          collect (getf (cdr el) :var)))
                (cur (%node-start-cursor g inner (first keyed) graph params)))
