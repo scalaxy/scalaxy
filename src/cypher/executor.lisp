@@ -74,7 +74,10 @@ empty, possibly one) for each input row."
   (and (= (length a) (length b))
        (every (lambda (p)
                 (let ((q (assoc (car p) b)))
-                  (and q (%tv-true (cypher-= (cdr p) (cdr q))))))
+                  (and q
+                       (let ((x (cdr p)) (y (cdr q)))
+                         (or (and (cypher-null-p x) (cypher-null-p y))
+                             (%tv-true (cypher-= x y)))))))
               a)))
 
 (defun %row-value-key (row)
