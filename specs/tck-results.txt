@@ -22,8 +22,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [22] Sort distinct types in descending order :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)

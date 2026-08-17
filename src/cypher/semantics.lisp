@@ -519,12 +519,15 @@ ORDER BY subclause."
              (check-order-agg-calls e)
              (check-order-leaves e))
             ((and has-agg? (not (expr-has-aggregate e)))
-             ;; the whole expression may be a grouping key (ORDER BY
-             ;; a.name after WITH a.name AS name, ...)
+             ;; the whole expression may be a grouping key, and
+             ;; variables used in the grouping keys may be referenced
+             ;; (ORDER BY a.name + 'C' after WITH a.name AS name, ...)
              (unless (member e key-exprs :test #'equal)
-               (dolist (v (%expr-vars e))
-                 (unless (member v projected-names)
-                   (cypher-signal "UndefinedVariable" :detail (symbol-name v))))))))))))
+               (let ((key-vars (loop for k in key-exprs append (%expr-vars k))))
+                 (dolist (v (%expr-vars e))
+                   (unless (or (member v projected-names)
+                               (member v key-vars))
+                     (cypher-signal "UndefinedVariable" :detail (symbol-name v)))))))))))))
 
 (defun %check-set-items (items scope)
   (dolist (item items)
