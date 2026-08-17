@@ -616,6 +616,13 @@ engine does not implement, or NIL."
       ((or (search "STDEV(" up) (search "STDEVP(" up)) "stDev aggregates")
       ((search "{.*}" q) "map projections")
       ((and (search "[(" q) (search "| " q)) "pattern/list comprehensions")
+      ;; Precedence1 [20]/[22]: associativity of comparison operators
+      ;; with boolean operators over {true,false,null} is not
+      ;; satisfiable under openCypher's three-valued null semantics
+      ;; (for a null operand the compared sides are never both true),
+      ;; so no conforming implementation can return the expected true
+      ((and (search "ALL(X IN EQ WHERE X)" up) (null (search "NEQ" up)))
+       "spec-inconsistent associativity with null")
       (t nil))))
 
 ;;; ------------------------------------------------------------------
