@@ -331,9 +331,12 @@ repeats a relationship (openCypher paths are trails)."
                                   (let ((v (getf (cdr el) :var)))
                                     (if v
                                         el
+                                        ;; fresh gensym per chain so a
+                                        ;; previous match's anonymous
+                                        ;; node cannot anchor a later
+                                        ;; MERGE pattern
                                         (list* :node :var
-                                               (intern (format nil "~a" (incf anon))
-                                                       "SCALAXY")
+                                               (gensym "ANON")
                                                (cdddr el))))
                                   el))
                             chain)))
