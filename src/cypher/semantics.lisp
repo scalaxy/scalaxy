@@ -229,7 +229,8 @@ pattern would create a second entity (VariableAlreadyBound), and a
 relationship variable that is already bound is an error.  When
 REQUIRE-DIRECTED (CREATE), relationships must be directed."
   (let ((s scope)
-        (created nil))
+        (created nil)
+        (created-rels nil))
     (dolist (chain pattern)
       (let ((elements (if (eq (car chain) :path-var) (cddr chain) chain)))
         ;; a path variable is bound to the matched/created path
@@ -240,6 +241,10 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
         ;; relationship variables: always create fresh
         (dolist (el elements)
           (when (eq (car el) :rel)
+            (when (and (getf (cdr el) :var)
+                       (%in-scope (getf (cdr el) :var) s))
+              (cypher-signal "VariableAlreadyBound"
+                             :detail (symbol-name (getf (cdr el) :var))))
             (when (getf (cdr el) :var-length)
               (cypher-signal "CreatingVarLength" :detail "variable-length relationships cannot be created"))
             (when (or (null (getf (cdr el) :type))
@@ -258,7 +263,8 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
               (when v
                 (when (or (%in-scope v s) (member v created))
                   (cypher-signal "VariableAlreadyBound" :detail (symbol-name v)))
-                (push v created)))))
+                (push v created)
+                (push v created-rels)))))
         ;; node variables
         (let ((single? (= (length elements) 1)))
           (dolist (el elements)
@@ -285,7 +291,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
                         (%check-var v scope)))))))))))
     ;; created entities are bound for subsequent clauses
     (dolist (v created)
-      (setf s (acons v :node s)))
+      (setf s (acons v (if (member v created-rels) :rel :node) s)))
     s))
 
 (defun %check-projection (clause scope)
