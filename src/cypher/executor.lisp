@@ -498,12 +498,12 @@ rejected by the semantic checker)."
                              (if (and (numberp v) (not (cypher-null-p v))) v 0))))
       (:min (list :best (if (and v (not (cypher-null-p v))
                                  (or (null (getf state :best))
-                                     (eq (cypher-compare v (getf state :best)) :lt)))
+                                     (eq (%sort-compare v (getf state :best)) :lt)))
                             v
                             (getf state :best))))
       (:max (list :best (if (and v (not (cypher-null-p v))
                                  (or (null (getf state :best))
-                                     (eq (cypher-compare v (getf state :best)) :gt)))
+                                     (eq (%sort-compare v (getf state :best)) :gt)))
                             v
                             (getf state :best))))
       (:collect

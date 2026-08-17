@@ -80,10 +80,12 @@ value."
   (let* ((var (getf (cdr node-el) :var))
          (bound (and var (cdr (assoc var row))))
          (labels (getf (cdr node-el) :labels))
-         (props (%filter-null-props
-                 (mapcar (lambda (p)
-                           (cons (car p) (eval-expr (cdr p) row graph params)))
-                         (getf (cdr node-el) :props)))))
+         (props (if (equal (getf (cdr node-el) :props) (list :empty-props t))
+                    nil
+                    (%filter-null-props
+                     (mapcar (lambda (p)
+                               (cons (car p) (eval-expr (cdr p) row graph params)))
+                             (getf (cdr node-el) :props))))))
     (cond
       ((and bound (%node-p bound))
        (values row (getf bound :id)))

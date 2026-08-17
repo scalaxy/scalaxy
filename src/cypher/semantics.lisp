@@ -311,6 +311,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
               ;; property expressions may reference pre-scope variables
               ;; or variables created earlier in this clause
               (dolist (pr (getf (cdr el) :props))
+                (when (and (consp pr) (not (eq (car pr) :empty-props)))
                 (let ((expr (cdr pr)))
                   (cond
                     ((and (symbolp expr) (not (keywordp expr)))
@@ -319,7 +320,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
                     ((consp expr)
                      (dolist (v (%expr-vars expr))
                        (unless (or (%in-scope v s) (member v created))
-                         (%check-var v scope))))))))))))
+                         (%check-var v scope)))))))))))))
     ;; created entities are bound for subsequent clauses
     (dolist (v created)
       (setf s (acons v (if (member v created-rels) :rel :node) s)))

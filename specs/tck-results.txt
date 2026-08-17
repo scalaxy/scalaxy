@@ -20,7 +20,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [5] Comparing relationships to relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return5.feature :: [2] DISTINCT on nullable values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [11] Reusing variable names in RETURN :: result mismatch (ordered)
@@ -35,4 +34,3 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create1.feature :: [19] Fail when adding new label predicate on a node that is already bound 5 :: expected SyntaxError: VariableAlreadyBound, got NIL

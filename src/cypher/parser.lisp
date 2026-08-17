@@ -427,10 +427,8 @@ An optional 'var =' prefix binds the whole chain to a path variable."
     (when (%at-kind p :param)
       (%perr p "InvalidParameterUse" "parameter is not allowed as a node pattern"))
     (when (%at-punct p "{")
-      (setf props (parse-props p)))
+      (setf props (or (parse-props p) (list :empty-props t))))
     (%expect-punct p ")")
-    (when (null props)
-      (setf props nil))
     (list :node :var var :labels (nreverse labels) :props props)))
 
 (defun parse-props (p)
