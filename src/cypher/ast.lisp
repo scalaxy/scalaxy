@@ -69,7 +69,12 @@
        (:lit (%print-value (second e)))
        (:param (format nil "$~a" (second e)))
        (:var (ast-var-name (second e)))
-       (:prop (format nil "~a.~a" (%print-expr (getf (cdr e) :expr))
+       (:prop (format nil "~a.~a"
+                      (let ((sub (getf (cdr e) :expr)))
+                        (if (and (consp sub)
+                                 (member (car sub) '(:idx :slice :bin :neg :not :call)))
+                            (format nil "(~a)" (%print-expr sub))
+                            (%print-expr sub)))
                       (getf (cdr e) :prop)))
        (:idx (format nil "~a[~a]" (%print-expr (getf (cdr e) :expr))
                      (%print-expr (getf (cdr e) :index))))

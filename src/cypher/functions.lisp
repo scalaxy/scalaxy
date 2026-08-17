@@ -348,7 +348,9 @@ null), nulls last."
                (t (%fn-error name args))))
         ((string-equal name "relationships")
          (cond ((%path-p arg0)
-                (cypher-list (loop for (n r) on (cdr (second arg0)) by #'cddr collect r)))
+                (let ((els (second arg0)))
+                  (cypher-list (loop for i from 1 below (length els) by 2
+                                     collect (nth i els)))))
                ((%tv-null arg0) :cypher-null)
                (t (%fn-error name args))))
         ((string-equal name "abs")
