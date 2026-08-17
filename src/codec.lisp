@@ -42,8 +42,10 @@
 
 (defun cypher-list-p (v)
   "True when V is a Cypher list: a proper CL list, or #() (the empty
-list sentinel).  Dotted pairs and maps are not lists."
-  (or (and (consp v) (not (eq (car v) :cypher-map)) (null (cdr (last v))))
+list sentinel).  Dotted pairs, maps and graph entities are not lists."
+  (or (and (consp v) (not (eq (car v) :cypher-map))
+           (not (%entity-plist-p v))
+           (null (cdr (last v))))
       (cypher-empty-list-p v)))
 
 (defun cypher-empty-list-p (v)

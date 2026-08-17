@@ -206,7 +206,18 @@ relationship variable that is already bound is an error."
       (when (expr-has-aggregate where)
         (cypher-signal "InvalidAggregation"
                        :detail "aggregation is not allowed in WHERE"))
-      (%check-expr-vars where scope))
+      (if (eq (car clause) :with)
+          ;; WITH WHERE may reference input variables or the projected
+          ;; aliases (the WHERE is applied after the projection)
+          (let ((aliases (mapcar (lambda (i)
+                                   (or (getf (cdr i) :as)
+                                       (ast-var (ast-print
+                                                 (list :expr (getf (cdr i) :expr))))))
+                                 items)))
+            (dolist (v (%expr-vars where))
+              (unless (or (%in-scope v scope) (member v aliases))
+                (%check-var v scope))))
+          (%check-expr-vars where scope)))
     (if (null items)
         ;; projection *
         (progn

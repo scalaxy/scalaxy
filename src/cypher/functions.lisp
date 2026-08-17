@@ -64,7 +64,15 @@
         (t "ANY")))
 
 (defun %entity-plist-p (v)
-  (and (consp v) (null (cdr (last v))) (evenp (length v))))
+  "True when V is a node/relationship/path value (a plist that must
+not be confused with a list)."
+  (and (consp v)
+       (null (cdr (last v)))
+       (evenp (length v))
+       (or (and (getf v :id)
+                (not (eq (getf v :labels :missing) :missing))) ; node
+           (and (getf v :id) (getf v :type))                   ; relationship
+           (eq (car v) :path))))                               ; path
 
 (defun %node-p (v)
   (and (%entity-plist-p v) (not (cypher-map-p v))

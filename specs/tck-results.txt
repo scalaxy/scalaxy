@@ -96,10 +96,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [5] Comparing NaN #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [4] Comparing lists #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [3] Comparing across types yields null, except numbers #4 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [3] Comparing across types yields null, except numbers #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [3] Comparing across types yields null, except numbers #2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison2.feature :: [3] Comparing across types yields null, except numbers #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [8] Equality and inequality of NaN #4 :: result mismatch (any order)
@@ -155,6 +151,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [7] Keeping used expression 4 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [6] Keeping used expression 3 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [4] Keeping used expression 1 :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return4.feature :: [3] Aliasing expressions :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [18] Fail on projecting a non-existent function :: expected SyntaxError: UnknownFunction, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [14] Do not fail when returning type of deleted relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return/Return2.feature :: [13] Projecting a map of nodes and relationships :: result mismatch (any order)
@@ -221,7 +218,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [5] Detach delete nodes from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete3.feature :: [1] Detach deleting paths :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [5] Failing when deleting a relationship type :: expected SyntaxError: InvalidDelete, got "InvalidArgumentValue"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete2.feature :: [3] Delete relationship with bidirectional matching :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete1.feature :: [8] Failing when deleting a label :: expected SyntaxError: InvalidDelete, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [24] Fail when creating a relationship using undefined variable in pattern :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/create/Create2.feature :: [23] Fail when creating a relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"

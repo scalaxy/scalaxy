@@ -274,8 +274,10 @@ repeats a relationship (openCypher paths are trails)."
                                                       (unless (eq r2 :fail)
                                                         (let ((r3 (if rvar
                                                                       (row-bind r2 rvar
-                                                                                (cypher-list
-                                                                                 (nreverse rels)))
+                                                                                (if (getf (cdr el) :var-length)
+                                                                                    (cypher-list
+                                                                                     (nreverse rels))
+                                                                                    (first rels)))
                                                                       r2)))
                                                           (walk (+ idx 2) r3 p v)))))))
                                               (when (< hops max-hops)
@@ -344,12 +346,17 @@ repeats a relationship (openCypher paths are trails)."
 
 (defun %project-row (row items graph params)
   "Projection without aggregation: returns one output row.  Unaliased
-items get their column name from the printed expression."
-  (loop for item in items
-        for expr = (getf (cdr item) :expr)
-        for as = (getf (cdr item) :as)
-        for v = (eval-expr expr row graph params)
-        collect (cons (or as (ast-var (ast-print (list :expr expr)))) v)))
+items get their column name from the printed expression.  Items are
+evaluated left to right against the input row extended with the
+already-projected columns, so later items may reference earlier ones
+(WITH i, types[i] AS lhs, lhs < rhs AS result)."
+  (let ((proj nil))
+    (dolist (item items)
+      (let* ((expr (getf (cdr item) :expr))
+             (as (getf (cdr item) :as))
+             (v (eval-expr expr (append proj row) graph params)))
+        (push (cons (or as (ast-var (ast-print (list :expr expr)))) v) proj)))
+    (nreverse proj)))
 
 (defun %group-row (row items graph params)
   "For aggregation: returns (values group-key agg-items-evaluated).
