@@ -93,10 +93,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [1] Failing when mixing UNION and UNION ALL :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union2.feature :: [5] Failing when UNION ALL has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union1.feature :: [5] Failing when UNION has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set3.feature :: [7] Ignore whitespace before colon 3 :: result mismatch (list order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set3.feature :: [6] Ignore whitespace before colon 2 :: result mismatch (list order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set3.feature :: [4] Adding multiple labels to a node with an existing label :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set3.feature :: [2] Adding multiple labels to a node with no label :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [3] Setting a relationship property to null removes the existing property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [2] Setting a node property to null removes the existing property, but not before SET :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set2.feature :: [1] Setting a node property to null removes the existing property :: result mismatch (any order)

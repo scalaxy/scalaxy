@@ -469,7 +469,7 @@
         (check (equal (getf (cdr set) :items)
                       (list (list :set-prop :var (ast-var "a") :prop "p" :expr (list :lit 2))
                             (list :add-prop :var (ast-var "b") :prop "q" :expr (list :lit 3))
-                            (list :set-label :var (ast-var "b") :label "B")))
+                            (list :set-labels :var (ast-var "b") :labels '("B"))))
                "set items")
         (check (equal (getf (cdr remove) :items)
                       (list (list :remove-prop :var (ast-var "a") :prop "x")))

@@ -385,7 +385,8 @@ ORDER BY subclause."
       (:set-var
        (%check-var (getf (cdr item) :var) scope)
        (%check-expr-vars (getf (cdr item) :expr) scope))
-      (:set-label (%check-var (getf (cdr item) :var) scope)))))
+      (:set-label (%check-var (getf (cdr item) :var) scope))
+      (:set-labels (%check-var (getf (cdr item) :var) scope)))))
 
 (defun %check-remove-items (items scope)
   (dolist (item items)
