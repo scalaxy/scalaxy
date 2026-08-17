@@ -176,7 +176,14 @@ Returns (values list already-bound?)"
                          (row2 (if rvar (row-bind row rvar rel2) row)))
                     (let ((row3 (%bind-entity-var row2 nvar node)))
                       (if (eq row3 :fail) nil (list row3)))))))
-           (let ((bound (and rvar (assoc rvar row))))
+           (let ((bound (and rvar (assoc rvar row)))
+             (used-rels
+               ;; relationships already bound in this row cannot be
+               ;; used again in the same pattern (relationship
+               ;; uniqueness within a pattern)
+               (loop for (k . v) in row
+                     when (and (not (eq k rvar)) (%rel-p v))
+                       collect (getf v :id))))
              (if (null bound)
                  ;; unbound relationship: expand over all incident rels
                  (loop for (rid . neighbor)
@@ -184,6 +191,7 @@ Returns (values list already-bound?)"
                                           :type (and (= (length rtypes) 1) rtype))
                        for rel = (graph-relationship g rid)
                        for node = (graph-node g neighbor)
+                       unless (member rid used-rels :test #'equal)
                        nconc (try rel node))
                  ;; bound relationship: it must be incident to SRC in
                  ;; direction DIR; the other endpoint is the next node.
@@ -201,6 +209,8 @@ Returns (values list already-bound?)"
                    (when neighbor-id
                      (let ((node (graph-node g neighbor-id)))
                        (when (and node
+                                  (or (null rtypes)
+                                      (member (getf rel :type) rtypes :test #'string=))
                                   (%entity-matches rel nil rprops row graph params)
                                   (%entity-matches node nlabels nprops row graph params))
                          (let ((row2 (if rvar (row-bind row rvar rel) row)))
