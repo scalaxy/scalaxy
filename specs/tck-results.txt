@@ -27,18 +27,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map2.feature :: [4] Dynamically access a field with null results in null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map1.feature :: [3] Statically access a field of a map resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [19] Fail on a map containing key starting with a number :: expected SyntaxError: UnexpectedSyntax, got "InvalidNumberLiteral"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [12] Return a map containing a string :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [16] Return a list containing multiple mixed values :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals7.feature :: [8] Return a list containing a string :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals6.feature :: [13] Failing on incorrect unicode literal :: expected SyntaxError: InvalidUnicodeLiteral, got "UnexpectedSyntax"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals6.feature :: [5] Return a single-quoted string with escaped characters :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [27] Fail when float value is too large :: expected SyntaxError: FloatingPointOverflow, got "InvalidNumberLiteral"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [8] Return the smallest octal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [17] Fail on a too small hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [16] Fail on a too large hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [8] Return the smallest hexadecimal integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [12] Fail on an integer containing a invalid symbol character :: expected SyntaxError: UnexpectedSyntax, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [8] Return the smallest integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [8] Using `keys()` and `IN` to check property existence :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [5] Using `keys()` on a relationship, non-empty result :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)

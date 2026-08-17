@@ -53,9 +53,22 @@
   (remove "" (split-sequence-on #\Space (subseq line 1)) :test #'string=))
 
 (defun %split-table-row (line)
-  "A | cell | row -> (\"cell\" ...) with cells trimmed."
+  "A | cell | row -> (\"cell\" ...) with cells trimmed and gherkin
+backslash escapes undone (the TCK doubles backslashes in table cells:
+\\\\ in the file is \\ in the cell, because backslash escapes the
+vertical bar separator)."
   (mapcar (lambda (c)
-            (string-trim (list (code-char 32) (code-char 9)) c))
+            (let ((cell (string-trim (list (code-char 32) (code-char 9)) c)))
+              (if (search "\\\\" cell)
+                  (let ((out (make-string-output-stream)))
+                    (loop for i below (length cell)
+                          do (if (and (char= (char cell i) #\\)
+                                      (< (1+ i) (length cell))
+                                      (char= (char cell (1+ i)) #\\))
+                                 (progn (write-char #\\ out) (incf i))
+                                 (write-char (char cell i) out)))
+                    (get-output-stream-string out))
+                  cell)))
           (cdr (butlast (split-sequence-on (code-char 124) line)))))
 
 (defun %normalize-tables (steps)
@@ -85,6 +98,9 @@ in source order.  EXAMPLES is a list of tables (header row first)."
               for line = (%strip-comment
                           (string-trim (list (code-char 32) (code-char 9)
                                              (code-char 13)) raw))
+              for raw-line = (string-trim (list (code-char 32) (code-char 9)
+                                                (code-char 13)) raw)
+              do (when doc (setf line raw-line))
               do (cond
                    ((zerop (length line)))
                    ((char= (char line 0) (code-char 64))
@@ -117,7 +133,7 @@ in source order.  EXAMPLES is a list of tables (header row first)."
                    (doc
                     (push line doc))
                    ((char= (char line 0) (code-char 124))
-                    (let ((cells (%split-table-row line)))
+                    (let ((cells (%split-table-row raw-line)))
                       (if examples
                           (push cells (car examples))
                           (push cells (getf (cdr (first steps)) :table)))))

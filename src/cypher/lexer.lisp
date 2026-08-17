@@ -81,11 +81,11 @@
   (let ((code 0))
     (dotimes (k 4)
       (when (>= (lexer-ctx-i lx) (lexer-ctx-n lx))
-        (lx-err lx "UnexpectedSyntax" "truncated unicode escape"))
+        (lx-err lx "InvalidUnicodeLiteral" "truncated unicode escape"))
       (let ((h (lx-peek lx)))
         (lx-advance lx)
         (unless (%hex-p h)
-          (lx-err lx "UnexpectedSyntax" "invalid unicode escape"))
+          (lx-err lx "InvalidUnicodeLiteral" "invalid unicode escape"))
         (setf code (+ (* code 16) (digit-char-p h 16)))))
     (write-char (code-char code) out)))
 
@@ -124,6 +124,14 @@
                     (progn (write-char ch out) (lx-advance lx))))))))
     (lx-emit lx :string result)))
 
+(defun %int64-overflow-p (v prev-char)
+  "True when V is outside the int64 range, except the exact
+min-int64 magnitude 9223372036854775808 which is legal after a minus
+sign (-9223372036854775808 is the smallest int64)."
+  (or (> v 9223372036854775808)
+      (and (= v 9223372036854775808)
+           (not (and prev-char (char= prev-char #\-))))))
+
 (defun lx-number (lx)
   (let* ((s (lexer-ctx-string lx))
          (start (lexer-ctx-i lx)))
@@ -137,8 +145,11 @@
            (lx-err lx "InvalidNumberLiteral" "hex literal needs digits"))
          (when (%ident-char-p (lx-peek lx))
            (lx-err lx "InvalidNumberLiteral" "junk after hex literal"))
-         (lx-emit lx :int (parse-integer s :start (+ start 2)
-                                         :end (lexer-ctx-i lx) :radix 16))))
+         (let ((v (parse-integer s :start (+ start 2)
+                                 :end (lexer-ctx-i lx) :radix 16)))
+           (when (%int64-overflow-p v (and (plusp start) (char s (1- start))))
+             (lx-err lx "IntegerOverflow" (subseq s start (lexer-ctx-i lx))))
+           (lx-emit lx :int v))))
       ((and (char= (lx-peek lx) #\0) (eql (lx-peek2 lx) #\o))
        ;; modern 0oNNN octal literal (openCypher Literals4)
        (lx-advance lx) (lx-advance lx)
@@ -151,7 +162,7 @@
            (lx-err lx "InvalidNumberLiteral" "junk after octal literal"))
          (let ((v (parse-integer s :start (+ start 2)
                                  :end (lexer-ctx-i lx) :radix 8)))
-           (when (> (abs v) #x7FFFFFFFFFFFFFFF)
+           (when (%int64-overflow-p v (and (plusp start) (char s (1- start))))
              (lx-err lx "IntegerOverflow" (subseq s start (lexer-ctx-i lx))))
            (lx-emit lx :int v))))
       ((and (char= (lx-peek lx) #\0) (%digit-p (lx-peek2 lx)))
@@ -164,7 +175,7 @@
              do (lx-advance lx))
        (let ((v (parse-integer s :start start
                                :end (lexer-ctx-i lx) :radix 8)))
-         (when (> (abs v) #x7FFFFFFFFFFFFFFF)
+         (when (%int64-overflow-p v (and (plusp start) (char s (1- start))))
            (lx-err lx "IntegerOverflow" (subseq s start (lexer-ctx-i lx))))
          (lx-emit lx :int v)))
       (t
@@ -189,18 +200,24 @@
            (lx-err lx "InvalidNumberLiteral" "junk after number"))
          (let ((text (subseq s start (lexer-ctx-i lx))))
            (if float?
-               (lx-emit lx :float
-                        (handler-case (read-from-string text)
-                          (error ()
-                            ;; single-float overflow on very large
-                            ;; literals: retry as double-float
-                            (handler-case
-                                (let ((*read-default-float-format* 'double-float))
-                                  (read-from-string text))
-                              (error () (lx-err lx "InvalidNumberLiteral" text))))))
+               (let ((v
+                       ;; the default read format is single-float, which
+                       ;; overflows for values above ~3.4e38; retry as
+                       ;; double-float before declaring overflow
+                       (handler-case
+                           (let ((*read-default-float-format* 'double-float))
+                             (read-from-string text))
+                         (error (e)
+                           (if (search "FLOATING-POINT-OVERFLOW"
+                                       (princ-to-string e))
+                               (lx-err lx "FloatingPointOverflow" text)
+                               (lx-err lx "InvalidNumberLiteral" text))))))
+                 (when (and (floatp v) (not (<= (abs v) most-positive-double-float)))
+                   (lx-err lx "FloatingPointOverflow" text))
+                 (lx-emit lx :float v))
                (let ((v (handler-case (parse-integer text :radix 10)
                           (error () (lx-err lx "InvalidNumberLiteral" text)))))
-                 (when (> (abs v) #x7FFFFFFFFFFFFFFF)
+                 (when (%int64-overflow-p v (and (plusp start) (char s (1- start))))
                    (lx-err lx "IntegerOverflow" text))
                  (lx-emit lx :int v)))))))))
 
