@@ -396,17 +396,25 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
           (setf new-scope (nreverse new-scope))))
     ;; ORDER BY (non-aggregating): RETURN may only reference projected
     ;; columns; WITH may reference the input scope or projected aliases
-    (let ((order (getf (cdr clause) :order)))
+    ;; (except after DISTINCT, where only the projected columns remain)
+    (let ((order (getf (cdr clause) :order))
+          (distinct? (getf (cdr clause) :distinct)))
       (when (and order
                  (not (some (lambda (s) (expr-has-aggregate (getf (cdr s) :expr)))
                             order))
                  (not (some (lambda (i) (expr-has-aggregate (getf (cdr i) :expr)))
                             items)))
         (dolist (spec order)
-          (dolist (v (%expr-vars (getf (cdr spec) :expr)))
-            (unless (or (%in-scope v scope)   ; input-scope variables
-                        (%in-scope v new-scope))  ; projected aliases
-              (cypher-signal "UndefinedVariable" :detail (symbol-name v))))))
+          (let ((e (getf (cdr spec) :expr)))
+            ;; the whole expression may be a projected column
+            ;; (ORDER BY a.name after WITH DISTINCT a.name AS name)
+            (unless (member e (mapcar (lambda (i) (getf (cdr i) :expr)) items)
+                            :test #'equal)
+              (dolist (v (%expr-vars e))
+                (unless (or (%in-scope v new-scope)  ; projected aliases
+                            (and (not distinct?)
+                                 (%in-scope v scope)))  ; input-scope variables
+                  (cypher-signal "UndefinedVariable" :detail (symbol-name v))))))))
     new-scope)))
 
 
