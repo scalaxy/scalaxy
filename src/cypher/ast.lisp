@@ -74,6 +74,8 @@
        (:idx (format nil "~a[~a]" (%print-expr (getf (cdr e) :expr))
                      (%print-expr (getf (cdr e) :index))))
        (:bin (%print-bin (second e) (third e) (fourth e)))
+       (:has-label (format nil "~a:~a" (%print-expr (getf (cdr e) :expr))
+                           (getf (cdr e) :label)))
        (:not (format nil "(NOT ~a)" (%print-expr (second e))))
        (:neg (format nil "(- ~a)" (%print-expr (second e))))
        (:is-null (format nil "(~a IS NULL)" (%print-expr (getf (cdr e) :expr))))

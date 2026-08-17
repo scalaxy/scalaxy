@@ -530,7 +530,10 @@ keyed by the printed expression name and by bare variable names."
     (t
      (handler-case
          (eval-expr (cons (car expr)
-                          (mapcar (lambda (c) (if (consp c) (%agg-eval-empty c) c))
+                          (mapcar (lambda (c)
+                                    (if (consp c)
+                                        (list :lit (%agg-eval-empty c))
+                                        c))
                                   (cdr expr)))
                     nil nil nil)
        (cypher-error () :cypher-null)))))

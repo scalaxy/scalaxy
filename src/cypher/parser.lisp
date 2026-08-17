@@ -590,6 +590,10 @@ means a < b AND b < c)."
         ((%at-punct p ".")
          (%advance p)
          (setf e (list :prop :expr e :prop (%expect-ident p))))
+        ((%at-punct p ":")
+         ;; label expression: n:Label / r:Type (boolean)
+         (%advance p)
+         (setf e (list :has-label :expr e :label (%expect-ident p))))
         ((%at-punct p "[")
          (%advance p)
          (cond

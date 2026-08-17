@@ -251,11 +251,12 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
         ((string-equal name "toFloat") (%to-float arg0))
         ((string-equal name "toString") (%to-string arg0))
         ((string-equal name "type")
-         (cond ((%rel-p arg0) (getf arg0 :type))
+         (cond ((%rel-p arg0) (%check-entity-live arg0 graph) (getf arg0 :type))
                ((%tv-null arg0) :cypher-null)
                (t (%fn-error name args))))
         ((string-equal name "labels")
-         (cond ((%node-p arg0) (cypher-list (getf arg0 :labels)))
+         (cond ((%node-p arg0) (%check-entity-live arg0 graph)
+                (cypher-list (getf arg0 :labels)))
                ((%tv-null arg0) :cypher-null)
                (t (%fn-error name args))))
         ((string-equal name "keys")
@@ -533,6 +534,16 @@ treats X = X as true for identical complex expressions."
        (not (member (car a) '(:lit :var :param :map :list)))
        (equal a b)))
 
+(defun %check-entity-live (v graph)
+  "Signal DeletedEntityAccess when V is a node/relationship that no
+longer exists in GRAPH (openCypher: deleted entities are inaccessible)."
+  (when graph
+    (when (and (%node-p v) (null (graph-node graph (getf v :id))))
+      (cypher-signal "DeletedEntityAccess" :detail "node has been deleted"))
+    (when (and (%rel-p v) (null (graph-relationship graph (getf v :id))))
+      (cypher-signal "DeletedEntityAccess" :detail "relationship has been deleted")))
+  v)
+
 (defun %eval-bin (op a b &optional ast-a ast-b)
   (case op
     ((:and) (%tv-and a b))
@@ -668,6 +679,7 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
        (:prop (let ((v (eval-expr (getf (cdr expr) :expr) row graph params)))
                 (cond ((%tv-null v) :cypher-null)
                       ((or (%node-p v) (%rel-p v) (cypher-map-p v))
+                       (%check-entity-live v graph)
                        (%map-access v (getf (cdr expr) :prop)))
                       (t (cypher-signal "InvalidArgumentType"
                                          :detail (format nil "property access on ~a"
@@ -677,9 +689,23 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
                (cond
                  ((and (stringp i)
                        (or (cypher-map-p v) (%node-p v) (%rel-p v)))
+                  (%check-entity-live v graph)
                   (%map-access v i))
                  ((%tv-null v) :cypher-null)
                  (t (%list-index v i)))))
+       (:has-label (let ((v (eval-expr (getf (cdr expr) :expr) row graph params)))
+                     (cond
+                       ((%tv-null v) :cypher-null)
+                       ((%node-p v)
+                        (if (member (getf (cdr expr) :label) (getf v :labels)
+                                    :test #'string=)
+                            t :cypher-false))
+                       ((%rel-p v)
+                        (if (string= (getf (cdr expr) :label) (getf v :type))
+                            t :cypher-false))
+                       (t (cypher-signal "InvalidArgumentType"
+                                         :detail (format nil "label expression on ~a"
+                                                         (cypher-type-name v)))))))
        (:slice (let ((v (eval-expr (getf (cdr expr) :expr) row graph params))
                      (start (when (getf (cdr expr) :start)
                               (eval-expr (getf (cdr expr) :start) row graph params)))
