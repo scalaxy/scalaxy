@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **openCypher TCK conformance**: 2,252 → **2,726 passing** scenarios
+  (failures 500 → 6) across the whole corpus — 3,898 scenarios executed.
+  Notable clusters: pattern relationship uniqueness (self-loops, anonymous
+  rels, MERGE duplicate creation); var-length patterns over a bound
+  relationship list; ORDER BY aggregation scope rules (projected
+  aggregates, grouping-key expressions, DISTINCT); EXISTS { } subqueries
+  (WHERE clauses, aggregation scoping, bare patterns); SET/REMOVE/CREATE
+  semantics (`SET n.p = null` removes, multi-label SET/REMOVE,
+  parenthesized targets, `InvalidPropertyType`); DELETE of paths and
+  label/type expressions; literal lexing (int64 ranges, float overflow,
+  unicode punctuation); function semantics (`toString(null)`,
+  `type()` on deleted rels, path equality, `min`/`max` total order,
+  `UnknownFunction`); and TCK-harness fidelity (gherkin raw docs/tables,
+  nested entity lists/maps, NaN cells, bag-match argument order).  See
+  `docs/cypher-certification.md`.
+
 ## [1.8.0] - 2026-08-17
 
 ### Added

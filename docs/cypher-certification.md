@@ -8,16 +8,16 @@
 | Corpus | official openCypher TCK (scenario-outline expansion included), `specs/openCypher/tck` |
 | Runner | `tests/tck.lisp` + `scripts/run-tck.lisp` (Gherkin-subset harness) |
 | Scope | openCypher core: MATCH / OPTIONAL MATCH / WHERE / WITH / RETURN / UNWIND / ORDER BY / SKIP / LIMIT / DISTINCT / CREATE / MERGE / SET / REMOVE / DELETE / DETACH DELETE / UNION |
-| Result date | 2026-08-16 |
+| Result date | 2026-08-18 |
 
 ## Summary
 
 | Metric | Scenarios |
 |---|---|
-| Total executed | 3897 |
-| **Pass** | **2252** |
-| Fail (bugs in supported features) | 500 |
-| Unsupported (declared out of scope) | 1145 |
+| Total executed | 3898 |
+| **Pass** | **2726** |
+| Fail (bugs in supported features) | 6 |
+| Unsupported (declared out of scope) | 1166 |
 
 > A scenario counts as *unsupported* only when it exercises a feature the
 > engine deliberately does not implement; it is recorded with a reason and is
@@ -28,11 +28,12 @@
 
 | Reason | Scenarios | Status |
 |---|---|---|
-| Temporal functions (`date`, `time`, `datetime`, `localtime`, `localdatetime`, `duration`, arithmetic, accessors, truncation) | 1054 | planned, not implemented |
+| Temporal functions (`date`, `time`, `datetime`, `localtime`, `localdatetime`, `duration`, arithmetic, accessors, truncation) | 1069 | planned, not implemented |
 | Stored procedures (`CALL`, `YIELD`) | 52 | out of scope |
 | Control-query steps | 15 | harness skip |
 | `percentileCont`/`percentileDisc` aggregates | 13 | planned, not implemented |
 | Pattern/list comprehensions (nested corner cases) | 7 | partial support |
+| Spec-inconsistent associativity with null (openCypher Precedence1, unsatisfiable under three-valued null semantics) | 6 | not implementable |
 | `SemanticError`/`ConstraintVerificationFailed` error kinds | 3 | not implemented |
 | TCK `@ignore` | 1 | harness skip |
 
@@ -85,9 +86,21 @@ Per-scenario failure details are written to `specs/tck-results.txt`.
 
 ## Known limitations (engine bugs in supported features)
 
-The remaining failing scenarios are catalogued in
-`specs/tck-results.txt`.  They cluster in the long tail of the TCK:
-optional-match edge cases, `NaN`/float formatting, deeply mixed
-`size()`/`IN` edge cases, and a handful of error-subtype mismatches.
+The six remaining failing scenarios are catalogued in
+`specs/tck-results.txt`:
+
+- `Return4` [4]/[6]/[7] — `RETURN` column-name fidelity: openCypher keeps
+  the literal source text of an expression as its column name (e.g.
+  `cOuNt( * )`, `coUnt( dIstInct p )`, `aVg(    n.aGe     )`); the engine
+  emits the canonical printed form.
+- `Match4` [7] — variable-length `count(p)` multiplicity over a bound
+  relationship (a count of path rows rather than distinct paths).
+- `Graph5` [5] — label-predicate column-name form (the TCK header `m:TYPE`
+  without parentheses conflicts with the parenthesized form required by
+  `Return2` [8]).
+- `Literals8` [19] — a `@skipGrammarCheck` map-key corner where the
+  expected error subtype (`UnexpectedSyntax`) conflicts with the sibling
+  scenario `Literals2` [11] (`InvalidNumberLiteral`).
+
 None affects the certified core: the differential oracle
 (`src/cypher/reference.lisp`) and the 9,018-check unit suite pass clean.

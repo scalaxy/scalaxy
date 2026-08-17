@@ -14,14 +14,14 @@
   - step handlers for the full TCK vocabulary (graphs, parameters, queries, result tables in all order modes, side-effect accounting per the TCK observability definitions, error expectations)
   - TCK value parser (literals, entities, paths) + structural comparison (null == null, unordered lists, bag matching)
   - unsupported-feature classification with reasons
-- [x] **docs/cypher-certification.md** — TCK report (3,897 scenarios: 2,247 pass, 505 fail, 1,145 unsupported-by-reason)
+- [x] **docs/cypher-certification.md** — TCK report (3,898 scenarios: 2,726 pass, 6 fail, 1,166 unsupported-by-reason)
 - [x] **docs/cypher-reference.md** — language reference for the supported subset
 
 ## Status
 - Engine: unit suite green (9,018 checks, 0 failures)
-- TCK: 3,897 scenarios executed; 2,247 pass; 505 fail (long-tail bugs in
-  supported features); 1,145 unsupported (temporal 1,054, procedures 52,
-  control-query 15, percentile 13, misc)
+- TCK: 3,898 scenarios executed; 2,726 pass; 6 fail (narrow long-tail
+  bugs in supported features); 1,166 unsupported (temporal 1,069,
+  procedures 52, control-query 15, percentile 13, misc)
 - Declared non-goals (see certification doc): temporal functions,
   stored procedures, percentile aggregates
 
