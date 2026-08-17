@@ -322,7 +322,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
           (when (or has-agg?
                     (some (lambda (s) (expr-has-aggregate (getf (cdr s) :expr)))
                           order))
-            (%check-agg-scope items order (car clause)))
+            (%check-agg-scope items order (car clause) scope))
           (dolist (item items)
             (let ((expr (getf (cdr item) :expr))
                   (as (getf (cdr item) :as)))
@@ -378,6 +378,21 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
     new-scope)))
 
 
+(defun %agg-calls-of (expr)
+  "All aggregate calls (:call with an aggregate fn, :count-*) in EXPR."
+  (cond
+    ((atom expr) nil)
+    ((eq (car expr) :count-*) (list expr))
+    ((and (eq (car expr) :call) (%aggregate-fn-p (getf (cdr expr) :fn)))
+     (list expr))
+    (t (loop for c in (cdr expr) when (consp c) append (%agg-calls-of c)))))
+
+(defun %expr-subexprs (expr)
+  "All proper subexpressions of EXPR (cons cells inside it)."
+  (loop for c in (cdr expr)
+        when (consp c) collect c
+        append (when (consp c) (%expr-subexprs c))))
+
 (defun %agg-outer-subexprs (expr)
   "The maximal variable-bearing subexpressions of EXPR that contain no
 aggregate calls (leaves of the aggregate-free skeleton)."
@@ -407,12 +422,14 @@ aggregate calls (leaves of the aggregate-free skeleton)."
            else if (and c (symbolp c) (not (keywordp c))) collect c))
     (t (list expr))))
 
-(defun %check-agg-scope (items order kind)
+(defun %check-agg-scope (items order kind &optional scope)
   "openCypher aggregation scope rules for projection items and their
 ORDER BY subclause."
   (let ((key-exprs (loop for item in items
                          unless (expr-has-aggregate (getf (cdr item) :expr))
                            collect (getf (cdr item) :expr)))
+        (projected-exprs
+          (loop for item in items collect (getf (cdr item) :expr)))
         (projected-names
           (loop for item in items
                 collect (or (getf (cdr item) :as)
@@ -426,6 +443,28 @@ ORDER BY subclause."
                    (unless (member leaf key-exprs :test #'equal)
                      (cypher-signal "AmbiguousAggregationExpression"
                                     :detail (ast-print (list :expr leaf)))))))
+             (check-order-leaves (expr)
+               ;; ORDER BY leaves in an aggregating projection must be
+               ;; projected keys; a leaf inside a key is ambiguous; an
+               ;; unrelated bound variable is undefined here
+               (dolist (leaf (%agg-outer-subexprs expr))
+                 (when (%expr-vars leaf)
+                   (cond
+                     ((member leaf key-exprs :test #'equal) nil)
+                     ((and (symbolp leaf) (member leaf projected-names)) nil)
+                     ((some (lambda (k) (and (consp k) (member leaf (%expr-subexprs k) :test #'equal)))
+                            key-exprs)
+                      (cypher-signal "AmbiguousAggregationExpression"
+                                     :detail (ast-print (list :expr leaf))))
+                     (t (cypher-signal "UndefinedVariable"
+                                       :detail (ast-print (list :expr leaf))))))))
+             (check-order-agg-calls (expr)
+               ;; every aggregate call in the ORDER item must be a
+               ;; projected aggregate (or a re-sort of one)
+               (dolist (ac (%agg-calls-of expr))
+                 (unless (some (lambda (p) (equal p ac)) projected-exprs)
+                   (cypher-signal "UndefinedVariable"
+                                  :detail (ast-print (list :expr ac))))))
              (check-rand (expr)
                (when (and (consp expr) (eq (car expr) :call)
                           (string-equal (getf (cdr expr) :fn) "rand"))
@@ -445,7 +484,8 @@ ORDER BY subclause."
              (cypher-signal "InvalidAggregation"
                             :detail "aggregation in ORDER BY"))
             ((expr-has-aggregate e)
-             (check-leaves e))
+             (check-order-agg-calls e)
+             (check-order-leaves e))
             ((and has-agg? (not (expr-has-aggregate e)))
              (dolist (v (%expr-vars e))
                (unless (member v projected-names)
