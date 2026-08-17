@@ -16,3 +16,7 @@ scalaxy-data/
 
 # OS noise
 .DS_Store
+
+# NYC taxi benchmark: large regenerable data
+benchmarks/nyc-taxi/data/
+benchmarks/nyc-taxi/trips.csv

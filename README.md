@@ -175,6 +175,21 @@ sbcl --script scripts/run-benchmark.lisp
 See [benchmarks/movies/README.md](benchmarks/movies/README.md) for the
 dataset provenance, license, and reference timings.
 
+A second, **large-scale** benchmark ships with the repo: the **NYC taxi
+graph** (263 taxi-zone nodes and up to 2.93 million `TRIP` relationships
+from real NYC TLC trip records), with two modes (zone-pair aggregated and
+per-trip):
+
+```sh
+sbcl --script scripts/run-benchmark-nyc.lisp aggregated "" 20
+sbcl --script scripts/run-benchmark-nyc.lisp per-trip 200000 5
+sbcl --dynamic-space-size 8192 --script scripts/run-benchmark-nyc.lisp per-trip "" 1
+```
+
+See [benchmarks/nyc-taxi/README.md](benchmarks/nyc-taxi/README.md) for the
+data provenance, the reproducible `prepare.py` pipeline, and scalability
+notes.
+
 ## Roadmap
 
 - [x] Consistent-hash routing with virtual nodes

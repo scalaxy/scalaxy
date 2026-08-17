@@ -28,8 +28,15 @@
 - [x] **Benchmark dataset** — Neo4j Movie Graph (171 nodes / 253 rels,
       Apache-2.0) in benchmarks/movies/ + scripts/run-benchmark.lisp with a
       15-query suite (counts, filters, aggregation, paths, var-length)
+- [x] **Large-scale benchmark dataset** — NYC taxi graph (263 zones, up to
+      2.93M TRIP relationships from real TLC data) in benchmarks/nyc-taxi/ +
+      scripts/run-benchmark-nyc.lisp, with a reproducible prepare.py
+      pipeline and aggregated/per-trip modes
 
 ## Remaining (future work)
+- Streaming aggregation: MATCH currently materializes rows before
+  aggregation, so whole-graph aggregations over the full 2.93M-edge taxi
+  graph need a large heap (see benchmarks/nyc-taxi/README.md)
 - Temporal value types and functions (date/time/datetime/localtime/
   localdatetime/duration) — the largest remaining TCK block
 - The long tail of failing scenarios in specs/tck-results.txt
