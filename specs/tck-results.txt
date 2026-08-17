@@ -6,14 +6,13 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal10.feature :: [13] Should propagate null #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/temporal/Temporal1.feature :: [11] Should construct date time from epoch :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String9.feature :: [5] Finding strings ending with newline :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/string/String9.feature :: [4] Finding strings ending with whitespace :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier4.feature :: [9] All quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier3.feature :: [9] Any quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier2.feature :: [9] Single quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/quantifier/Quantifier1.feature :: [9] None quantifier on list containing relationships :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [9] Use a variable-length pattern comprehension in WITH :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern2.feature :: [8] Use a pattern comprehension in WITH :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [19] Using a negated existential pattern predicate :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [2] Return relationships by fetching them from the path - starting from the end :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [1] Return relationships by fetching them from the path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/mathematical/Mathematical3.feature :: [1] Fail for invalid Unicode hyphen in subtraction :: expected SyntaxError: InvalidUnicodeCharacter, got "UnexpectedSyntax"
@@ -30,8 +29,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [2] Simple subquery with WHERE clause :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [8] De Morgan's law on non-null: the negation of a conjunction is the disjunction of the negations :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [7] De Morgan's law on non-null: the negation of a disjunction is the conjunction of the negations :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation5.feature :: [1] `collect()` filtering nulls :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/aggregation/Aggregation2.feature :: [12] `min()` over mixed values :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with/With4.feature :: [6] Reusing variable names in WITH :: result mismatch (ordered)
@@ -67,7 +64,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge1.feature :: [9] Merge should support updates while merging :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match9.feature :: [6] Matching relationships into a list and matching variable length using the list, with bound nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match8.feature :: [3] Matching and disregarding output, then matching again :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match7.feature :: [25] Optionally matching self-loops without matches :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [8] Matching relationships into a list and matching variable length using the list :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match4.feature :: [7] Matching variable length patterns including a bound relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match3.feature :: [16] Mixing directed and undirected pattern parts with self-relationship, undirected :: result mismatch (any order)

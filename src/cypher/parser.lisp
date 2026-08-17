@@ -200,6 +200,27 @@
       (%perr p "UnexpectedSyntax" "empty query"))
     (cons :query (nreverse clauses))))
 
+(defun %at-rel-pattern-start (p)
+  "Like %AT-PATTERN-START but requires the pattern to continue with a
+relationship (used after NOT in expression context, where a bare
+parenthesized variable (n) is an expression, not a pattern)."
+  (let ((tokens (cyparser-tokens p))
+        (pos (cyparser-pos p)))
+    (and (%at-pattern-start p)
+         (let ((i (1+ pos)))
+           ;; skip to the node's closing paren: ( ident? :label* {props}? )
+           (loop while (and (< i (length tokens))
+                            (not (and (eql (cytoken-kind (nth i tokens)) :punct)
+                                      (string= (cytoken-value (nth i tokens)) ")"))))
+                 do (incf i))
+           (incf i)
+           ;; the token after the node must start a relationship
+           (let ((tok (nth i tokens)))
+             (and tok
+                  (eql (cytoken-kind tok) :punct)
+                  (let ((v (cytoken-value tok)))
+                    (or (string= v "-") (string= v "<")))))))))
+
 (defun %at-pattern-start (p)
   "True when the token stream begins a node pattern (used to recognize
 bare pattern predicates in WHERE)."
@@ -548,7 +569,7 @@ An optional 'var =' prefix binds the whole chain to a path variable."
 (defun parse-not (p)
   (if (%at-keyword p "not")
       (progn (%advance p)
-             (if (%at-pattern-start p)
+             (if (%at-rel-pattern-start p)
                  (list :not (list :exists :chain (parse-chain p)))
                  (list :not (parse-not p))))
       (parse-comparison p)))

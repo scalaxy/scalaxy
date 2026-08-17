@@ -690,7 +690,7 @@ longer exists in GRAPH (openCypher: deleted entities are inaccessible)."
     ((and (stringp a) (stringp b))
      (if (zerop (length b))
          t
-         (let ((pos (search b a)))
+         (let ((pos (search b a :from-end (eq which :ends))))
            (case which
              (:starts (if (and pos (zerop pos)) t :cypher-false))
              (:ends (if (and pos (= (+ pos (length b)) (length a))) t :cypher-false))
