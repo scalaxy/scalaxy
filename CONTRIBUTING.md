@@ -30,7 +30,7 @@ bug reports, and ideas are all welcome.
    ```
 
 2. Make a **focused change** and add tests alongside any behavior change.
-3. Keep the suite green: `make test` must pass locally (8,654 checks).
+3. Keep the suite green: `make test` must pass locally (9,018 checks).
 4. Push your branch and open a pull request with a clear description of
    the change and the tests that cover it.
 
@@ -48,7 +48,7 @@ bug reports, and ideas are all welcome.
 ## Testing
 
 ```sh
-make test                  # full suite (13 groups, 8,654 checks)
+make test                  # full suite (34 groups, 9,018 checks)
 make build                 # compile the systems with ASDF
 ```
 
