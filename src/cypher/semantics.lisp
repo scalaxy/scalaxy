@@ -312,10 +312,14 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
               ;; or variables created earlier in this clause
               (dolist (pr (getf (cdr el) :props))
                 (let ((expr (cdr pr)))
-                  (unless (atom expr)
-                    (dolist (v (%expr-vars expr))
-                      (unless (or (%in-scope v s) (member v created))
-                        (%check-var v scope)))))))))))
+                  (cond
+                    ((and (symbolp expr) (not (keywordp expr)))
+                     (unless (or (%in-scope expr s) (member expr created))
+                       (%check-var expr scope)))
+                    ((consp expr)
+                     (dolist (v (%expr-vars expr))
+                       (unless (or (%in-scope v s) (member v created))
+                         (%check-var v scope))))))))))))
     ;; created entities are bound for subsequent clauses
     (dolist (v created)
       (setf s (acons v (if (member v created-rels) :rel :node) s)))
@@ -597,7 +601,16 @@ ORDER BY subclause."
          (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope
                                            :require-directed t)))
         (:merge
-         (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope)))
+         (let ((pre-scope scope))
+           (setf scope (%check-create-pattern (getf (cdr clause) :pattern) scope))
+           ;; ON MATCH / ON CREATE SET items are checked against the
+           ;; scope at their point of application
+           (dolist (items (append (getf (cdr clause) :on-create)
+                                  (getf (cdr clause) :on-match)))
+             (%check-set-items (if (and (consp items) (eq (car items) :set-items))
+                                   (getf (cdr items) :set-items)
+                                   (list items))
+                               scope))))
         (:set (%check-set-items (getf (cdr clause) :items) scope))
         (:remove (%check-remove-items (getf (cdr clause) :items) scope))
         (:delete
