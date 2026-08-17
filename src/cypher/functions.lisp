@@ -530,7 +530,7 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
 expressions (not trivial literals/variables/params).  The reference
 treats X = X as true for identical complex expressions."
   (and (consp a) (consp b)
-       (not (member (car a) '(:lit :var :param)))
+       (not (member (car a) '(:lit :var :param :map :list)))
        (equal a b)))
 
 (defun %eval-bin (op a b &optional ast-a ast-b)

@@ -209,10 +209,29 @@ scenarios: one per Examples data row with placeholders substituted."
 ;;; ------------------------------------------------------------------
 ;;; TCK value parsing
 
+(defun %tck-ast->value (expr)
+  "Convert a parsed TCK literal AST into a value, handling nested
+node/relationship literals (e.g. [()], [(:A {k: 1})], {x: (:B)})."
+  (cond
+    ((and (consp expr) (eq (car expr) :node))
+     (list :node (getf (cdr expr) :labels)
+           (mapcar (lambda (p) (cons (car p) (%tck-ast->value (cdr p))))
+                   (getf (cdr expr) :props))))
+    ((and (consp expr) (eq (car expr) :rel))
+     (list :rel (getf (cdr expr) :type)
+           (mapcar (lambda (p) (cons (car p) (%tck-ast->value (cdr p))))
+                   (getf (cdr expr) :props))))
+    ((and (consp expr) (eq (car expr) :list))
+     (cypher-list (mapcar #'%tck-ast->value (getf (cdr expr) :items))))
+    ((and (consp expr) (eq (car expr) :map))
+     (cypher-map (mapcar (lambda (p) (cons (car p) (%tck-ast->value (cdr p))))
+                         (getf (cdr expr) :pairs))))
+    (t (eval-expr expr nil nil nil))))
+
 (defun %tck-eval-literal (text)
   "Parse a TCK result cell (Cypher literal) into a value."
   (let ((expr (cypher-parse-expr text)))
-    (eval-expr expr nil nil nil)))
+    (%tck-ast->value expr)))
 
 (defun %tck-node-p (text)
   (and (plusp (length text)) (char= (char text 0) (code-char 40))))
@@ -323,8 +342,20 @@ with dir :in/:out/:both."
     ((%tck-rel-p text)
      (handler-case (%tck-parse-entity text)
        (error () (format nil "<unparsable: ~a>" text))))
-    (t (handler-case (%tck-eval-literal text)
-         (error () (format nil "<unparsable: ~a>" text))))))
+    (t (let ((v (handler-case (%tck-eval-literal text)
+                   (error () (format nil "<unparsable: ~a>" text)))))
+         (if (and (stringp v)
+                  (not (zerop (length v)))
+                  (char= (char v 0) #\<)
+                  (>= (length text) 2)
+                  (char= (char text 0) #\[)
+                  (char= (char text (1- (length text))) #\]))
+             ;; a list literal containing entity literals (e.g. [()])
+             (let ((inner (subseq text 1 (1- (length text)))))
+               (cypher-list
+                (mapcar #'%tck-parse-cell
+                        (remove "" (split-sequence-on #\, inner) :test #'equal))))
+             v)))))
 
 ;;; ------------------------------------------------------------------
 ;;; TCK value comparison
@@ -382,14 +413,14 @@ equals null."
      (let ((as (cypher-list-elements a)) (es (cypher-list-elements e)))
        (and (= (length as) (length es))
             (if unordered
-                (%bag-match (lambda (x y) (%tck-structural= x y :unordered t)) es as)
-                (every (lambda (x y) (%tck-structural= x y :unordered unordered)) as es)))))
+                (%bag-match (lambda (x y) (%tck-value= x y :unordered t)) es as)
+                (every (lambda (x y) (%tck-value= x y :unordered unordered)) as es)))))
     ((and (cypher-map-p a) (cypher-map-p e))
      (let ((as (cypher-map-pairs a)) (es (cypher-map-pairs e)))
        (and (= (length as) (length es))
             (every (lambda (p)
                      (let ((q (assoc (car p) es :test #'equal)))
-                        (and q (%tck-structural= (cdr p) (cdr q) :unordered unordered))))
+                        (and q (%tck-value= (cdr p) (cdr q) :unordered unordered))))
                    as))))
     ((and (numberp a) (numberp e)) (= a e))
     ((and (or (eq a t) (cypher-false-p a)) (or (eq e t) (cypher-false-p e)))

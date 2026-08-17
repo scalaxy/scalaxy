@@ -478,7 +478,8 @@ rejected by the semantic checker)."
     (:sum (or (getf state :total) 0))
     (:avg (let ((n (getf state :n)))
             (if (zerop n) :cypher-null
-                (/ (or (getf state :total) 0) n))))
+                ;; avg always yields a float (openCypher)
+                (float (/ (or (getf state :total) 0) n)))))
     (:min (or (getf state :best) :cypher-null))
     (:max (or (getf state :best) :cypher-null))
     (:collect (cypher-list (nreverse (or (getf state :items) nil))))))

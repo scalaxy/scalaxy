@@ -120,14 +120,31 @@
        (:exists (format nil "exists(~a)" (%print-chain (getf (cdr e) :chain))))
        (t (format nil "<?~a>" (car e)))))))
 
+(defun %bin-prec (op)
+  "Operator precedence (higher binds tighter) for minimal-paren printing."
+  (ecase op
+    (:or 1) (:xor 2) (:and 3)
+    (:= 5) (:<> 5) (:< 5) (:> 5) (:<= 5) (:>= 5) (:=~ 5)
+    (:in 5) (:starts 5) (:ends 5) (:contains 5)
+    (:+ 6) (:- 6) (:* 7) (:/ 7) (:% 7) (:^ 8)))
+
 (defun %print-bin (op a b)
-  (let ((opstr (ecase op
-                 (:or "OR") (:xor "XOR") (:and "AND")
-                 (:= "=") (:<> "<>") (:< "<") (:> ">") (:<= "<=") (:>= ">=")
-                 (:+ "+") (:- "-") (:* "*") (:/ "/") (:% "%") (:^ "^")
-                 (:=~ "=~") (:in "IN") (:starts "STARTS WITH")
-                 (:ends "ENDS WITH") (:contains "CONTAINS"))))
-    (format nil "(~a ~a ~a)" (%print-expr a) opstr (%print-expr b))))
+  (let* ((opstr (ecase op
+                  (:or "OR") (:xor "XOR") (:and "AND")
+                  (:= "=") (:<> "<>") (:< "<") (:> ">") (:<= "<=") (:>= ">=")
+                  (:+ "+") (:- "-") (:* "*") (:/ "/") (:% "%") (:^ "^")
+                  (:=~ "=~") (:in "IN") (:starts "STARTS WITH")
+                  (:ends "ENDS WITH") (:contains "CONTAINS")))
+         (p (%bin-prec op))
+         (left (if (and (consp a) (eq (car a) :bin)
+                        (< (%bin-prec (second a)) p))
+                   (format nil "(~a)" (%print-expr a))
+                   (%print-expr a)))
+         (right (if (and (consp b) (eq (car b) :bin)
+                         (<= (%bin-prec (second b)) p))
+                    (format nil "(~a)" (%print-expr b))
+                    (%print-expr b))))
+    (format nil "~a ~a ~a" left opstr right)))
 
 (defun %print-props (props)
   (cond

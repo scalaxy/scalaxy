@@ -565,9 +565,9 @@ means a < b AND b < c)."
 
 (defun parse-power (p)
   (let ((e (parse-unary p)))
-    (when (%at-punct p "^")
-      (%advance p)
-      (setf e (list :bin :^ e (parse-power p))))
+    (loop while (%at-punct p "^")
+          do (%advance p)
+             (setf e (list :bin :^ e (parse-unary p))))
     e))
 
 (defun parse-unary (p)
@@ -631,6 +631,18 @@ means a < b AND b < c)."
     ((%at-punct p "[")
      (%advance p)
      (cond
+       ((%at-path-assignment p)
+        ;; pattern comprehension with a path variable: [p = (a)-->(b) | p]
+        (let ((pv (ast-var (prog1 (%curv p) (%advance p) (%advance p)))))
+          (let ((chain (parse-chain p)))
+            (let ((where (when (%at-keyword p "where")
+                           (%advance p)
+                           (parse-or p))))
+              (%expect-punct p "|")
+              (let ((out (parse-or p)))
+                (%expect-punct p "]")
+                (list :pcomp :chain (list* :path-var pv chain)
+                      :where where :out out))))))
        ((%at-punct p "(")
         ;; pattern comprehension [(a)-->(b) (WHERE pred)? | out]
         (let ((chain (parse-chain p)))
