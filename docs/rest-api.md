@@ -1,6 +1,6 @@
 
 
-The web console is served by each node over HTTP (default port 8080). With `SCALAXY_PEERS` set, the API is **cluster-aware**: key operations route to ring owners, and status is aggregated across all peers.
+The web console is served by each node over HTTP (default port 8080). With `SCALAXY_PEERS` set, the API is **cluster-aware**: key operations route to ring owners, and status is aggregated across all peers.  In addition to keys, each database holds a **property graph** queryable with the openCypher language via `POST /api/cypher`.
 
 ## Endpoints
 
@@ -21,7 +21,7 @@ GET /api/status
 ```json
 {
   "node":   {"id":"node-0","address":"0.0.0.0:7200","http":"0.0.0.0:8080",
-             "keys":18,"uptime":42,"replicas":1,"version":"1.6.7","status":"ok"},
+             "keys":18,"uptime":42,"replicas":1,"version":"1.8.0","status":"ok"},
   "nodes":  [{"id":"node-1","keys":27,"status":"ok"},
              {"id":"node-2","keys":15,"status":"ok"}],
   "cluster":{"nodes":3,"keys":60,"replicas":1,"status":"healthy"},
@@ -60,7 +60,26 @@ POST /api/query
 {"ok":true,"output":"2 keys matching \"cust:\":\ncust:1  (2 bytes)\ncust:2  (2 bytes)"}
 ```
 
-Supported commands: `put <key> <value>`, `get <key>`, `delete <key>`, `scan <prefix> [limit]`.
+Supported commands: `put <key> <value>`, `get <key>`, `delete <key>`,
+`scan <prefix> [limit]`, `cypher <query>` (see below).
+
+### Cypher queries
+
+```text
+POST /api/cypher
+{"query":"MATCH (m:Movie {title: 'The Matrix'})<-[:ACTED_IN]-(p:Person) RETURN p.name AS actor ORDER BY actor","db":"default"}
+```
+
+```json
+{"columns":["actor"],"rows":[["Keanu Reeves"],["Laurence Fishburne"]],"count":2}
+```
+
+Runs an openCypher query against the graph database in `db` (default
+`default`).  The request body may include `params` (a JSON object of
+query parameters).  A Cypher error returns HTTP 400 with `error` and
+`kind` fields (the openCypher error-kind taxonomy).  See
+[docs/cypher-reference.md](cypher-reference.md) for the language
+reference.
 
 ### Node-local status
 

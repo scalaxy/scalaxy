@@ -8,8 +8,15 @@ This directory mirrors the core reference documentation so it is available
 in-repository:
 
 - [protocol.md](protocol.md) — the binary wire format shared by the data
-  plane and the durability log.
-- [rest-api.md](rest-api.md) — the HTTP API behind the web console.
+  plane and the durability log (including the `CYPHER` opcode).
+- [rest-api.md](rest-api.md) — the HTTP API behind the web console
+  (including `POST /api/cypher`).
+- [cypher-implementation-plan.md](cypher-implementation-plan.md) — the
+  axiomatic design for the graph layer and the openCypher engine.
+- [cypher-reference.md](cypher-reference.md) — the openCypher language
+  reference implemented by Scalaxy.
+- [cypher-certification.md](cypher-certification.md) — the conformance
+  report against the openCypher TCK.
 
 ## Quick pointers
 

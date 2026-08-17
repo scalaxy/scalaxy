@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Document | `docs/cypher-implementation-plan.md` |
-| Project | Scalaxy 1.6.7 — distributed key/value database in Common Lisp (SBCL) |
+| Project | Scalaxy 1.8.0 — distributed key/value database in Common Lisp (SBCL) |
 | Scope | End-to-end analysis of the current codebase + full implementation plan for the openCypher query language |
 | Status | Draft for review (Phase 0 deliverable) |
 | Convention | "Cypher" below means the openCypher query language family (ISO GQL's precursor dialect) |

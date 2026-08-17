@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-17
+
 ### Added
 
 - Graph database layered on the replicated key/value store, with the
@@ -45,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: `docs/cypher-implementation-plan.md` (axiomatic design),
   `docs/cypher-reference.md` (language reference),
   `docs/cypher-certification.md` (conformance report).
+- Benchmark datasets (see `benchmarks/` and
+  `scripts/run-benchmark*.lisp`):
+  - the Neo4j **Movie Graph** (171 nodes / 253 relationships; Apache-2.0)
+    with a 15-query suite — counts, filters, aggregation, paths,
+    var-length relationships;
+  - the **NYC taxi graph** built from NYC TLC trip records (263 taxi-zone
+    nodes; zone-pair aggregated and per-trip modes, up to 2,933,097
+    `TRIP` relationships for one month), with a reproducible `prepare.py`
+    pipeline and a two-mode query suite.
 
 ### Changed
 

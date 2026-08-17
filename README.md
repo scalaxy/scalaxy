@@ -3,7 +3,7 @@
 **Multi-purpose, cloud-ready distributed database.**
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.6.7-blue.svg)
+![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)
 ![Language: Common Lisp](https://img.shields.io/badge/language-Common%20Lisp-4f8cff.svg)
 ![CI](https://github.com/scalaxy/scalaxy/actions/workflows/ci.yml/badge.svg)
 ![Docs](https://img.shields.io/badge/docs-scalaxy.org-blueviolet.svg)

@@ -5,7 +5,7 @@
 
 (defsystem "scalaxy"
   :description "Scalaxy: multi-purpose cloud-ready distributed database."
-  :version "1.6.7"
+  :version "1.8.0"
   :author "Artem Andreenko <miolini>"
   :license "MIT"
   :serial t

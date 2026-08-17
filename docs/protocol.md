@@ -14,6 +14,9 @@ The same record format is used for:
 - client requests over the data-plane TCP port (7200),
 - replication messages between nodes,
 - the append-only durability log (so log records can be replayed and replicated verbatim).
+Cypher queries run over the same frames: a `CYPHER` request carries the
+database, the query text, and JSON parameters, and the reply is a
+`RESPONSE` whose value is the JSON result table.
 
 ## Opcodes
 
@@ -30,6 +33,7 @@ The same record format is used for:
 | `PONG` | 9 | — |
 | `SNAPSHOT` | 10 | count (u32) + (key, value) pairs |
 | `RESPONSE` | 11 | status (u8) + value octets + count (u32) + pairs |
+| `CYPHER` | 12 | db (string) + query (string) + params (JSON octets) |
 
 ## Primitives
 
