@@ -252,8 +252,8 @@ node/relationship literals (e.g. [()], [(:A {k: 1})], {x: (:B)})."
         (cond
           (instr (when (char= c (code-char 39)) (setf instr nil)))
           ((char= c (code-char 39)) (setf instr t))
-          ((member c (list (code-char 91) (code-char 40))) (incf depth))
-          ((member c (list (code-char 93) (code-char 41))) (decf depth))
+          ((member c (list (code-char 91) (code-char 40) (code-char 123))) (incf depth))
+          ((member c (list (code-char 93) (code-char 41) (code-char 125))) (decf depth))
           ((and (char= c (code-char 44)) (zerop depth))
            (push (subseq text start i) out)
            (setf start (1+ i))))))

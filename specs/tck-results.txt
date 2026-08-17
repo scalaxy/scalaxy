@@ -1,4 +1,3 @@
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/map/Map3.feature :: [2] Using `keys()` on a parameter map :: result mismatch (list order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals8.feature :: [19] Fail on a map containing key starting with a number :: expected SyntaxError: UnexpectedSyntax, got "InvalidNumberLiteral"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [5] Label expression on null :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [3] Full existential subquery with update clause should fail :: expected SyntaxError: InvalidClauseComposition, got NIL
