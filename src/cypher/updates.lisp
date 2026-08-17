@@ -133,6 +133,27 @@ value."
         (push row2 out)))
     (nreverse out)))
 
+(defun %merge-created-rel (g r els rel-el)
+  "The created relationship for REL-EL in MERGE: the bound one when the
+pattern names it, otherwise the relationship between the adjacent
+created nodes."
+  (let ((rv (getf (cdr rel-el) :var)))
+    (if rv
+        (let ((rel (graph-relationship g (getf (row-get r rv) :id))))
+          (list* :start-node (graph-node g (getf rel :start))
+                 :end-node (graph-node g (getf rel :end))
+                 rel))
+        (let* ((pos (position rel-el els))
+               (src (row-get r (getf (cdr (nth (1- pos) els)) :var)))
+               (dst (row-get r (getf (cdr (nth (1+ pos) els)) :var)))
+               (rid (loop for (x . nb) in (graph-expand g (getf src :id) :dir :out)
+                          when (equal nb (getf dst :id))
+                            return x))
+               (rel (graph-relationship g rid)))
+          (list* :start-node (graph-node g (getf rel :start))
+                 :end-node (graph-node g (getf rel :end))
+                 rel)))))
+
 (defun %merge-clause (g rows clause graph params)
   "MERGE: match the whole pattern anchored to bound vars; bind or create.
 ON MATCH / ON CREATE SET items are applied to the matched/created rows."
@@ -166,8 +187,7 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
                                         collect (row-get r (getf (cdr el) :var))))
                          (rels (loop for el in els
                                      when (eq (car el) :rel)
-                                       collect (graph-relationship
-                                                g (getf (row-get r (getf (cdr el) :var)) :id))))
+                                       collect (%merge-created-rel g r els el)))
                          (path (list :path
                                      (loop for n in nodes
                                            for i from 0
@@ -175,6 +195,7 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
                                                       (list n)
                                                       (list (nth (1- i) rels) n))))))
                     (setf r (row-bind r pv path)))))
+
               (push r out)))))
     (nreverse out)))
 
