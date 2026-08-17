@@ -490,11 +490,15 @@ rejected by the semantic checker)."
                             (getf state :best))))
       (:collect
        (if distinct?
-           (let ((seen (or (getf state :seen) (make-hash-table :test #'equal))))
-             (if (gethash v seen)
-                 (list :seen seen :items (or (getf state :items) nil))
-                 (progn (setf (gethash v seen) t)
-                        (list :seen seen :items (cons v (or (getf state :items) nil))))))
+           (if (cypher-null-p v)
+               ;; DISTINCT collect excludes null values
+               (list :seen (or (getf state :seen) (make-hash-table :test #'equal))
+                     :items (or (getf state :items) nil))
+               (let ((seen (or (getf state :seen) (make-hash-table :test #'equal))))
+                 (if (gethash v seen)
+                     (list :seen seen :items (or (getf state :items) nil))
+                     (progn (setf (gethash v seen) t)
+                            (list :seen seen :items (cons v (or (getf state :items) nil)))))))
            (list :items (cons v (or (getf state :items) nil))))))))
 
 (defun %agg-finish (kind state)

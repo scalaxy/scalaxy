@@ -81,10 +81,11 @@
        (:neg (format nil "(- ~a)" (%print-expr (second e))))
        (:is-null (format nil "(~a IS NULL)" (%print-expr (getf (cdr e) :expr))))
        (:is-not-null (format nil "(~a IS NOT NULL)" (%print-expr (getf (cdr e) :expr))))
-       (:call (format nil "~a(~{~a~^, ~})"
+       (:call (format nil "~a(~a~{~a~^, ~})"
                       (if (stringp (getf (cdr e) :fn))
                           (getf (cdr e) :fn)
                           (symbol-name (getf (cdr e) :fn)))
+                      (if (getf (cdr e) :distinct) "DISTINCT " "")
                       (mapcar #'%print-expr (getf (cdr e) :args))))
        (:count-* "count(*)")
        (:list (format nil "[~{~a~^, ~}]" (mapcar #'%print-expr (getf (cdr e) :items))))
