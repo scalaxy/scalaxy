@@ -379,7 +379,11 @@ bare pattern chains (pattern predicates, EXISTS form)."
                      (list :remove-prop :var var :prop (%expect-ident p)))
                     ((%at-punct p ":")
                      (%advance p)
-                     (list :remove-label :var var :label (%expect-ident p)))
+                     (let ((labels (list (%expect-ident p))))
+                       (loop while (%at-punct p ":")
+                             do (%advance p)
+                                (push (%expect-ident p) labels))
+                       (list :remove-labels :var var :labels (nreverse labels))))
                     (t (%perr p "UnexpectedSyntax" "malformed REMOVE item"))))
         while (when (%at-punct p ",") (%advance p) t)))
 

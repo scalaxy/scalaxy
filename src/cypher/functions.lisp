@@ -784,6 +784,7 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
        (:idx (let ((v (eval-expr (getf (cdr expr) :expr) row graph params))
                    (i (eval-expr (getf (cdr expr) :index) row graph params)))
                (cond
+                 ((%tv-null i) :cypher-null)
                  ((and (stringp i)
                        (or (cypher-map-p v) (%node-p v) (%rel-p v)))
                   (%check-entity-live v graph)

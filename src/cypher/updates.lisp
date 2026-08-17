@@ -283,7 +283,15 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
          (dolist (row rows)
            (let ((entity (%row-entity row var)))
              (when (%node-p entity)
-               (graph-remove-node-label g (getf entity :id) label))))))))
+               (graph-remove-node-label g (getf entity :id) label))))))
+      (:remove-labels
+       (let ((var (getf (cdr item) :var))
+             (labels (getf (cdr item) :labels)))
+         (dolist (row rows)
+           (let ((entity (%row-entity row var)))
+             (when (%node-p entity)
+               (dolist (label labels)
+                 (graph-remove-node-label g (getf entity :id) label)))))))))
   ;; refresh the bound entities so subsequent clauses see the new state
   (mapcar (lambda (row) (%refresh-row-entities g row)) rows))
 
