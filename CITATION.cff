@@ -4,14 +4,15 @@ title: "Scalaxy"
 abstract: >-
   Multi-purpose, cloud-ready distributed database written in Common Lisp:
   consistent-hash sharding, synchronous replication, durable append-only
-  log, and an embedded web console.
+  log, an embedded web console, and a property-graph layer with the
+  openCypher query language.
 authors:
   - family-names: Andreenko
     given-names: Artem
     alias: miolini
     orcid: ""
 version: "1.8.0"
-date-released: "2026-08-07"
+date-released: "2026-08-17"
 url: "https://github.com/scalaxy/scalaxy"
 license: MIT
 keywords:
@@ -19,3 +20,5 @@ keywords:
   - distributed-systems
   - common-lisp
   - key-value
+  - graph-database
+  - cypher

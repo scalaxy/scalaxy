@@ -83,7 +83,7 @@ src/gateway.lisp         ring routing over TCP, failover, scan fan-out, status a
 src/cluster.lisp         in-process cluster (tests): ring + synchronous replication
 src/api.lisp             client API: connect/put/get/delete/scan over TCP
 src/main.lisp            standalone node: CLI/env config, start-node, main
-tests/run-tests.lisp     9,018 dependency-free checks (34 groups, incl. graph/Cypher), ~1.5s
+tests/run-tests.lisp     9,018 dependency-free checks (33 groups, incl. graph/Cypher), ~1.9s
 web/                     console assets (index.html, app.js, app.css)
 docs/                    protocol.md, rest-api.md
 deploy/, scripts/, bin/  Docker/Kubernetes/compose, test launcher, node launcher

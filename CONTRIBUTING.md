@@ -48,7 +48,7 @@ bug reports, and ideas are all welcome.
 ## Testing
 
 ```sh
-make test                  # full suite (34 groups, 9,018 checks)
+make test                  # full suite (33 groups, 9,018 checks)
 make build                 # compile the systems with ASDF
 ```
 

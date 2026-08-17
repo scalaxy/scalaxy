@@ -67,11 +67,11 @@ Supported commands: `put <key> <value>`, `get <key>`, `delete <key>`,
 
 ```text
 POST /api/cypher
-{"query":"MATCH (m:Movie {title: 'The Matrix'})<-[:ACTED_IN]-(p:Person) RETURN p.name AS actor ORDER BY actor","db":"default"}
+{"query":"MATCH (m:Movie {title: 'The Matrix'})<-[:ACTED_IN]-(p:Person) RETURN p.name AS actor ORDER BY actor LIMIT 2","db":"default"}
 ```
 
 ```json
-{"columns":["actor"],"rows":[["Keanu Reeves"],["Laurence Fishburne"]],"count":2}
+{"columns":["actor"],"rows":[["Carrie-Anne Moss"],["Emil Eifrem"]],"count":2}
 ```
 
 Runs an openCypher query against the graph database in `db` (default

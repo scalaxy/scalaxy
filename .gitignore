@@ -20,3 +20,6 @@ scalaxy-data/
 # NYC taxi benchmark: large regenerable data
 benchmarks/nyc-taxi/data/
 benchmarks/nyc-taxi/trips.csv
+
+# Agent session artifacts
+prime-agent-session-*.html
