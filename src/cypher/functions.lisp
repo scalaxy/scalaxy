@@ -525,17 +525,29 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
     (t (cypher-signal "InvalidArgumentType"
                       :detail (format nil "indexing a ~a" (cypher-type-name m))))))
 
-(defun %eval-bin (op a b)
+(defun %expr-identical-p (a b)
+  "True when the two AST operands are structurally identical complex
+expressions (not trivial literals/variables/params).  The reference
+treats X = X as true for identical complex expressions."
+  (and (consp a) (consp b)
+       (not (member (car a) '(:lit :var :param)))
+       (equal a b)))
+
+(defun %eval-bin (op a b &optional ast-a ast-b)
   (case op
     ((:and) (%tv-and a b))
     ((:or) (%tv-or a b))
     ((:xor) (%tv-xor a b))
-    ((:=) (cypher-= a b))
-    ((:<>) (let ((eq? (cypher-= a b)))
-             (cond
-               ((cypher-null-p eq?) :cypher-null)
-               ((%tv-true eq?) :cypher-false)
-               (t t))))
+    ((:=) (if (%expr-identical-p ast-a ast-b)
+              t
+              (cypher-= a b)))
+    ((:<>) (if (%expr-identical-p ast-a ast-b)
+               :cypher-false
+               (let ((eq? (cypher-= a b)))
+                 (cond
+                   ((cypher-null-p eq?) :cypher-null)
+                   ((%tv-true eq?) :cypher-false)
+                   (t t)))))
     ((:< :> :<= :>=)
      (let ((c (cypher-compare a b)))
        (case c
@@ -604,15 +616,28 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
          (var (getf (cdr form) :var))
          (list-v (eval-expr (getf (cdr form) :list) row graph params))
          (items (if (cypher-list-p list-v) (cypher-list-elements list-v) nil)))
-    (case kind
-      (:all (dolist (x items t) (unless (%tv-true (eval-expr (getf (cdr form) :pred) (acons var x row) graph params)) (return :cypher-false))))
-      (:any (dolist (x items :cypher-false) (when (%tv-true (eval-expr (getf (cdr form) :pred) (acons var x row) graph params)) (return t))))
-      (:none (dolist (x items t) (when (%tv-true (eval-expr (getf (cdr form) :pred) (acons var x row) graph params)) (return :cypher-false))))
-      (:single (let ((n 0))
-                 (dolist (x items)
-                   (when (%tv-true (eval-expr (getf (cdr form) :pred) (acons var x row) graph params))
-                     (incf n)))
-                 (cond ((= n 1) t) ((zerop n) :cypher-false) (t :cypher-false)))))))
+    (if (not (cypher-list-p list-v))
+        ;; quantifier over a non-list (including null) is null
+        :cypher-null
+        (let ((trues 0) (nulls 0) (falses 0))
+          (dolist (x items)
+            (let ((v (eval-expr (getf (cdr form) :pred) (acons var x row) graph params)))
+              (cond ((%tv-true v) (incf trues))
+                    ((%tv-null v) (incf nulls))
+                    (t (incf falses)))))
+          (case kind
+            (:all (cond ((plusp falses) :cypher-false)
+                        ((plusp nulls) :cypher-null)
+                        (t t)))
+            (:any (cond ((plusp trues) t)
+                        ((plusp nulls) :cypher-null)
+                        (t :cypher-false)))
+            (:none (cond ((plusp trues) :cypher-false)
+                         ((plusp nulls) :cypher-null)
+                         (t t)))
+            (:single (cond ((> trues 1) :cypher-false)
+                           ((= trues 1) (if (plusp nulls) :cypher-null t))
+                           (t (if (plusp nulls) :cypher-null :cypher-false)))))))))
 
 (defun eval-expr (expr row graph params)
   "Evaluate EXPR against ROW (alist of var -> value).  GRAPH is the
@@ -668,7 +693,8 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
                                                      (cypher-type-name v)))))))
        (:bin (%eval-bin (second expr)
                         (eval-expr (third expr) row graph params)
-                        (eval-expr (fourth expr) row graph params)))
+                        (eval-expr (fourth expr) row graph params)
+                        (third expr) (fourth expr)))
        (:not (%tv-not (eval-expr (second expr) row graph params)))
        (:neg (let ((v (eval-expr (second expr) row graph params)))
                (if (%tv-null v) :cypher-null

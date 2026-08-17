@@ -422,7 +422,7 @@ Returns T or NIL."
          (cypher-list-p expected) (cypher-map-p expected))
      (%tck-structural= actual expected :unordered unordered))
     (t (let ((e (cypher-= actual expected)))
-         (and (not (cypher-null-p e)) e)))))
+         (and (not (cypher-null-p e)) (eq e t))))))
 
 (defun %bag-match (test expected actual)
   "True when every element of EXPECTED can be matched (by TEST) to a

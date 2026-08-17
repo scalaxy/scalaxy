@@ -490,20 +490,14 @@ An optional 'var =' prefix binds the whole chain to a path variable."
              (list :not (parse-not p)))
       (parse-comparison p)))
 
-(defun parse-comparison (p)
-  "Comparison operators chain with implicit AND (openCypher: a < b < c
-means a < b AND b < c)."
-  (let ((e (parse-additive p))
-        (chain nil))
+(defun parse-comp-operand (p)
+  "A comparison operand: arithmetic expression followed by optional
+null predicates (IS [NOT] NULL) or list/string predicates (IN,
+STARTS WITH, ENDS WITH, CONTAINS), which bind tighter than the
+comparison operators."
+  (let ((e (parse-additive p)))
     (loop
       (cond
-        ((%at-punct p "=") (%advance p) (push (cons := (parse-additive p)) chain))
-        ((%at-punct p "<>") (%advance p) (push (cons :<> (parse-additive p)) chain))
-        ((%at-punct p "<") (%advance p) (push (cons :< (parse-additive p)) chain))
-        ((%at-punct p ">") (%advance p) (push (cons :> (parse-additive p)) chain))
-        ((%at-punct p "<=") (%advance p) (push (cons :<= (parse-additive p)) chain))
-        ((%at-punct p ">=") (%advance p) (push (cons :>= (parse-additive p)) chain))
-        ((%at-punct p "=~") (%advance p) (push (cons :=~ (parse-additive p)) chain))
         ((%at-keyword p "is")
          (%advance p)
          (let ((neg? nil))
@@ -521,6 +515,23 @@ means a < b AND b < c)."
            (when (member kw '("STARTS" "ENDS") :test #'string=)
              (%expect-keyword p "with"))
            (setf e (list :bin (intern kw "KEYWORD") e (parse-additive p)))))
+        (t (return))))
+    e))
+
+(defun parse-comparison (p)
+  "Comparison operators chain with implicit AND (openCypher: a < b < c
+means a < b AND b < c)."
+  (let ((e (parse-comp-operand p))
+        (chain nil))
+    (loop
+      (cond
+        ((%at-punct p "=") (%advance p) (push (cons := (parse-comp-operand p)) chain))
+        ((%at-punct p "<>") (%advance p) (push (cons :<> (parse-comp-operand p)) chain))
+        ((%at-punct p "<") (%advance p) (push (cons :< (parse-comp-operand p)) chain))
+        ((%at-punct p ">") (%advance p) (push (cons :> (parse-comp-operand p)) chain))
+        ((%at-punct p "<=") (%advance p) (push (cons :<= (parse-comp-operand p)) chain))
+        ((%at-punct p ">=") (%advance p) (push (cons :>= (parse-comp-operand p)) chain))
+        ((%at-punct p "=~") (%advance p) (push (cons :=~ (parse-comp-operand p)) chain))
         (t (return))))
     (if (null chain)
         e
