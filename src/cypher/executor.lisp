@@ -221,10 +221,9 @@ Returns (values list already-bound?)"
                     (or (null rtypes)
                         (member (getf rel :type) rtypes :test #'string=))
                     (%entity-matches rel nil rprops row graph params))
-            collect (cons (if (eq dir :in)
-                              ;; incoming: the neighbor is the rel's start
-                              (list* :start-node node :end-node src rel)
-                              (list* :start-node src :end-node node rel))
+            collect (cons (list* :start-node (graph-node g (getf rel :start))
+                                 :end-node (graph-node g (getf rel :end))
+                                 rel)
                           node))))
 
 (defun %path-chain-cursor (g inner chain graph params)
