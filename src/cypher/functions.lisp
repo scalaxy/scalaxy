@@ -474,8 +474,10 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
     ((:xor) (%tv-xor a b))
     ((:=) (cypher-= a b))
     ((:<>) (let ((eq? (cypher-= a b)))
-             (if (cypher-null-p eq?) :cypher-null
-                 (if eq? :cypher-false t))))
+             (cond
+               ((cypher-null-p eq?) :cypher-null)
+               ((%tv-true eq?) :cypher-false)
+               (t t))))
     ((:< :> :<= :>=)
      (let ((c (cypher-compare a b)))
        (case c

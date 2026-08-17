@@ -164,6 +164,17 @@ framework) so it runs anywhere SBCL runs, including CI:
 make test
 ```
 
+A graph benchmark ships with the repo: the **Neo4j Movie Graph** dataset
+(171 nodes, 253 relationships) and a query suite that loads and times it
+against the Cypher engine:
+
+```sh
+sbcl --script scripts/run-benchmark.lisp
+```
+
+See [benchmarks/movies/README.md](benchmarks/movies/README.md) for the
+dataset provenance, license, and reference timings.
+
 ## Roadmap
 
 - [x] Consistent-hash routing with virtual nodes

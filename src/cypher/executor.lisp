@@ -601,13 +601,29 @@ keyed by the printed expression name and by bare variable names."
                                      (key (second entry))
                                      (*agg-states* states))
                                 (declare (special *agg-states*))
-                                (cons (mapcar
-                                       (lambda (spec)
-                                         (%agg-eval-with (getf (cdr spec) :expr)
-                                                         (%agg-lookup key key-items)
-                                                         graph params))
-                                       order)
-                                      key)))
+                                ;; ORDER BY may reference grouping keys AND
+                                ;; aggregate aliases; build a full lookup
+                                (let* ((key-lookup (%agg-lookup key key-items))
+                                       (full-lookup
+                                         (append
+                                          key-lookup
+                                          (mapcar
+                                           (lambda (item)
+                                             (let ((expr (getf (cdr item) :expr)))
+                                               (cons (or (getf (cdr item) :as)
+                                                         (ast-var (ast-print
+                                                                   (list :expr expr))))
+                                                     (%agg-eval-with expr
+                                                                     key-lookup
+                                                                     graph params))))
+                                           agg-items))))
+                                  (cons (mapcar
+                                         (lambda (spec)
+                                           (%agg-eval-with (getf (cdr spec) :expr)
+                                                           full-lookup
+                                                           graph params))
+                                         order)
+                                        key))))
                             order-keys)))
                      (mapcar #'cdr (%sort-keyed keyed order)))))))))))
 

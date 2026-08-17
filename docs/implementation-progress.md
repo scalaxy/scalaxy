@@ -25,6 +25,10 @@
 - Declared non-goals (see certification doc): temporal functions,
   stored procedures, percentile aggregates
 
+- [x] **Benchmark dataset** — Neo4j Movie Graph (171 nodes / 253 rels,
+      Apache-2.0) in benchmarks/movies/ + scripts/run-benchmark.lisp with a
+      15-query suite (counts, filters, aggregation, paths, var-length)
+
 ## Remaining (future work)
 - Temporal value types and functions (date/time/datetime/localtime/
   localdatetime/duration) — the largest remaining TCK block

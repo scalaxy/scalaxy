@@ -15,8 +15,8 @@
 | Metric | Scenarios |
 |---|---|
 | Total executed | 3897 |
-| **Pass** | **2247** |
-| Fail (bugs in supported features) | 505 |
+| **Pass** | **2252** |
+| Fail (bugs in supported features) | 500 |
 | Unsupported (declared out of scope) | 1145 |
 
 > A scenario counts as *unsupported* only when it exercises a feature the
