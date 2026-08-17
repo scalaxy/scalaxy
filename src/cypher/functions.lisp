@@ -568,10 +568,6 @@ out-of-range bounds clamp; a null or non-integer bound yields :cypher-null."
        ((and (>= i 0) (< i (length (cypher-list-elements v))))
         (nth i (cypher-list-elements v)))
        (t :cypher-null)))
-    ((and (stringp v) (integerp i))
-     (if (and (>= i 0) (< i (length v)))
-         (string (char v i))
-         :cypher-null))
     ((stringp v)
      (cypher-signal "InvalidArgumentType"
                     :detail (format nil "indexing a string with ~a" (cypher-type-name i))

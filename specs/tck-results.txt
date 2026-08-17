@@ -27,8 +27,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [20] Using two existential pattern predicates in a conjunction :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [19] Using a negated existential pattern predicate :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/pattern/Pattern1.feature :: [13] Fail on matching two nodes on a single undirected connection between them :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path3.feature :: [3] Failing when using `length()` on a relationship :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path3.feature :: [2] Failing when using `length()` on a node :: expected SyntaxError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [2] Return relationships by fetching them from the path - starting from the end :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/path/Path2.feature :: [1] Return relationships by fetching them from the path :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/null/Null2.feature :: [3] Property not null check on null node :: result mismatch (any order)
@@ -53,16 +51,10 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [8] Return the smallest hexadecimal integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [12] Fail on an integer containing a invalid symbol character :: expected SyntaxError: UnexpectedSyntax, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals2.feature :: [8] Return the smallest integer :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List6.feature :: [5] Fail for `size()` on paths :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [7] Fail when using aggregation in list comprehension :: expected SyntaxError: InvalidAggregation, got "LispError:CASE-FAILURE"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List12.feature :: [3] Size of list comprehension :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [7] Fail when indexing a non-list given by a parameter #4 :: expected TypeError: *, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/list/List1.feature :: [6] Fail when indexing a non-list #4 :: expected TypeError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [8] Using `keys()` and `IN` to check property existence :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [5] Using `keys()` on a relationship, non-empty result :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph4.feature :: [7] Failing when using `type()` on a node :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph3.feature :: [8] `labels()` failing on a path :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [3] Nested full existential subquery with pattern predicate :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [2] Nested full existential subquery :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [1] Nested simple existential subquery :: result mismatch (any order)
@@ -123,6 +115,7 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [12] ORDER BY DESC should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [11] ORDER BY should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [3] Remove two labels from a node with three labels :: result mismatch (any order)
+/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [4] Remove multiple relationship properties :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [27] Fail when using parameter as relationship predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [26] Fail when merging relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [11] Use outgoing direction when unspecified :: result mismatch (any order)
@@ -147,9 +140,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [7] Matching twice with conflicting relationship types on same relationship :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match/Match2.feature :: [6] Match relationships with multiple types :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere4.feature :: [2] Join with disjunctive multi-part predicates including patterns :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [15] Fail on aggregation in WHERE :: expected SyntaxError: InvalidAggregation, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/match-where/MatchWhere1.feature :: [14] Fail when filtering path with property predicate :: expected SyntaxError: InvalidArgumentType, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [9] Failing when deleting an integer expression :: expected SyntaxError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [7] Delete paths from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete5.feature :: [5] Detach delete nodes from nested map/list :: side effects mismatch
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/delete/Delete3.feature :: [1] Detach deleting paths :: side effects mismatch

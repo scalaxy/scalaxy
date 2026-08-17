@@ -14,6 +14,80 @@
   (when (and var (not (%in-scope var scope)))
     (cypher-signal "UndefinedVariable" :detail (symbol-name var))))
 
+(defun %entity-kind-of (expr scope)
+  "Static entity kind of EXPR (:node/:rel/:path/:other) or nil if unknown."
+  (cond
+    ((symbolp expr)
+     (let ((b (%in-scope expr scope))) (and b (cdr b))))
+    ((and (consp expr) (eq (car expr) :var))
+     (let ((b (%in-scope (second expr) scope))) (and b (cdr b))))
+    (t nil)))
+
+(defun %check-expr-types (expr scope)
+  "openCypher compile-time entity type checks: functions that require a
+specific entity kind and property access, so errors like
+length() on a node surface as SyntaxError: InvalidArgumentType."
+  (cond
+    ((atom expr) nil)
+    ((eq (car expr) :prop)
+     (let ((kind (%entity-kind-of (getf (cdr expr) :expr) scope)))
+       (when (eq kind :path)
+         (cypher-signal "InvalidArgumentType"
+                        :detail "property access on a path")))
+     (%check-expr-types (getf (cdr expr) :expr) scope))
+    ((eq (car expr) :call)
+     (let ((fn (getf (cdr expr) :fn))
+           (args (getf (cdr expr) :args)))
+       (dolist (a args) (%check-expr-types a scope))
+       (when (and (= (length args) 1)
+                  (member fn '("length" "size" "type" "labels" "keys"
+                               "properties" "id" "startNode" "endNode")
+                          :test #'string-equal))
+         (let ((kind (%entity-kind-of (first args) scope)))
+           (flet ((bad ()
+                    (cypher-signal "InvalidArgumentType"
+                                   :detail (format nil "~a() argument" fn))))
+             (cond
+               ((string-equal fn "length")
+                (when (member kind '(:node :rel)) (bad)))
+               ((string-equal fn "size")
+                (when (eq kind :path) (bad)))
+               ((string-equal fn "type")
+                (when (member kind '(:node :path)) (bad)))
+               ((string-equal fn "labels")
+                (when (member kind '(:rel :path)) (bad)))
+               ((string-equal fn "keys")
+                (when (member kind '(:rel :path)) (bad)))
+               ((string-equal fn "properties")
+                (when (eq kind :path) (bad)))
+               ((string-equal fn "id")
+                (when (member kind '(:rel :path)) (bad)))
+               ((string-equal fn "startNode")
+                (when (member kind '(:node :path)) (bad)))
+               ((string-equal fn "endNode")
+                (when (member kind '(:node :path)) (bad)))))))))
+    ((eq (car expr) :idx)
+     (%check-expr-types (getf (cdr expr) :expr) scope)
+     (%check-expr-types (getf (cdr expr) :index) scope))
+    ((eq (car expr) :bin)
+     (%check-expr-types (third expr) scope)
+     (%check-expr-types (fourth expr) scope))
+    ((eq (car expr) :un)
+     (%check-expr-types (second expr) scope))
+    ((eq (car expr) :has-labels)
+     (%check-expr-types (getf (cdr expr) :expr) scope))
+    ((eq (car expr) :comp)
+     (when (or (and (getf (cdr expr) :where)
+                    (expr-has-aggregate (getf (cdr expr) :where)))
+               (and (getf (cdr expr) :out)
+                    (expr-has-aggregate (getf (cdr expr) :out))))
+       (cypher-signal "InvalidAggregation"
+                      :detail "aggregation in list comprehension"))
+     (%check-expr-types (getf (cdr expr) :list) scope)
+     (%check-expr-types (getf (cdr expr) :where) scope)
+     (%check-expr-types (getf (cdr expr) :out) scope))
+    (t nil)))
+
 (defun %elem-kind (el)
   (ecase (car el) (:node :node) (:rel :rel)))
 
@@ -249,6 +323,7 @@ REQUIRE-DIRECTED (CREATE), relationships must be directed."
           (dolist (item items)
             (let ((expr (getf (cdr item) :expr))
                   (as (getf (cdr item) :as)))
+              (%check-expr-types expr scope)
               (cond
                 ((and has-agg? (not (expr-has-aggregate expr)))
                  (when (expr-has-aggregate expr)
@@ -378,13 +453,16 @@ ORDER BY subclause."
     (ecase (car item)
       ((:set-prop :add-prop)
        (%check-var (getf (cdr item) :var) scope)
-       (%check-expr-vars (getf (cdr item) :expr) scope))
+       (%check-expr-vars (getf (cdr item) :expr) scope)
+       (%check-expr-types (getf (cdr item) :expr) scope))
       ((:set-map :add-map)
        (%check-var (getf (cdr item) :var) scope)
-       (%check-expr-vars (getf (cdr item) :expr) scope))
+       (%check-expr-vars (getf (cdr item) :expr) scope)
+       (%check-expr-types (getf (cdr item) :expr) scope))
       (:set-var
        (%check-var (getf (cdr item) :var) scope)
-       (%check-expr-vars (getf (cdr item) :expr) scope))
+       (%check-expr-vars (getf (cdr item) :expr) scope)
+       (%check-expr-types (getf (cdr item) :expr) scope))
       (:set-label (%check-var (getf (cdr item) :var) scope))
       (:set-labels (%check-var (getf (cdr item) :var) scope)))))
 
@@ -400,11 +478,21 @@ ORDER BY subclause."
         (:match
          (setf scope (%check-pattern (getf (cdr clause) :pattern) scope))
          (let ((where (getf (cdr clause) :where)))
-           (when where (%check-expr-vars where scope))))
+           (when where
+             (when (expr-has-aggregate where)
+               (cypher-signal "InvalidAggregation"
+                              :detail "aggregation is not allowed in WHERE"))
+             (%check-expr-vars where scope))
+           (when where (%check-expr-types where scope))))
         (:optional-match
          (setf scope (%check-pattern (getf (cdr clause) :pattern) scope))
          (let ((where (getf (cdr clause) :where)))
-           (when where (%check-expr-vars where scope))))
+           (when where
+             (when (expr-has-aggregate where)
+               (cypher-signal "InvalidAggregation"
+                              :detail "aggregation is not allowed in WHERE"))
+             (%check-expr-vars where scope))
+           (when where (%check-expr-types where scope))))
         (:with (setf scope (%check-projection clause scope)))
         (:return (setf scope (%check-projection clause scope)))
         (:unwind
@@ -413,6 +501,7 @@ ORDER BY subclause."
            (when (expr-has-aggregate expr)
              (cypher-signal "InvalidAggregation" :detail "aggregation in UNWIND"))
            (%check-expr-vars expr scope)
+           (%check-expr-types expr scope)
            ;; UNWIND rebinding shadows the previous binding (legal)
            (setf scope (acons var :other scope))))
         (:create
@@ -424,10 +513,16 @@ ORDER BY subclause."
         (:remove (%check-remove-items (getf (cdr clause) :items) scope))
         (:delete
          (dolist (expr (getf (cdr clause) :items))
-           (%check-expr-vars expr scope)))
+           (%check-expr-vars expr scope)
+           (%check-expr-types expr scope)
+           (when (and (consp expr)
+                      (member (car expr) '(:bin :un :lit :call)))
+             (cypher-signal "InvalidArgumentType"
+                            :detail "DELETE of a non-entity expression"))))
         (:order
          (dolist (spec (getf (cdr clause) :items))
-           (%check-expr-vars (getf (cdr spec) :expr) scope)))
+           (%check-expr-vars (getf (cdr spec) :expr) scope)
+           (%check-expr-types (getf (cdr spec) :expr) scope)))
         (:skip (%check-constant (getf (cdr clause) :expr) scope))
         (:limit (%check-constant (getf (cdr clause) :expr) scope))
         (:union (cypher-signal "UnexpectedSyntax" :detail "UNION checked at query level"))))

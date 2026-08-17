@@ -563,6 +563,22 @@ keyed by the printed expression name and by bare variable names."
        (%agg-finish kind nil)))
     ((member (car expr) '(:lit :param)) (eval-expr expr nil nil nil))
     ((eq (car expr) :var) :cypher-null)
+    ((eq (car expr) :list)
+     (cypher-list (mapcar #'%agg-eval-empty (getf (cdr expr) :items))))
+    ((eq (car expr) :comp)
+     ;; empty group: the list part is empty, so the comprehension is
+     ;; empty regardless of the WHERE/OUT parts
+     (cypher-list nil))
+    ((eq (car expr) :pred)
+     :cypher-false)
+    ((and (eq (car expr) :call)
+          (not (%aggregate-fn-p (getf (cdr expr) :fn))))
+     ;; scalar function wrapping aggregates: evaluate over empty args
+     (handler-case
+         (%call-scalar (getf (cdr expr) :fn)
+                       (mapcar #'%agg-eval-empty (getf (cdr expr) :args))
+                       nil nil nil)
+       (cypher-error () :cypher-null)))
     (t
      (handler-case
          (eval-expr (cons (car expr)
