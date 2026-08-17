@@ -162,8 +162,14 @@ single-node pattern is invalid (InvalidArgumentType)."
 
 (defun %check-exists-sub (expr scope)
   "Check an EXISTS { <clauses> } subquery: MATCH patterns may
-reference outer-scope variables; subquery variables are local."
-  (%check-clauses (getf (cdr expr) :clauses) scope))
+reference outer-scope variables; subquery variables are local.  A
+bare-pattern subquery is a pattern predicate."
+  (let ((chain (getf (cdr expr) :chain)))
+    (if chain
+        (dolist (v (%pattern-chain-vars chain))
+          (unless (%in-scope v scope)
+            (cypher-signal "UndefinedVariable" :detail (symbol-name v))))
+        (%check-clauses (getf (cdr expr) :clauses) scope))))
 
 (defun %check-expr-vars (expr scope)
   (cond

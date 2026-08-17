@@ -28,7 +28,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [3] Full existential subquery with update clause should fail :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery2.feature :: [2] Full existential subquery with aggregation :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [2] Simple subquery with WHERE clause :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery1.feature :: [1] Simple subquery without WHERE clause :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [17] Failing when comparing to an undefined variable :: expected SyntaxError: UndefinedVariable, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/comparison/Comparison1.feature :: [14] Direction of traversed relationship is not significant for path equality, simple :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/boolean/Boolean5.feature :: [8] De Morgan's law on non-null: the negation of a conjunction is the disjunction of the negations :: result mismatch (any order)
@@ -40,8 +39,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #2 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy2.feature :: [23] Sort by an expression that is only partially orderable on a non-distinct binding table, but used in parts as a grouping key #1 :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/with-orderBy/WithOrderBy1.feature :: [22] Sort distinct types in descending order :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [2] Failing when mixing UNION ALL and UNION :: expected SyntaxError: InvalidClauseComposition, got NIL
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union3.feature :: [1] Failing when mixing UNION and UNION ALL :: expected SyntaxError: InvalidClauseComposition, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union2.feature :: [5] Failing when UNION ALL has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/union/Union1.feature :: [5] Failing when UNION has different columns :: expected SyntaxError: DifferentColumnsInUnion, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/set/Set1.feature :: [10] Failing when setting a list of maps as a property :: expected TypeError: InvalidPropertyType, got NIL
