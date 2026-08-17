@@ -320,13 +320,9 @@ ORDER BY subclause."
     (labels ((check-leaves (expr)
                (dolist (leaf (%agg-outer-subexprs expr))
                  (when (%expr-vars leaf)
-                   (cond
-                     ((null key-exprs)
-                      (cypher-signal "UndefinedVariable"
-                                     :detail (symbol-name (first (%expr-vars leaf)))))
-                     ((not (member leaf key-exprs :test #'equal))
-                      (cypher-signal "AmbiguousAggregationExpression"
-                                     :detail (ast-print (list :expr leaf))))))))
+                   (unless (member leaf key-exprs :test #'equal)
+                     (cypher-signal "AmbiguousAggregationExpression"
+                                    :detail (ast-print (list :expr leaf)))))))
              (check-rand (expr)
                (when (and (consp expr) (eq (car expr) :call)
                           (string-equal (getf (cdr expr) :fn) "rand"))

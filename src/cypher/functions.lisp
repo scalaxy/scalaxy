@@ -491,6 +491,7 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
                            (scalaxy::%nan)
                            (scalaxy::%float-inf a)))
                       (t :cypher-null)))
+               ((and (integerp a) (integerp b)) (truncate a b))
                (t (/ (%coerce-number a t) (%coerce-number b t)))))
          (:% (if (zerop b) :cypher-null (mod a b)))
          (:^ (expt (%coerce-number a float?) (%coerce-number b float?))))))
