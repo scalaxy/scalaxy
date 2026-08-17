@@ -189,8 +189,15 @@
            (lx-err lx "InvalidNumberLiteral" "junk after number"))
          (let ((text (subseq s start (lexer-ctx-i lx))))
            (if float?
-               (lx-emit lx :float (handler-case (read-from-string text)
-                                    (error () (lx-err lx "InvalidNumberLiteral" text))))
+               (lx-emit lx :float
+                        (handler-case (read-from-string text)
+                          (error ()
+                            ;; single-float overflow on very large
+                            ;; literals: retry as double-float
+                            (handler-case
+                                (let ((*read-default-float-format* 'double-float))
+                                  (read-from-string text))
+                              (error () (lx-err lx "InvalidNumberLiteral" text))))))
                (let ((v (handler-case (parse-integer text :radix 10)
                           (error () (lx-err lx "InvalidNumberLiteral" text)))))
                  (when (> (abs v) #x7FFFFFFFFFFFFFFF)

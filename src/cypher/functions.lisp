@@ -693,19 +693,24 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
                   (%map-access v i))
                  ((%tv-null v) :cypher-null)
                  (t (%list-index v i)))))
-       (:has-label (let ((v (eval-expr (getf (cdr expr) :expr) row graph params)))
-                     (cond
-                       ((%tv-null v) :cypher-null)
-                       ((%node-p v)
-                        (if (member (getf (cdr expr) :label) (getf v :labels)
-                                    :test #'string=)
-                            t :cypher-false))
-                       ((%rel-p v)
-                        (if (string= (getf (cdr expr) :label) (getf v :type))
-                            t :cypher-false))
-                       (t (cypher-signal "InvalidArgumentType"
-                                         :detail (format nil "label expression on ~a"
-                                                         (cypher-type-name v)))))))
+       (:has-labels (let ((v (eval-expr (getf (cdr expr) :expr) row graph params))
+                          (labels (getf (cdr expr) :labels)))
+                       (cond
+                         ((%tv-null v) :cypher-null)
+                         ((%node-p v)
+                          (if (every (lambda (l) (member l (getf v :labels)
+                                                          :test #'string=))
+                                     labels)
+                              t :cypher-false))
+                         ((%rel-p v)
+                          ;; a relationship has exactly one type; a
+                          ;; conjunction of types cannot match
+                          (if (and (= (length labels) 1)
+                                   (string= (first labels) (getf v :type)))
+                              t :cypher-false))
+                         (t (cypher-signal "InvalidArgumentType"
+                                           :detail (format nil "label expression on ~a"
+                                                           (cypher-type-name v)))))))
        (:slice (let ((v (eval-expr (getf (cdr expr) :expr) row graph params))
                      (start (when (getf (cdr expr) :start)
                               (eval-expr (getf (cdr expr) :start) row graph params)))

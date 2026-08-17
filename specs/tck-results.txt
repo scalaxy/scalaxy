@@ -63,10 +63,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals6.feature :: [13] Failing on incorrect unicode literal :: expected SyntaxError: InvalidUnicodeLiteral, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals6.feature :: [5] Return a single-quoted string with escaped characters :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [27] Fail when float value is too large :: expected SyntaxError: FloatingPointOverflow, got "InvalidNumberLiteral"
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [26] Return a positive float with nine integer digit and maximum positive exponent :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [25] Return a positive float with one integer digit and maximum positive exponent :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [11] Return a very long negative float :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals5.feature :: [5] Return a very long positive float :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals4.feature :: [8] Return the smallest octal integer :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [17] Fail on a too small hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/literals/Literals3.feature :: [16] Fail on a too large hexadecimal integer :: expected SyntaxError: IntegerOverflow, got NIL
@@ -87,12 +83,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph8.feature :: [8] Using `keys()` and `IN` to check property existence :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [8] Statically access a property of a relationship resulting from an expression :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph6.feature :: [4] Statically access a property of a node resulting from an expression :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [4] Conjunctive labels expression on nodes with varying order and repeating labels #5 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [4] Conjunctive labels expression on nodes with varying order and repeating labels #4 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [4] Conjunctive labels expression on nodes with varying order and repeating labels #3 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [4] Conjunctive labels expression on nodes with varying order and repeating labels #2 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [4] Conjunctive labels expression on nodes with varying order and repeating labels #1 :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph5.feature :: [3] Conjunctive labels expression on nodes :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph4.feature :: [7] Failing when using `type()` on a node :: expected SyntaxError: InvalidArgumentType, got NIL
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/graph/Graph3.feature :: [8] `labels()` failing on a path :: expected SyntaxError: InvalidArgumentType, got "InvalidArgumentValue"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/expressions/existentialSubqueries/ExistentialSubquery3.feature :: [3] Nested full existential subquery with pattern predicate :: result mismatch (any order)

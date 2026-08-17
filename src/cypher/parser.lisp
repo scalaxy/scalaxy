@@ -591,9 +591,14 @@ means a < b AND b < c)."
          (%advance p)
          (setf e (list :prop :expr e :prop (%expect-ident p))))
         ((%at-punct p ":")
-         ;; label expression: n:Label / r:Type (boolean)
+         ;; label expression: n:Label / r:Type (boolean), with
+         ;; conjunction: n:A:B means n has both A and B
          (%advance p)
-         (setf e (list :has-label :expr e :label (%expect-ident p))))
+         (let ((labels (list (%expect-ident p))))
+           (loop while (%at-punct p ":")
+                 do (%advance p)
+                    (push (%expect-ident p) labels))
+           (setf e (list :has-labels :expr e :labels (nreverse labels)))))
         ((%at-punct p "[")
          (%advance p)
          (cond
