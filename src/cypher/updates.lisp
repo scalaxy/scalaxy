@@ -215,7 +215,8 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
            (let ((entity (%row-entity row var)))
              (when (%node-p entity)
                (graph-remove-node-label g (getf entity :id) label))))))))
-  rows)
+  ;; refresh the bound entities so subsequent clauses see the new state
+  (mapcar (lambda (row) (%refresh-row-entities g row)) rows))
 
 (defun %delete-clause (g rows clause graph params)
   (let ((detach? (getf (cdr clause) :detach)))

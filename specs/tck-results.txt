@@ -127,11 +127,6 @@
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [12] ORDER BY DESC should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/return-orderby/ReturnOrderBy1.feature :: [11] ORDER BY should order distinct types in the expected order :: result mismatch (ordered)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [3] Remove two labels from a node with three labels :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove2.feature :: [2] Remove a single label from a node with two labels :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [4] Remove multiple relationship properties :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [3] Remove a single relationship property :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [2] Remove multiple node properties :: result mismatch (any order)
-/Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/remove/Remove1.feature :: [1] Remove a single node property :: result mismatch (any order)
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [27] Fail when using parameter as relationship predicate in MERGE :: expected SyntaxError: InvalidParameterUse, got "UnexpectedSyntax"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [26] Fail when merging relationship that is already bound :: expected SyntaxError: VariableAlreadyBound, got "NoSingleRelationshipType"
 /Users/mio/work/scalaxy/specs/openCypher/tck/features/clauses/merge/Merge5.feature :: [11] Use outgoing direction when unspecified :: result mismatch (any order)
