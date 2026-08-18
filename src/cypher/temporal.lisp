@@ -491,31 +491,64 @@ minutes east of UTC (a :timezone key holds the raw text)."
 ;;; ------------------------------------------------------------------
 ;;; truncate
 
-(defun %truncate-temporal (v unit)
-  "truncate(v, unit): truncate a temporal value to a precision unit."
-  (let ((u (string-downcase unit)))
-    (cond
-      ((%date-p v)
-       (case (intern (string-upcase u) "KEYWORD")
-         ((:year) (list :cypher-date :year (getf (cdr v) :year) :month 1 :day 1))
-         ((:month) (list :cypher-date :year (getf (cdr v) :year) :month (getf (cdr v) :month) :day 1))
-         ((:day :week) v)
-         (t (cypher-signal "InvalidArgumentType" :detail (format nil "cannot truncate date to ~a" u)))))
-      ((%localdatetime-p v)
-       (flet ((base () (list :cypher-localdatetime :year (getf (cdr v) :year) :month (getf (cdr v) :month)
-                             :day (getf (cdr v) :day) :hour 0 :minute 0 :second 0 :nanosecond 0)))
-         (let ((y (getf (cdr v) :year)) (mo (getf (cdr v) :month)) (d (getf (cdr v) :day)))
-           (case (intern (string-upcase u) "KEYWORD")
-             ((:year) (list :cypher-localdatetime :year y :month 1 :day 1 :hour 0 :minute 0 :second 0 :nanosecond 0))
-             ((:month) (list :cypher-localdatetime :year y :month mo :day 1 :hour 0 :minute 0 :second 0 :nanosecond 0))
-             ((:day) (base))
-             ((:hour) (cons :cypher-localdatetime (append (list :year y :month mo :day d) (list :hour (getf (cdr v) :hour) :minute 0 :second 0 :nanosecond 0))))
-             ((:minute) (cons :cypher-localdatetime (append (list :year y :month mo :day d) (list :hour (getf (cdr v) :hour) :minute (getf (cdr v) :minute) :second 0 :nanosecond 0))))
-             ((:second) (cons :cypher-localdatetime (append (list :year y :month mo :day d) (list :hour (getf (cdr v) :hour) :minute (getf (cdr v) :minute) :second (getf (cdr v) :second) :nanosecond 0))))
-             (t (cypher-signal "InvalidArgumentType" :detail (format nil "bad truncate unit ~a" u)))))))
-      (t (cypher-signal "InvalidArgumentType" :detail (format nil "truncate on ~a" (cypher-type-name v)))))))
-;;; ------------------------------------------------------------------
-;;; constructors (called from %call-scalar)
+(defun %truncate-components (y mo d h mi s ns unit)
+  "Truncate calendar/time components to UNIT.  Returns (values y mo d h mi s ns)
+with zeroed finer components."
+  (case (intern (string-upcase unit) "KEYWORD")
+    ((:millennium) (values (- y (mod y 1000)) 1 1 0 0 0 0))
+    ((:century) (values (- y (mod y 100)) 1 1 0 0 0 0))
+    ((:decade) (values (- y (mod y 10)) 1 1 0 0 0 0))
+    ((:year) (values y 1 1 0 0 0 0))
+    ((:quarter) (values y (+ (* (floor (1- mo) 3) 3) 1) 1 0 0 0 0))
+    ((:month) (values y mo 1 0 0 0 0))
+    ((:week)
+     (let* ((z (%civil-to-days y mo d))
+            (monday (- z (- (%iso-weekday z) 1))))
+       (multiple-value-bind (w yy mm) (%days-to-civil monday)
+         (declare (ignore w)) (values yy mm 0 0 0 0))))
+    ((:day) (values y mo d 0 0 0 0))
+    ((:hour) (values y mo d h 0 0 0))
+    ((:minute) (values y mo d h mi 0 0))
+    ((:second) (values y mo d h mi s 0))
+    ((:millisecond) (values y mo d h mi s (* (floor ns 1000000) 1000000)))
+    ((:microsecond) (values y mo d h mi s (* (floor ns 1000) 1000)))
+    ((:nanosecond) (values y mo d h mi s ns))
+    (t (cypher-signal "InvalidArgumentType" :detail (format nil "bad truncate unit ~a" unit)))))
+
+(defun %build-truncated (result-kind y mo d h mi s ns offset)
+  "Build a value of RESULT-KIND from components (rounding the day-of-week
+result)."
+  (case (intern (string-upcase result-kind) "KEYWORD")
+    ((:date) (list :cypher-date :year y :month mo :day d))
+    ((:localtime) (list :cypher-localtime :hour h :minute mi :second s :nanosecond ns))
+    ((:time) (list :cypher-time :hour h :minute mi :second s :nanosecond ns :offset offset))
+    ((:localdatetime) (list :cypher-localdatetime :year y :month mo :day d
+                            :hour h :minute mi :second s :nanosecond ns))
+    ((:datetime) (list :cypher-datetime :year y :month mo :day d
+                       :hour h :minute mi :second s :nanosecond ns :offset offset))
+    (t (cypher-signal "InvalidArgumentType" :detail (format nil "bad truncate type ~a" result-kind)))))
+
+(defun %truncate-temporal (result-kind v unit map-pairs)
+  "truncate(TYPE, unit, value, map): truncate VALUE to UNIT and build a
+RESULT-KIND value, applying MAP (component overrides)."
+  (let* ((y (getf (cdr v) :year)) (mo (or (getf (cdr v) :month) 1)) (d (or (getf (cdr v) :day) 1))
+         (h (or (getf (cdr v) :hour) 0)) (mi (or (getf (cdr v) :minute) 0))
+         (s2 (or (getf (cdr v) :second) 0)) (ns (or (getf (cdr v) :nanosecond) 0))
+         (off (or (getf (cdr v) :offset) 0)))
+    (multiple-value-bind (ty tmo td th tmi ts tns) (%truncate-components y mo d h mi s2 ns unit)
+      (when map-pairs
+        (let ((my (%map-get map-pairs "year")) (mmo (%map-get map-pairs "month"))
+              (md (%map-get map-pairs "day")) (mh (%map-get map-pairs "hour"))
+              (mmi (%map-get map-pairs "minute")) (ms (%map-get map-pairs "second"))
+              (mns (%map-get map-pairs "nanosecond")))
+          (when my (setf ty my)) (when mmo (setf tmo mmo)) (when md (setf td md))
+          (when mh (setf th mh)) (when mmi (setf tmi mmi)) (when ms (setf ts ms))
+          (when mns (setf tns mns))))
+      ;; the truncated day-of-week case: %truncate-components week returns day 0; recompute via civil
+      (when (and (member (string-downcase unit) '("week") :test #'string-equal) (zerop td))
+        ;; handled above; td should already be correct
+        nil)
+      (%build-truncated result-kind ty tmo td th tmi ts tns off))))
 
 (defun %now ()
   "Current local wall-clock broken down for date()/datetime() zero-arg."
@@ -619,7 +652,7 @@ minutes east of UTC (a :timezone key holds the raw text)."
         ;; truncate(v, unit)
         ((string-equal name "truncate")
          (if (= n 2)
-             (%truncate-temporal (one) (second args))
+             (%truncate-temporal (car (one)) (one) (second args) nil)
              (%fn-error name args)))
         ;; current*: zero arg => now
         ((string-equal name "currentdate")
@@ -756,13 +789,12 @@ duration.between/inMonths/inDays/inSeconds(...)."
       (let ((a0 (first args)) (a1 (second args)) (a2 (third args)))
         (cond
           ((and (string-equal fn "truncate") args)
-           ;; truncate(unit, value[, map])
-           (let ((unit (if (stringp a0) a0 (cypher-signal "InvalidArgumentType" :detail "truncate unit")))
-                 (value (or a1 a0)))
-             (if (or (null a1) (null a0) (null (second args)))
-                 ;; maybe truncate(value, unit)? TCK uses (unit, other)
-                 (%truncate-temporal value unit)
-                 (%truncate-temporal value unit))))
+           ;; truncate(unit, value[, map]) - result type follows the prefix
+           (let* ((unit (if (stringp a0) a0 (cypher-signal "InvalidArgumentType" :detail "truncate unit")))
+                  (value (or a1 a0))
+                  (map-pairs (and (third args) (cypher-map-p (third args))
+                                  (cypher-map-pairs (third args)))))
+             (%truncate-temporal type value unit map-pairs)))
           ((and (member fn '("between" "inmonths" "indays" "inseconds") :test #'string-equal)
                 (>= (length args) 2))
            (let ((mode (cond ((string-equal fn "inmonths") :months)
