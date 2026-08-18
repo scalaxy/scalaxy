@@ -928,8 +928,20 @@ replacing them with explicit year/month/day keys (leaving other keys)."
                 (setf ns tn)))))
       (case mode
         (:months (list :cypher-duration :months (%sgn neg m) :days 0 :nanos 0))
-        (:days (list :cypher-duration :months 0 :days (%sgn neg day) :nanos 0))
-        (:seconds (list :cypher-duration :months 0 :days 0 :nanos (%sgn neg ns)))
+        (:days
+         (if (and ld rd)
+             ;; total day count between the two instants
+             (list :cypher-duration :months 0
+                   :days (%sgn neg (round (/ (- (%to-epoch-ns rhs) (%to-epoch-ns lhs))
+                                             (* 86400 1000000000))))
+                   :nanos 0)
+             (list :cypher-duration :months 0 :days 0 :nanos 0)))
+        (:seconds
+         (if (and ld rd)
+             (list :cypher-duration :months 0 :days 0
+                   :nanos (if neg (- (abs (- (%to-epoch-ns rhs) (%to-epoch-ns lhs))))
+                              (abs (- (%to-epoch-ns rhs) (%to-epoch-ns lhs)))))
+             (list :cypher-duration :months 0 :days 0 :nanos (%sgn neg ns))))
         (t (list :cypher-duration :months (%sgn neg m) :days (%sgn neg day) :nanos (%sgn neg ns)))))))
 
 (defun %temporal-static-call (name args)
