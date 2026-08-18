@@ -630,7 +630,8 @@ RESULT-KIND value, applying MAP (component overrides)."
   "Map plural construction keys to singular unless the singular exists."
   (let* ((plur (list (cons "years" "year") (cons "months" "month")
                      (cons "days" "day") (cons "hours" "hour")
-                     (cons "minutes" "minute") (cons "seconds" "second")))
+                     (cons "minutes" "minute") (cons "seconds" "second")
+                     (cons "nanoseconds" "nanosecond")))
          (out (mapcar (lambda (q)
                         (let ((g (assoc (car q) plur :test #'string-equal)))
                           (if (and g (not (assoc (cdr g) mappairs :test #'string=)))
