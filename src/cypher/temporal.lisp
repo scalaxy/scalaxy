@@ -330,8 +330,10 @@ minutes east of UTC (a :timezone key holds the raw text)."
 
 (defun %offset-string (offset)
   (if (null offset) ""
-      (let* ((abs (abs offset)) (h (floor abs 60)) (mm (mod abs 60)))
-        (format nil "~a~a:~a" (if (minusp offset) "-" "+") (%pad h 2) (%pad mm 2)))))
+      (if (zerop offset)
+          "Z"
+          (let* ((abs (abs offset)) (h (floor abs 60)) (mm (mod abs 60)))
+            (format nil "~a~a:~a" (if (minusp offset) "-" "+") (%pad h 2) (%pad mm 2))))))
 
 (defun %duration-to-string (v)
   (let ((months (getf (cdr v) :months))
