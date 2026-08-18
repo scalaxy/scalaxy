@@ -623,6 +623,20 @@ RESULT-KIND value, applying MAP (component overrides)."
 
 (defun %map-get (mappairs k) (cdr (assoc k mappairs :test #'string-equal)))
 
+
+(defun %map-plural (mappairs)
+  "Map plural construction keys to singular unless the singular exists."
+  (let* ((plur (list (cons "years" "year") (cons "months" "month")
+                     (cons "days" "day") (cons "hours" "hour")
+                     (cons "minutes" "minute") (cons "seconds" "second")))
+         (out (mapcar (lambda (q)
+                        (let ((g (assoc (car q) plur :test #'string-equal)))
+                          (if (and g (not (assoc (cdr g) mappairs :test #'string=)))
+                              (cons (cdr g) (cdr q))
+                              q)))
+                      mappairs)))
+    (nreverse out)))
+
 (defun %map-fold-fields (mappairs)
   "Fold date/datetime/time field components into a construction MAP."
   (let ((out nil))
@@ -808,7 +822,7 @@ replacing them with explicit year/month/day keys (leaving other keys)."
                     ((string-equal name "duration") (%parse-iso-duration v))
                     (t (%fn-error name args))))
              ((cypher-map-p v)
-              (let ((mapped (%temporal-from-map name (%map-collapse (%map-fold-fields (cypher-map-pairs v))))))
+              (let ((mapped (%temporal-from-map name (%map-collapse (%map-fold-fields (%map-plural (cypher-map-pairs v)))))))
                 (let ((tz (%map-get (cypher-map-pairs v) "timezone")))
                   (if (and tz (or (%time-p mapped) (%datetime-p mapped)))
                       (plist-put mapped :timezone tz)
