@@ -476,10 +476,17 @@ null), nulls last."
                        collect x))))))
         ((string-equal name "exists")
          (%fn-error name args))
-        ((member name '("date" "localtime" "time" "localdatetime"
-                        "datetime" "duration" "currentDate" "currentTime"
-                        "currentDateTime" "currentTimestamp" "truncate")
-                 :test #'string-equal)
+        ((or (member name '("date" "localtime" "time" "localdatetime"
+                          "datetime" "duration" "currentDate" "currentTime"
+                          "currentDateTime" "currentTimestamp" "truncate")
+                   :test #'string-equal)
+             (and (> (length name) 4)
+                  (or (search "date.truncate" name :test #'char-equal)
+                      (search "time.truncate" name :test #'char-equal)
+                      (search "localtime.truncate" name :test #'char-equal)
+                      (search "datetime.truncate" name :test #'char-equal)
+                      (search "localdatetime.truncate" name :test #'char-equal)
+                      (search "duration." name :test #'char-equal))))
          (%temporal-call name args row graph params))
         (t (cypher-signal "InvalidArgumentType"
                           :detail (format nil "unknown function ~a" name)))))))
