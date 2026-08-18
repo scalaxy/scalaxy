@@ -800,8 +800,11 @@ into (values kind phase detail)."
                          (setf params nil)))))
                 ((or (search "parameter values are" text) (search "parameters are" text))
                  (setf params (%tck-parse-params table)))
-                ((search "executing control query" text)
-                 (skip "control query"))
+                ;; "executing control query" is an ordinary query step in the
+                ;; openCypher corpus (used by Merge6); run it like any query
+                ((and (search "executing control query" text) doc)
+                 (let ((reason (%tck-query-unsupported doc)))
+                   (if reason (skip reason) (run-query doc))))
                 ((and (search "executing query" text) doc)
                  (let ((reason (%tck-query-unsupported doc)))
                    (if reason
