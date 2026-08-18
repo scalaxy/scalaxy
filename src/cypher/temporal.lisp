@@ -879,7 +879,7 @@ replacing them with explicit year/month/day keys (leaving other keys)."
                                     (or (getf plist :day) 1))
                     0))
           (secs (if (member k '(:cypher-localdatetime :cypher-datetime :cypher-time :cypher-localtime))
-                    (+ (getf plist :hour) (* 60 (getf plist :minute)) (* 3600 (getf plist :second)))
+                    (+ (* (getf plist :hour) 3600) (* (getf plist :minute) 60) (getf plist :second))
                     0))
           (ns (if (member k '(:cypher-localdatetime :cypher-datetime :cypher-time :cypher-localtime))
                   (getf plist :nanosecond) 0)))
