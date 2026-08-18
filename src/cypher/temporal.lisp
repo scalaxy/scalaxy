@@ -600,6 +600,33 @@ RESULT-KIND value, applying MAP (component overrides)."
 
 (defun %map-get (mappairs k) (cdr (assoc k mappairs :test #'string-equal)))
 
+(defun %map-fold-fields (mappairs)
+  "Fold date/datetime/time field components into a construction MAP."
+  (let ((out nil))
+    (dolist (p mappairs)
+      (let ((k (car p)) (v (cdr p)))
+        (if (and (or (string-equal k "datetime") (string-equal k "time"))
+                 (%temporal-p v))
+            (progn
+              (when (and (getf (cdr v) :year) (not (%map-get mappairs "year")))
+                (push (cons "year" (getf (cdr v) :year)) out))
+              (when (and (getf (cdr v) :month) (not (%map-get mappairs "month")))
+                (push (cons "month" (getf (cdr v) :month)) out))
+              (when (and (getf (cdr v) :day) (not (%map-get mappairs "day")))
+                (push (cons "day" (getf (cdr v) :day)) out))
+              (when (and (getf (cdr v) :hour) (not (%map-get mappairs "hour")))
+                (push (cons "hour" (getf (cdr v) :hour)) out))
+              (when (and (getf (cdr v) :minute) (not (%map-get mappairs "minute")))
+                (push (cons "minute" (getf (cdr v) :minute)) out))
+              (when (and (getf (cdr v) :second) (not (%map-get mappairs "second")))
+                (push (cons "second" (getf (cdr v) :second)) out))
+              (when (and (getf (cdr v) :nanosecond) (not (%map-get mappairs "nanosecond")))
+                (push (cons "nanosecond" (getf (cdr v) :nanosecond)) out))
+              (when (and (getf (cdr v) :offset) (not (%map-get mappairs "offset")))
+                (push (cons "offset" (getf (cdr v) :offset)) out)))
+            (push p out))))
+    (nreverse out)))
+
 (defun %map-collapse (mappairs)
   "Resolve week/ordinal-day/quarter based dates in a construction MAP,
 replacing them with explicit year/month/day keys (leaving other keys)."
@@ -750,7 +777,7 @@ replacing them with explicit year/month/day keys (leaving other keys)."
                     ((string-equal name "duration") (%parse-iso-duration v))
                     (t (%fn-error name args))))
              ((cypher-map-p v)
-              (let ((mapped (%temporal-from-map name (%map-collapse (cypher-map-pairs v)))))
+              (let ((mapped (%temporal-from-map name (%map-collapse (%map-fold-fields (cypher-map-pairs v))))))
                 (let ((tz (%map-get (cypher-map-pairs v) "timezone")))
                   (if (and tz (or (%time-p mapped) (%datetime-p mapped)))
                       (plist-put mapped :timezone tz)
