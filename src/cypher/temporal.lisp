@@ -370,7 +370,25 @@ minutes east of UTC (a :timezone key holds the raw text)."
     (flet ((need (what)
              (cypher-signal "InvalidArgumentType"
                             :detail (format nil "~a has no ~a" (cypher-type-name v) what))))
-      (cond
+      (if (%duration-p v)
+          ;; duration component accessors (Temporal5/10)
+          (let ((months (getf (cdr v) :months))
+                (days (getf (cdr v) :days))
+                (nanos (getf (cdr v) :nanos)))
+            (let ((sec (floor (/ nanos 1000000000)))
+                  (sub (mod (/ nanos 1000000) 1000)))
+              (cond
+                ((string= comp "years") (floor months 12))
+                ((string= comp "months") (mod months 12))
+                ((string= comp "days") days)
+                ((string= comp "hours") (floor (/ nanos 3600000000000)))
+                ((string= comp "minutes") (mod (floor (/ nanos 60000000000)) 60))
+                ((string= comp "seconds") (mod sec 60))
+                ((string= comp "milliseconds") sub)
+                ((string= comp "microseconds") (mod (floor (/ nanos 1000)) 1000))
+                ((string= comp "nanoseconds") (mod nanos 1000))
+                (t (need comp)))))
+          (cond
         ((string= comp "year") (if has-date y (need "year")))
         ((string= comp "month") (if has-date mo (need "month")))
         ((string= comp "day") (if has-date d (need "day")))
@@ -392,7 +410,7 @@ minutes east of UTC (a :timezone key holds the raw text)."
          (if (member kind '(:cypher-time :cypher-datetime))
              (or (getf (cdr v) :timezone) "")
              (need "timezone")))
-        (t (need (format nil "component ~a" name)))))))
+        (t (need (format nil "component ~a" name))))))))
 
 ;;; ------------------------------------------------------------------
 ;;; comparison
