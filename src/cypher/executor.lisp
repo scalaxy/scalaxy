@@ -422,7 +422,7 @@ already-projected columns, so later items may reference earlier ones
                                    unless (assoc (car p) row) collect p)
                              row))
              (v (eval-expr expr lookup graph params)))
-        (push (cons (or as (ast-var (ast-print (list :expr expr)))) v) proj)))
+        (push (cons (%item-name item) v) proj)))
     (nreverse proj)))
 
 (defun %group-row (row items graph params)
@@ -605,12 +605,20 @@ Signals NumberOutOfRange when P is outside [0,1]."
         (let ((idx (min (1- n) (max 0 (1- (ceiling (* p n)))))))
           (nth idx sorted)))))
 
+(defun %item-name (item)
+  "Column name symbol for projection ITEM: the alias, else the exact
+source text (openCypher Return4 keeps the literal text), else the
+canonical printed form."
+  (or (getf (cdr item) :as)
+      (let ((src (getf (cdr item) :src)))
+        (if src (ast-var src)
+            (ast-var (ast-print (list :expr (getf (cdr item) :expr))))))))
+
 (defun %agg-group-key (key-items row graph params)
   "The grouping key for ROW: an alist of (projected-name . value)."
   (mapcar (lambda (item)
             (let ((expr (getf (cdr item) :expr)))
-              (cons (or (getf (cdr item) :as)
-                        (ast-var (ast-print (list :expr expr))))
+              (cons (%item-name item)
                     (eval-expr expr row graph params))))
           key-items))
 
@@ -734,8 +742,7 @@ keyed by the printed expression name and by bare variable names."
                  (list
                   (mapcar (lambda (item)
                             (let ((expr (getf (cdr item) :expr)))
-                              (cons (or (getf (cdr item) :as)
-                                        (ast-var (ast-print (list :expr expr))))
+                              (cons (%item-name item)
                                     (%agg-eval-empty expr))))
                           agg-items))))
             (t
@@ -751,9 +758,7 @@ keyed by the printed expression name and by bare variable names."
                               key
                               (mapcar (lambda (item)
                                         (let ((expr (getf (cdr item) :expr)))
-                                          (cons (or (getf (cdr item) :as)
-                                                    (ast-var (ast-print
-                                                              (list :expr expr))))
+                                          (cons (%item-name item)
                                                 (%agg-eval-with expr lookup
                                                                 graph params))))
                                       agg-items))))))
@@ -777,9 +782,7 @@ keyed by the printed expression name and by bare variable names."
                                           (mapcar
                                            (lambda (item)
                                              (let ((expr (getf (cdr item) :expr)))
-                                               (cons (or (getf (cdr item) :as)
-                                                         (ast-var (ast-print
-                                                                   (list :expr expr))))
+                                               (cons (%item-name item)
                                                      (%agg-eval-with expr
                                                                      key-lookup
                                                                      graph params))))
@@ -796,9 +799,7 @@ keyed by the printed expression name and by bare variable names."
                                          (mapcar
                                           (lambda (item)
                                             (let ((expr (getf (cdr item) :expr)))
-                                              (cons (or (getf (cdr item) :as)
-                                                        (ast-var (ast-print
-                                                                  (list :expr expr))))
+                                              (cons (%item-name item)
                                                     (%agg-eval-with expr
                                                                     full-lookup
                                                                     graph params))))

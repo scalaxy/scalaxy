@@ -7,15 +7,18 @@
 
 (in-package #:scalaxy)
 
-(defstruct (cytoken (:constructor make-cytoken (kind value line col)))
+(defstruct (cytoken (:constructor make-cytoken (kind value line col pos end)))
   kind    ; :eof :ident :string :int :float :param :punct
   value   ; string | integer | float | operator string
   line
-  col)
+  col
+  pos     ; char offset of the first char of the token in the source
+  end)    ; char offset just past the last char of the token
 
 (defstruct (lexer-ctx (:constructor make-lexer-ctx (string query)))
   string
   query
+  (start 0)
   (i 0)
   (n 0)
   (line 1)
@@ -54,7 +57,8 @@
                                  detail (lexer-ctx-line lx) (lexer-ctx-col lx))))
 
 (defun lx-emit (lx kind value)
-  (push (make-cytoken kind value (lexer-ctx-line lx) (lexer-ctx-col lx))
+  (push (make-cytoken kind value (lexer-ctx-line lx) (lexer-ctx-col lx)
+                      (lexer-ctx-start lx) (lexer-ctx-i lx))
         (lexer-ctx-tokens lx)))
 
 (defun lx-skip-ws (lx)
@@ -239,6 +243,7 @@ input (InvalidNumberLiteral, IntegerOverflow, UnexpectedSyntax)."
       (when (>= (lexer-ctx-i lx) (lexer-ctx-n lx))
         (lx-emit lx :eof nil)
         (return))
+      (setf (lexer-ctx-start lx) (lexer-ctx-i lx))
       (let ((ch (lx-peek lx)))
         (cond
           ((and (char= ch #\/) (member (lx-peek2 lx) '(#\/ #\*)))

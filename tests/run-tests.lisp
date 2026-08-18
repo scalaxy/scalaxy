@@ -420,7 +420,7 @@
                         (list :match
                               :pattern (list (list (list :node :var (ast-var "n") :labels nil :props nil)))
                               :where nil)
-                        (list :return :items (list (list :item :expr (ast-var "n") :as nil))
+                        (list :return :items (list (list :item :expr (ast-var "n") :as nil :src "n"))
                               :distinct nil :order nil)))
            "parse MATCH (n) RETURN n")
     ;; labels, rel, where, projection aliases, order/skip/limit
@@ -1535,6 +1535,22 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
             (check (equal (scalaxy:cypher-error-kind e) "VariableAlreadyBound")
                    "call: VariableAlreadyBound")))))))
 
+(defun test-source-columns ()
+  (deftest source-columns
+    (let* ((store (make-store))
+           (g (make-local-graph store)))
+      (graph-create-node g :labels '("Foo") :props '(("age" . 42)))
+      (labels ((cols (q) (mapcar #'car (first (cypher-query q g)))))
+        (check (equal (cols "MATCH (n) RETURN cOuNt( * )") (list (ast-var "cOuNt( * )")))
+               "source: aggregate column keeps exact text")
+        (check (equal (cols "MATCH (n) RETURN aVg(    n.age     )")
+                      (list (ast-var "aVg(    n.age     )")))
+               "source: spacing preserved")
+        (check (equal (cols "MATCH (n) RETURN (n:Foo)") (list (ast-var "(n:Foo)")))
+               "source: parenthesized label predicate")
+        (check (equal (cols "MATCH (n) RETURN n.age AS x") (list (ast-var "x")))
+               "source: alias still wins")))))
+
 (defun %gql-roundtrip (graph query &key variables)
   "Full round trip through the JSON wire format (also exercises json-encode)."
   (json-decode (json-encode (graphql-execute query graph :variables variables))))
@@ -1653,6 +1669,7 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-graph-persistence)
   (test-graph-multidb)
   (test-graph-gateway)
+  (test-source-columns)
   (test-call)
   (test-percentile)
   (test-graphql)

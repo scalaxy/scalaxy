@@ -303,12 +303,25 @@ bare pattern chains (pattern predicates, EXISTS form)."
             (list :with :items items :distinct distinct? :where where :order order)
             (list :return :items items :distinct distinct? :order order))))))
 
+(defun %expr-source (p tok-pos)
+  "Raw source text spanning the tokens from TOK-POS up to (but not
+including) the current parser position.  Used for unaliased projection
+column names, which keep the exact source text (openCypher Return4)."
+  (let* ((tokens (cyparser-tokens p))
+         (first (nth tok-pos tokens))
+         (last (nth (1- (cyparser-pos p)) tokens))
+         (query (cyparser-query p)))
+    (when (and first last)
+      (string-trim " " (subseq query (cytoken-pos first) (cytoken-end last))))))
+
 (defun parse-projection-items (p)
-  (loop collect (let ((e (parse-or p)))
-                  (if (%at-keyword p "as")
-                      (progn (%advance p)
-                             (list :item :expr e :as (ast-var (%expect-ident p))))
-                      (list :item :expr e :as nil)))
+  (loop collect (let ((start (cyparser-pos p)))
+                  (let ((e (parse-or p)))
+                    (if (%at-keyword p "as")
+                        (progn (%advance p)
+                               (list :item :expr e :as (ast-var (%expect-ident p))))
+                        (list :item :expr e :as nil
+                              :src (%expr-source p start)))))
         while (when (%at-punct p ",") (%advance p) t)))
 
 (defun parse-order-specs (p)
