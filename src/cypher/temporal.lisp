@@ -322,12 +322,16 @@ minutes east of UTC (a :timezone key holds the raw text)."
   (cond
     ((%date-p v) (%date-to-string v))
     ((%localtime-p v) (%time-of-day-string v))
-    ((%time-p v) (concatenate 'string (%time-of-day-string v) (%offset-string (getf (cdr v) :offset))))
+    ((%time-p v)
+     (concatenate 'string (%time-of-day-string v)
+                  (let ((tz (getf (cdr v) :timezone)))
+                    (if tz tz (%offset-string (getf (cdr v) :offset))))))
     ((%localdatetime-p v)
      (format nil "~aT~a" (%date-to-string v) (%time-of-day-string v)))
     ((%datetime-p v)
      (format nil "~aT~a~a" (%date-to-string v) (%time-of-day-string v)
-             (%offset-string (getf (cdr v) :offset))))
+             (let ((tz (getf (cdr v) :timezone)))
+               (if tz tz (%offset-string (getf (cdr v) :offset))))))
     ((%duration-p v)
      (let ((m (getf (cdr v) :months)) (d (getf (cdr v) :days)) (ns (getf (cdr v) :nanos)))
        (let ((neg (or (minusp m) (minusp d) (minusp ns))))
@@ -589,6 +593,42 @@ RESULT-KIND value, applying MAP (component overrides)."
 
 (defun %map-get (mappairs k) (cdr (assoc k mappairs :test #'string-equal)))
 
+(defun %map-collapse (mappairs)
+  "Resolve week/ordinal-day/quarter based dates in a construction MAP,
+replacing them with explicit year/month/day keys (leaving other keys)."
+  (let ((y (%map-get mappairs "year"))
+        (week (%map-get mappairs "week"))
+        (dow (%map-get mappairs "dayOfWeek"))
+        (od (%map-get mappairs "ordinalDay"))
+        (dy (%map-get mappairs "dayOfYear"))
+        (q (%map-get mappairs "quarter")))
+    (if (and y (or week od dy q))
+        (let ((yy y) (mm nil) (dd nil))
+          (cond
+            (week
+             (let ((jan4 (%civil-to-days y 1 4)))
+               (let ((w1 (- jan4 (- (%iso-weekday jan4) 1))))
+                 (let ((z (+ w1 (* (1- week) 7) (1- (or dow 1)))))
+                   (multiple-value-bind (wy wmo wd) (%days-to-civil z)
+                     (setf yy wy mm wmo dd wd))))))
+            ((or od dy)
+             (let ((n (or od dy)))
+               (multiple-value-bind (oy omo od2) (%days-to-civil (+ (%civil-to-days y 1 1) (1- n)))
+                 (setf yy oy mm omo dd od2))))
+            (q
+             (let ((qday (or (%map-get mappairs "dayOfQuarter") 1)))
+               (multiple-value-bind (qy qmo qd) (%days-to-civil (+ (%civil-to-days y (+ (* (1- q) 3) 1) 1) (1- qday)))
+                 (setf yy qy mm qmo dd qd)))))
+          (let ((out nil))
+            (dolist (p mappairs)
+              (unless (member (car p) '("week" "dayOfWeek" "ordinalDay" "dayOfYear" "quarter" "dayOfQuarter" "year") :test #'string-equal)
+                (push p out)))
+            (push (cons "year" yy) out)
+            (push (cons "month" mm) out)
+            (push (cons "day" dd) out)
+            (nreverse out)))
+        mappairs)))
+
 (defun %temporal-from-map (name mappairs)
   "Build a temporal value from a map of components (may carry a
 'date'/'time' field holding an existing temporal value)."
@@ -703,7 +743,11 @@ RESULT-KIND value, applying MAP (component overrides)."
                     ((string-equal name "duration") (%parse-iso-duration v))
                     (t (%fn-error name args))))
              ((cypher-map-p v)
-              (%temporal-from-map name (cypher-map-pairs v)))
+              (let ((mapped (%temporal-from-map name (%map-collapse (cypher-map-pairs v)))))
+                (let ((tz (%map-get (cypher-map-pairs v) "timezone")))
+                  (if (and tz (or (%time-p mapped) (%datetime-p mapped)))
+                      (plist-put mapped :timezone tz)
+                      mapped))))
              ((%temporal-p v)
               (t-of v name))  ; e.g. datetime(date(x))
              (t (%fn-error name args)))))
@@ -819,4 +863,9 @@ duration.between/inMonths/inDays/inSeconds(...)."
                          (member (string-downcase fn)
                                  '("between" "inmonths" "indays" "inseconds")
                                  :test #'string-equal))))))))
+
+
+(defun plist-put (plist key val)
+  "Add KEY VAL to a marker-prefixed value plist (CAR is the marker)."
+  (cons (car plist) (list* key val (cdr plist))))
 
