@@ -670,7 +670,7 @@ engine does not implement, or NIL."
       ;; percentileCont/percentileDisc are implemented (Aggregation6)
       ((or (search "STDEV(" up) (search "STDEVP(" up)) "stDev aggregates")
       ((search "{.*}" q) "map projections")
-      ((and (search "[(" q) (search "| " q)) "pattern/list comprehensions")
+      ;; pattern/list comprehensions are implemented (Pattern2, List6)
       ;; Precedence1 [20]/[22]: associativity of comparison operators
       ;; with boolean operators over {true,false,null} is not
       ;; satisfiable under openCypher's three-valued null semantics
