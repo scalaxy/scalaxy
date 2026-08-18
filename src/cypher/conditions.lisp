@@ -22,6 +22,8 @@
 (define-condition cypher-type-error (cypher-error) ())
 (define-condition cypher-argument-error (cypher-error) ())
 (define-condition cypher-entity-not-found (cypher-error) ())
+(define-condition cypher-procedure-error (cypher-error) ())
+(define-condition cypher-parameter-missing (cypher-error) ())
 
 (defparameter *cypher-error-classes* (make-hash-table :test #'equal))
 
@@ -59,6 +61,7 @@
 (define-cypher-error "AmbiguousAggregationExpression" 'cypher-syntax-error)
 (define-cypher-error "NegativeIntegerArgument"        'cypher-syntax-error)
 (define-cypher-error "NoVariablesInScope"             'cypher-syntax-error)
+(define-cypher-error "InvalidArgumentPassingMode"    'cypher-syntax-error)
 
 ;;; TypeError subtypes
 (define-cypher-error "InvalidArgumentValue"          'cypher-type-error)
@@ -72,6 +75,10 @@
 
 ;;; EntityNotFound subtypes
 (define-cypher-error "DeletedEntityAccess"           'cypher-entity-not-found)
+
+;;; ProcedureError / ParameterMissing families (CALL clause)
+(define-cypher-error "ProcedureNotFound"             'cypher-procedure-error)
+(define-cypher-error "MissingParameter"              'cypher-parameter-missing)
 
 (defun cypher-signal (kind &key (query nil) (detail nil) (family nil))
   "Signal the Cypher error of KIND (spec name, e.g. \"UnexpectedSyntax\")

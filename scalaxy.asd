@@ -30,6 +30,7 @@
                              (:file "graphql")
                              (:module "cypher"
                               :components ((:file "conditions")
+                                           (:file "procedures")
                                            (:file "ast")
                                            (:file "lexer")
                                            (:file "parser")

@@ -574,8 +574,82 @@ ORDER BY subclause."
   (dolist (item items)
     (%check-var (getf (cdr item) :var) scope)))
 
-(defun %check-clauses (clauses &optional (scope nil))
-  "Validate CLAUSES against an initial variable SCOPE."
+(defun %proc-type-ok (type v)
+  "True when literal V satisfies the declared procedure input TYPE."
+  (cond ((cypher-null-p v) t)
+        ((string-equal type "STRING?") (stringp v))
+        ((string-equal type "INTEGER?") (integerp v))
+        ((string-equal type "FLOAT?") (or (integerp v) (floatp v)))
+        ((string-equal type "NUMBER?") (or (integerp v) (floatp v)))
+        (t t)))
+
+(defun %check-call-clause (clause scope params standalone?)
+  "Compile-time checks for a CALL clause (see Call1-6).  STANDALONE?
+is true when the CALL is the only clause of the query."
+  (let* ((name (getf (cdr clause) :name))
+         (proc (%proc-lookup name)))
+    (unless proc
+      (cypher-signal "ProcedureNotFound" :detail name))
+    (let ((inputs (getf proc :inputs))
+          (outputs (getf proc :outputs))
+          (args (getf (cdr clause) :args))
+          (yield (getf (cdr clause) :yield)))
+      (if (listp args)
+          ;; explicit argument list: arity + expression checks
+          (progn
+            (unless (= (length args) (length inputs))
+              (cypher-signal "InvalidNumberOfArguments" :detail name))
+            (dolist (a args)
+              (when (expr-has-aggregate a)
+                (cypher-signal "InvalidAggregation"
+                               :detail "aggregation in CALL arguments"))
+              (%check-expr-vars a scope)
+              (%check-expr-types a scope))
+          ;; literal arguments must match the declared input types
+          (loop for in in inputs for a in args
+                when (and (consp a) (eq (car a) :lit)
+                          (not (cypher-null-p (second a))))
+                  unless (%proc-type-ok (cdr in) (second a))
+                    do (cypher-signal "InvalidArgumentType"
+                                      :detail (format nil "argument type mismatch for ~a"
+                                                      (car in)))))
+          ;; implicit arguments are only legal in a standalone call
+          ;; (an in-query CALL must pass arguments explicitly)
+          (progn
+            (unless standalone?
+              (cypher-signal "InvalidArgumentPassingMode"
+                             :detail "implicit arguments require a standalone CALL"))
+            (dolist (in inputs)
+              (let ((iname (car in)))
+                (unless (or (member (ast-var iname) scope :key #'car)
+                            (and params (gethash iname params)))
+                  (cypher-signal "MissingParameter" :detail iname))))))
+      ;; YIELD: columns must exist; each alias must be fresh against the
+      ;; pre-CALL scope and the aliases of earlier YIELD items
+      (when yield
+        (if (eq yield :star)
+            ;; YIELD * binds every output column (standalone calls only)
+            (progn
+              (unless standalone?
+                (cypher-signal "UnexpectedSyntax"
+                               :detail "YIELD * is only allowed in a standalone CALL"))
+              (dolist (o outputs)
+                (setf scope (acons (ast-var (car o)) :other scope))))
+            (let ((seen (copy-list scope)))
+              (dolist (item yield)
+                (let ((col (car item)) (alias (cdr item)))
+                  (unless (assoc col outputs :test #'string=)
+                    (cypher-signal "UndefinedVariable" :detail col))
+                  (when (assoc (ast-var alias) seen)
+                    (cypher-signal "VariableAlreadyBound" :detail alias))
+                  (setf seen (acons (ast-var alias) :other seen))
+                  (setf scope (acons (ast-var alias) :other scope)))))))
+      ;; a procedure with outputs called without YIELD adds no columns
+      scope)))
+
+(defun %check-clauses (clauses &optional (scope nil) (params nil))
+  "Validate CLAUSES against an initial variable SCOPE (and query
+parameters PARAMS, needed by CALL implicit-argument resolution)."
   (let ((scope scope))
     (dolist (clause clauses)
       (ecase (car clause)
@@ -636,6 +710,9 @@ ORDER BY subclause."
                      (member (car expr) '(:has-labels)))
             (cypher-signal "InvalidDelete"
                            :detail "DELETE of a label/type expression"))))
+        (:call (setf scope (%check-call-clause clause scope params
+                                             (and (eq clause (first clauses))
+                                                  (eq clause (car (last clauses)))))))
         (:order
          (dolist (spec (getf (cdr clause) :items))
            (%check-expr-vars (getf (cdr spec) :expr) scope)
@@ -645,9 +722,9 @@ ORDER BY subclause."
         (:union (cypher-signal "UnexpectedSyntax" :detail "UNION checked at query level"))))
     scope))
 
-(defun cypher-check (ast)
+(defun cypher-check (ast &optional (params nil))
   "Validate AST; signal the spec's errors.  Returns the AST."
-  (%check-clauses (rest ast))
+  (%check-clauses (rest ast) nil params)
   ast)
 
 (defun %return-columns (query)
@@ -672,7 +749,7 @@ ORDER BY subclause."
   "Number of result columns of a single query (for union checks)."
   (length (%return-columns query)))
 
-(defun cypher-check-query (ast)
+(defun cypher-check-query (ast &optional (params nil))
   "Validate a (possibly union) query AST."
   (if (eq (car ast) :union)
       (let ((cols (mapcar #'%return-columns (getf (cdr ast) :queries))))
@@ -680,6 +757,6 @@ ORDER BY subclause."
           (cypher-signal "DifferentColumnsInUnion"
                          :detail (format nil "column names ~s differ" cols)))
         (dolist (q (getf (cdr ast) :queries))
-          (cypher-check q))
+          (cypher-check q params))
         ast)
-      (cypher-check ast)))
+      (cypher-check ast params)))

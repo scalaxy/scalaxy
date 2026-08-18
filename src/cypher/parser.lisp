@@ -185,6 +185,9 @@
              (setf phase :updating)
              (%expect-keyword p "delete")
              (add (list :delete :items (parse-expr-list p) :detach t)))
+            ((string= kw "CALL")
+             (%advance p)
+             (add (%parse-call-clause p)))
             ((string= kw "ORDER")
              (%advance p)
              (%expect-keyword p "by")
@@ -389,6 +392,50 @@ bare pattern chains (pattern predicates, EXISTS form)."
 (defun parse-expr-list (p)
   (loop collect (parse-or p)
         while (when (%at-punct p ",") (%advance p) t)))
+
+;;; ------------------------------------------------------------------
+;;; CALL clause (stored procedures)
+
+(defun %parse-dotted-name (p)
+  "Parse a dotted procedure name like test.my.proc (lowercased)."
+  (let ((parts (list (string-downcase (%expect-ident p)))))
+    (loop while (%at-punct p ".")
+          do (%advance p)
+             (push (string-downcase (%expect-ident p)) parts))
+    (format nil "~{~a~^.~}" (nreverse parts))))
+
+(defun %parse-call-clause (p)
+  "Parse 'CALL name(args?) [YIELD col [AS alias], ...]'.
+AST: (:call :name NAME :args <expr list> | :implicit :yield ((col . alias)...))."
+  (let* ((name (%parse-dotted-name p))
+         (explicit? (%at-punct p "("))
+         (args nil))
+    (when explicit?
+      (%advance p)
+      (loop until (%at-punct p ")")
+            do (push (parse-or p) args)
+               (unless (%at-punct p ",") (return))
+               (%advance p))
+      (%expect-punct p ")"))
+    (let ((yield nil))
+      (when (%at-keyword p "yield")
+        (%advance p)
+        (if (%at-punct p "*")
+            (progn (%advance p) (setf yield :star))
+            (progn
+              (loop
+                (let ((col (string-downcase (%expect-ident p)))
+                      (alias nil))
+                  (when (%at-keyword p "as")
+                    (%advance p)
+                    (setf alias (string-downcase (%expect-ident p))))
+                  (push (cons col (or alias col)) yield))
+                (unless (%at-punct p ",") (return))
+                (%advance p))
+              (setf yield (nreverse yield)))))
+      (list :call :name name
+            :args (if explicit? (nreverse args) :implicit)
+            :yield yield))))
 
 ;;; ------------------------------------------------------------------
 ;;; patterns

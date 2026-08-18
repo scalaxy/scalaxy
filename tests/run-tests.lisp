@@ -1482,6 +1482,59 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
             (check (equal (scalaxy:cypher-error-kind e) "NumberOutOfRange")
                    "percentileCont NumberOutOfRange kind")))))))
 
+(defun test-call ()
+  (deftest call
+    (let* ((store (make-store))
+           (g (make-local-graph store)))
+      (register-procedure "test.labels" nil '(("label" . "STRING?"))
+                          '( (("label" . "A")) (("label" . "B")) (("label" . "C")) ))
+      (register-procedure "test.my.proc" '(("name" . "STRING?") ("id" . "INTEGER?"))
+                          '(("city" . "STRING?") ("country_code" . "INTEGER?"))
+                          '( (("name" . "Stefan") ("id" . 1) ("city" . "Berlin") ("country_code" . 49))
+                             (("name" . "Stefan") ("id" . 2) ("city" . "Muenchen") ("country_code" . 49)) ))
+      (register-procedure "test.doNothing" nil nil nil)
+      (register-procedure "test.one" '(("in" . "INTEGER?")) '(("out" . "INTEGER?"))
+                          '( (("in" . 1) ("out" . 2)) ))
+      (labels ((one (q) (first (cypher-query q g))))
+        ;; standalone call with outputs
+        (check (= (length (cypher-query "CALL test.labels()" g)) 3)
+               "call: standalone output rows")
+        ;; explicit args filter the table
+        (check-equal (cdr (assoc (ast-var "city") (one "CALL test.my.proc('Stefan', 1)"))) "Berlin"
+                     "call: explicit args filter rows")
+        ;; implicit args without parameters -> MissingParameter
+        (handler-case (cypher-query "CALL test.my.proc" g)
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "MissingParameter")
+                   "call: MissingParameter")))
+        (let ((rows (cypher-query "CALL test.my.proc" g :params (json-decode "{\"name\":\"Stefan\",\"id\":1}"))))
+          (check-equal (cdr (assoc (ast-var "city") (first rows))) "Berlin"
+                       "call: implicit args from params"))
+        ;; in-query pass-through of a no-output procedure
+        (graph-create-node g :labels '("N") :props '(("name" . "a")))
+        (check (= (length (cypher-query "MATCH (n) CALL test.doNothing() RETURN n" g)) 1)
+               "call: in-query no-output pass-through")
+        ;; YIELD + renames
+        (check (= (length (cypher-query "CALL test.my.proc('Stefan', 1) YIELD city AS c RETURN c" g)) 1)
+               "call: yield rename")
+        ;; errors
+        (handler-case (cypher-query "CALL test.nope()" g)
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "ProcedureNotFound")
+                   "call: ProcedureNotFound")))
+        (handler-case (cypher-query "CALL test.my.proc('x')" g)
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "InvalidNumberOfArguments")
+                   "call: InvalidNumberOfArguments")))
+        (handler-case (cypher-query "CALL test.one(true)" g)
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "InvalidArgumentType")
+                   "call: InvalidArgumentType")))
+        (handler-case (cypher-query "CALL test.labels() YIELD label WITH 'Hi' AS label CALL test.labels() YIELD label" g)
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "VariableAlreadyBound")
+                   "call: VariableAlreadyBound")))))))
+
 (defun %gql-roundtrip (graph query &key variables)
   "Full round trip through the JSON wire format (also exercises json-encode)."
   (json-decode (json-encode (graphql-execute query graph :variables variables))))
@@ -1600,6 +1653,7 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-graph-persistence)
   (test-graph-multidb)
   (test-graph-gateway)
+  (test-call)
   (test-percentile)
   (test-graphql)
   (test-databases)

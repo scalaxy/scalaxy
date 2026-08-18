@@ -21,6 +21,7 @@
     (format t "    ~s~%" r)))
 
 (defun %tck-reset ()
+  (setf scalaxy::*procedures* (make-hash-table :test #'equal))
   (setf *tck-stats*
         (list :pass 0 :fail 0 :unsupported 0 :total 0
               :failures nil
@@ -659,7 +660,7 @@ engine does not implement, or NIL."
     (cond
       ((or (search "SHORTESTPATH(" up) (search "ALLSHORTESTPATHS(" up))
        "shortestPath")
-      ((search "CALL " up) "procedures (CALL)")
+      ;; the CALL clause is implemented (clauses/call/*.feature)
       ((search "EXISTS(" up) "exists()")
       ((or (search "DATE(" up) (search "TIME(" up) (search "DATETIME(" up)
            (search "DATETIME." up) (search "LOCALTIME(" up) (search "LOCALDATETIME(" up)
@@ -694,6 +695,44 @@ engine does not implement, or NIL."
               (handler-case (%tck-parse-cell (second row))
                 (error () :cypher-null)))))
     h))
+
+(defun %tck-split-sig-items (spec)
+  "Split 'name :: STRING?, in :: INTEGER?' into ((name . type) ...)."
+  (let ((out nil))
+    (dolist (item (%tck-split-top-level spec))
+      (let ((item (string-trim " " item)))
+        (unless (zerop (length item))
+          (let* ((colon (search "::" item))
+                 (name (string-downcase (string-trim " " (subseq item 0 colon))))
+                 (type (string-upcase
+                        (string-trim " "
+                                     (subseq item (+ colon 2))))))
+            (push (cons name type) out)))))
+    (nreverse out)))
+
+(defun %tck-register-procedure (text table)
+  "Handle a 'there exists a procedure name(args) :: (outputs):' step:
+register the procedure (signature from TEXT, rows from TABLE)."
+  (let* ((rest (subseq text (length "there exists a procedure ")))
+         (paren (position #\( rest))
+         (name (string-downcase (string-trim " " (subseq rest 0 paren))))
+         (close (position #\) rest :start paren))
+         (inputs-spec (subseq rest (1+ paren) close))
+         (arrow (search "::" rest :start2 close))
+         (out-paren (position #\( rest :start arrow))
+         (out-close (position #\) rest :start out-paren))
+         (outputs-spec (subseq rest (1+ out-paren) out-close))
+         (inputs (%tck-split-sig-items inputs-spec))
+         (outputs (%tck-split-sig-items outputs-spec))
+         (rows nil))
+    (when (and table (cdr table))
+      (let ((header (mapcar #'string-downcase (first table))))
+        (dolist (row (cdr table))
+          (push (loop for h in header for cell in row
+                      collect (cons h (%tck-parse-cell cell)))
+                rows))))
+    (register-procedure name inputs outputs (nreverse rows))
+    (format t "  proc ~a~%" name)))
 
 (defun %tck-error-expectation (text)
   "Parse 'a <Kind> should be raised at <phase>: <detail>'
@@ -734,6 +773,7 @@ into (values kind phase detail)."
             (error-family nil)
             (snapshot nil)
             (result (list :pass)))
+        (setf scalaxy::*procedures* (make-hash-table :test #'equal))
         (labels ((fail (fmt &rest args)
                    (setf result (list :fail (apply #'format nil fmt args)))
                    (return-from %tck-run-scenario result))
@@ -754,6 +794,8 @@ into (values kind phase detail)."
                                    ((typep e 'cypher-type-error) "TypeError")
                                    ((typep e 'cypher-argument-error) "ArgumentError")
                                    ((typep e 'cypher-entity-not-found) "EntityNotFound")
+                                   ((typep e 'cypher-procedure-error) "ProcedureError")
+                                   ((typep e 'cypher-parameter-missing) "ParameterMissing")
                                    (t "CypherError")))
                        (setf rows nil))
                      (error (e)
@@ -851,7 +893,8 @@ into (values kind phase detail)."
                       (skip (format nil "step: ~a"
                                     (subseq text 0 (min 60 (length text))))))
                      ((member kind '("SyntaxError" "TypeError" "ArgumentError"
-                                     "EntityNotFound")
+                                     "EntityNotFound" "ProcedureError"
+                                     "ParameterMissing")
                               :test #'string-equal)
                       (let ((ok (and error-kind
                                      (if (string-equal detail "*")
@@ -861,7 +904,7 @@ into (values kind phase detail)."
                           (fail "expected ~a: ~a, got ~s" kind detail error-kind))))
                      (t (skip (format nil "error kind ~a" kind))))))
                 ((search "there exists a procedure" text)
-                 (skip "procedures"))
+                 (%tck-register-procedure text table))
                 (t (skip (format nil "step: ~a"
                                  (subseq text 0 (min 60 (length text)))))))))
           result)))))

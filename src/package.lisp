@@ -30,6 +30,7 @@
    #:graph-scan-node-ids #:graph-scan-rel-ids #:graph-expand
    #:graph-rebuild-indexes #:graph-check-invariants
    #:graphql-execute
+   #:register-procedure
    #:graph-count-nodes #:graph-count-rels #:+blob-inline-limit+
    ;; protocol / wire format
    #:+op-put+ #:+op-get+ #:+op-delete+ #:+op-scan+ #:+op-replicate+
@@ -73,6 +74,7 @@
    #:cypher-lex #:cypher-parse #:cypher-parse-expr #:ast-print #:ast-var
    #:ast-var-name #:cytoken #:cytoken-kind #:cytoken-value #:cytoken-line
    #:cytoken-col #:cypher-error #:cypher-syntax-error #:cypher-type-error
+   #:cypher-procedure-error #:cypher-parameter-missing
    #:cypher-argument-error #:cypher-entity-not-found #:cypher-signal
    #:cypher-error-kind #:cypher-error-detail #:cypher-error-query
    #:cypher-type-name #:cypher-= #:cypher-compare #:eval-expr

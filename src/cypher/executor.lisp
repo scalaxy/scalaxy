@@ -935,6 +935,50 @@ keyed by the printed expression name and by bare variable names."
 ;;; ------------------------------------------------------------------
 ;;; query evaluation
 
+(defun %resolve-call-args (proc clause row graph params)
+  "Argument values (alist of (input-name . value)) for PROC: explicit
+expressions are evaluated against ROW; implicit arguments resolve from
+row variables then query parameters."
+  (let ((inputs (getf proc :inputs))
+        (args (getf (cdr clause) :args)))
+    (if (listp args)
+        (loop for (in . type) in inputs
+              for expr in args
+              collect (cons in (eval-expr expr row graph params)))
+        (loop for (in . type) in inputs
+              collect (cons in (let ((sym (ast-var in)))
+                                 (or (cdr (assoc sym row))
+                                     (gethash in params)
+                                     :cypher-null)))))))
+
+(defun %call-clause (rows clause graph params first?)
+  "Execute a CALL clause over input ROWS.  FIRST? marks a standalone
+call (no preceding clauses): a procedure with no output columns then
+yields nothing, whereas mid-query it passes rows through unchanged."
+  (let* ((name (getf (cdr clause) :name))
+         (proc (%proc-lookup name))
+         (outputs (getf proc :outputs))
+         (yield (if (eq (getf (cdr clause) :yield) :star)
+                    (mapcar (lambda (o) (cons (car o) (car o))) outputs)
+                    (getf (cdr clause) :yield)))
+         (yielded (mapcar #'car yield)))
+    (if (null outputs)
+        ;; no-output procedure: standalone -> empty; in-query -> pass-through
+        (if first? nil rows)
+        (let ((out nil))
+          (dolist (row rows)
+            (let ((args (%resolve-call-args proc clause row graph params)))
+              (dolist (orow (%procedure-rows proc args))
+                (push (if yield
+                          (let ((r row))
+                            (dolist (item yield r)
+                              (setf r (acons (ast-var (cdr item))
+                                             (cdr (assoc (ast-var (car item)) orow))
+                                             r))))
+                          (append row orow))
+                      out))))
+          (nreverse out)))))
+
 (defun %eval-clauses (g rows clauses graph params)
   (let ((out rows))
     (dolist (clause clauses)
@@ -961,6 +1005,7 @@ keyed by the printed expression name and by bare variable names."
                      (cypher-signal "NegativeIntegerArgument" :detail "LIMIT must not be negative"))
                     (t (setf out (subseq out 0 (min n (length out))))))))
         (:union (%perr-union))
+        (:call (setf out (%call-clause out clause graph params (eq clause (first clauses)))))
         (:create (setf out (%create-clause g out clause graph params)))
         (:merge (setf out (%merge-clause g out clause graph params)))
         (:set (setf out (%set-clause g out clause graph params)))
@@ -977,7 +1022,7 @@ Returns the result rows as a list of alists.  A query whose last
 clause is an updating clause returns no rows (openCypher: updating
 queries produce a result only through RETURN)."
   (let ((ast (if (stringp query) (cypher-parse query) query)))
-    (cypher-check-query ast)
+    (cypher-check-query ast params)
     (if (eq (car ast) :union)
         (let ((results nil))
           (dolist (q (getf (cdr ast) :queries))
@@ -1025,7 +1070,9 @@ queries produce a result only through RETURN)."
                      (cypher-list (nreverse out))))))
           (let ((rows (%eval-clauses graph initial clauses graph params)))
             ;; queries without a RETURN produce no result rows
-            ;; (updating queries report results only through RETURN)
-            (if (member :return clauses :key #'car)
+            ;; (updating queries report results only through RETURN),
+            ;; except standalone CALL clauses whose rows are the result
+            (if (or (member :return clauses :key #'car)
+                    (and clauses (eq (car (car (last clauses))) :call)))
                 rows
                 nil))))))

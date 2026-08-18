@@ -477,9 +477,9 @@
 
 (defun graphql-execute (source graph &key variables)
   "Execute GraphQL query SOURCE against GRAPH.  Returns an alist ready for
-json-encode: (("data" . data) ("extensions" . (("graph" . (("nodes" . ...)
-("edges" . ...)))))).  On parse/execution errors returns
-(("data" . :json-null) ("errors" . ((("message" . ...))...)))."
+json-encode: ((\"data\" . data) (\"extensions\" . ((\"graph\" . ((\"nodes\" . ...)
+(\"edges\" . ...)))))).  On parse/execution errors returns
+((\"data\" . :json-null) (\"errors\" . (((\"message\" . ...))...)))."
   (handler-case
       (let* ((doc (gql-parse source))
              (ex (%make-gql-exec graph (or variables (make-hash-table :test #'equal))))
