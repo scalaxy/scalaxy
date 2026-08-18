@@ -605,6 +605,14 @@ RESULT-KIND value, applying MAP (component overrides)."
   (let ((out nil))
     (dolist (p mappairs)
       (let ((k (car p)) (v (cdr p)))
+        (cond
+          ((member k '("millisecond" "milliseconds") :test #'string-equal)
+           (when (not (%map-get mappairs "nanosecond"))
+             (push (cons "nanosecond" (round (* (or v 0) 1000000.0))) out)))
+          ((member k '("microsecond" "microseconds") :test #'string-equal)
+           (when (not (%map-get mappairs "nanosecond"))
+             (push (cons "nanosecond" (round (* (or v 0) 1000.0))) out)))
+          (t
         (if (and (or (string-equal k "datetime") (string-equal k "time"))
                  (%temporal-p v))
             (progn
@@ -624,7 +632,7 @@ RESULT-KIND value, applying MAP (component overrides)."
                 (push (cons "nanosecond" (getf (cdr v) :nanosecond)) out))
               (when (and (getf (cdr v) :offset) (not (%map-get mappairs "offset")))
                 (push (cons "offset" (getf (cdr v) :offset)) out)))
-            (push p out))))
+            (push p out))))))
     (nreverse out)))
 
 (defun %map-collapse (mappairs)
