@@ -901,6 +901,8 @@ replacing them with explicit year/month/day keys (leaving other keys)."
 
 (defun %duration-between (lhs rhs &optional mode)
   "Duration from LHS to RHS.  MODE: nil (between) | :months | :days | :seconds."
+  (when (or (%tv-null lhs) (%tv-null rhs))
+    (return-from %duration-between :cypher-null))
   (unless (and (%temporal-p lhs) (%temporal-p rhs))
     (cypher-signal "InvalidArgumentType" :detail "duration.between needs two temporals"))
   (let ((neg (not (%lhs-before lhs rhs)))
