@@ -16,6 +16,7 @@
     <a class="nav-item" data-page="data"><span class="nav-ico">&#9776;</span>Data</a>
     <a class="nav-item" data-page="cluster"><span class="nav-ico">&#9678;</span>Cluster</a>
     <a class="nav-item" data-page="console"><span class="nav-ico">&#8250;_</span>Console</a>
+    <a class="nav-item" data-page="graph"><span class="nav-ico">&#9672;</span>Graph</a>
   </nav>
   <div class="sidebar-foot">
     <div class="foot-line"><span class="dim">node</span> <span id="foot-node">-</span></div>
@@ -115,6 +116,39 @@
         <div class="pill dim-pill" id="console-hint">Enter &#9166; to run &middot; Shift+Enter for newline &middot; put / get / delete / scan</div>
       </div>
       <pre id="console-output" class="console-output">Scalaxy console ready.</pre>
+    </div>
+  </section>
+
+  <!-- ============ GRAPH (GraphQL + 2D visualization) ============ -->
+  <section id="page-graph" class="page hidden">
+    <div class="graph-grid">
+      <div class="card graph-editor-card">
+        <div class="card-head">GraphQL query</div>
+        <textarea id="gql-input" class="console-input gql-input" rows="14" spellcheck="false"></textarea>
+        <div class="toolbar">
+          <button class="btn btn-primary" id="gql-run">Run query</button>
+          <button class="btn btn-ghost" id="gql-sample" title="Load a sample query">Sample</button>
+          <button class="btn btn-ghost" id="gql-fit" title="Fit graph to view">&#128207; Fit</button>
+          <span class="spacer"></span>
+          <div class="pill dim-pill" id="gql-hint">drag nodes &middot; wheel zoom &middot; drag background to pan</div>
+        </div>
+      </div>
+      <div class="card graph-result-card">
+        <div class="card-head graph-result-head">
+          <span>Result</span>
+          <span class="graph-stats" id="gql-stats">-</span>
+          <span class="spacer"></span>
+          <div class="seg">
+            <button class="seg-btn active" id="seg-graph">Graph</button>
+            <button class="seg-btn" id="seg-json">JSON</button>
+          </div>
+        </div>
+        <div id="gql-graph-wrap" class="gql-graph-wrap">
+          <canvas id="gql-canvas" class="gql-canvas"></canvas>
+          <div id="gql-empty" class="gql-empty">Run a query to draw the graph here.&#10;Every node and edge in the result is rendered in an interactive 2D view.</div>
+        </div>
+        <pre id="gql-json" class="console-output gql-json hidden">-</pre>
+      </div>
     </div>
   </section>
 </main>

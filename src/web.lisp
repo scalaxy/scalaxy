@@ -224,6 +224,9 @@ The USE command returns the new database name as its output."
       ;; cypher
       ((and (string= path "/api/cypher") (string= method "POST"))
        (%api-cypher node gateway request db))
+      ;; graphql
+      ((and (string= path "/api/graphql") (string= method "POST"))
+       (%api-graphql node request db))
       ;; fallback
       (t (json-response (list (cons "error" "not found") (cons "path" path)) :status 404)))))
 
@@ -389,6 +392,28 @@ The USE command returns the new database name as its output."
             (json-response (list (cons "error" (format nil "~a" e))
                                  (cons "kind" (cypher-error-kind e)))
                            :status 400))
+          (error (e)
+            (json-response (list (cons "error" (princ-to-string e))) :status 500))))))
+
+(defun %api-graphql (node request db)
+  "POST /api/graphql -- execute a GraphQL query against the local graph
+database.  Body: {\"query\": ..., \"variables\": {...}, \"db\": ...}.
+Returns a standard GraphQL document (data + errors) with an
+extensions.graph block carrying the materialized node/edge set."
+  (let ((body (getf request :body)))
+    (if (null body)
+        (json-response (list (cons "error" "request body required")) :status 400)
+        (handler-case
+            (let* ((data (json-decode body))
+                   (query (or (gethash "query" data) ""))
+                   (vars (gethash "variables" data))
+                   (db (or (gethash "db" data) db)))
+              (if (string= query "")
+                  (json-response (list (cons "error" "query required")) :status 400)
+                  (json-response
+                   (graphql-execute query
+                                    (make-local-graph (node-store node) :db db)
+                                    :variables vars))))
           (error (e)
             (json-response (list (cons "error" (princ-to-string e))) :status 500))))))
 

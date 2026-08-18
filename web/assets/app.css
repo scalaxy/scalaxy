@@ -225,3 +225,46 @@ textarea.input { resize: vertical; width: 100%; font-family: var(--mono); }
   padding: 1px 7px;
   margin-left: 2px;
 }
+
+
+/* ================= GraphQL page ================= */
+.graph-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+@media (max-width: 1000px) { .graph-grid { grid-template-columns: 1fr; } }
+.graph-editor-card, .graph-result-card { display: flex; flex-direction: column; min-height: 480px; }
+.gql-input { min-height: 240px; flex: 1; font-size: 12.5px; line-height: 1.5; }
+.graph-result-head { display: flex; align-items: center; gap: 12px; }
+.graph-stats { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg-btn {
+  background: transparent; border: 0; color: var(--text-dim);
+  padding: 5px 14px; font-size: 12px; cursor: pointer; font-family: var(--font);
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.gql-graph-wrap { position: relative; flex: 1; min-height: 420px; border-radius: 0 0 12px 12px; overflow: hidden; }
+.gql-canvas { display: block; width: 100%; height: 100%; cursor: grab; background:
+  radial-gradient(circle at 20% 20%, rgba(79,140,255,.07), transparent 50%),
+  radial-gradient(circle at 80% 70%, rgba(63,185,80,.05), transparent 50%),
+  var(--bg); }
+.gql-canvas.dragging { cursor: grabbing; }
+.gql-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); font-family: var(--mono); font-size: 13px; text-align: center;
+  white-space: pre-line; pointer-events: none;
+}
+.gql-json { min-height: 420px; max-height: 560px; overflow: auto; font-size: 12px; }
+
+/* node/edge legend in canvas footer */
+.graph-legend {
+  position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px 12px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-dim);
+  background: rgba(13,17,23,.75); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; pointer-events: none;
+}
+.graph-legend .lg { display: inline-flex; align-items: center; gap: 5px; }
+.graph-legend .sw { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }

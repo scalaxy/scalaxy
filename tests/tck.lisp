@@ -667,7 +667,7 @@ engine does not implement, or NIL."
            (search ".TRANSACTION(" up) (search ".STATEMENT(" up)
            (search ".REALTIME(" up))
        "temporal functions")
-      ((search "PERCENTILE" up) "percentile aggregates")
+      ;; percentileCont/percentileDisc are implemented (Aggregation6)
       ((or (search "STDEV(" up) (search "STDEVP(" up)) "stDev aggregates")
       ((search "{.*}" q) "map projections")
       ((and (search "[(" q) (search "| " q)) "pattern/list comprehensions")

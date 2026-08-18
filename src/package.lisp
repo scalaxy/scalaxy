@@ -29,6 +29,7 @@
    #:graph-delete-node #:graph-delete-relationship
    #:graph-scan-node-ids #:graph-scan-rel-ids #:graph-expand
    #:graph-rebuild-indexes #:graph-check-invariants
+   #:graphql-execute
    #:graph-count-nodes #:graph-count-rels #:+blob-inline-limit+
    ;; protocol / wire format
    #:+op-put+ #:+op-get+ #:+op-delete+ #:+op-scan+ #:+op-replicate+

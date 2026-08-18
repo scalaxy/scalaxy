@@ -38,6 +38,8 @@
     (labels ((emit (v)
                (cond
                  ((null v) (write-string "null" out))
+                 ((eq v :json-null) (write-string "null" out))
+                 ((eq v :json-false) (write-string "false" out))
                  ((eq v t) (write-string "true" out))
                  ((stringp v) (write-char +dq+ out)
                               (write-string (json-escape v) out)

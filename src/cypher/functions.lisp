@@ -474,7 +474,8 @@ null), nulls last."
 ;;; the expression evaluator
 
 (defun %aggregate-fn-p (name)
-  (member name '("count" "sum" "avg" "min" "max" "collect") :test #'string-equal))
+  (member name '("count" "sum" "avg" "min" "max" "collect"
+                 "percentilecont" "percentiledisc") :test #'string-equal))
 
 (defun %expr-direct-parts (expr)
   "All direct subexpressions of EXPR.  Map literals contribute their

@@ -27,6 +27,7 @@
                              (:file "cluster")
                              (:file "api")
                              (:file "graph")
+                             (:file "graphql")
                              (:module "cypher"
                               :components ((:file "conditions")
                                            (:file "ast")

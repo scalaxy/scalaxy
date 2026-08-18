@@ -556,7 +556,14 @@ rejected by the semantic checker)."
                             (list :seen seen :items (cons v (or (getf state :items) nil)))))))
            (if (cypher-null-p v)
                (list :items (or (getf state :items) nil))
-               (list :items (cons v (or (getf state :items) nil)))))))))
+               (list :items (cons v (or (getf state :items) nil))))))
+      ((:percentilecont :percentiledisc)
+       (let ((p (second args)))
+         (if (and (numberp v) (not (cypher-null-p v)))
+             (list :items (cons v (or (getf state :items) nil))
+                   :p (or (getf state :p) p))
+             (list :items (or (getf state :items) nil)
+                   :p (or (getf state :p) p))))))))
 
 (defun %agg-finish (kind state)
   (case kind
@@ -570,7 +577,33 @@ rejected by the semantic checker)."
                 (float (/ (or (getf state :total) 0) n)))))
     (:min (or (getf state :best) :cypher-null))
     (:max (or (getf state :best) :cypher-null))
-    (:collect (cypher-list (reverse (or (getf state :items) nil))))))
+    (:collect (cypher-list (reverse (or (getf state :items) nil))))
+    ((:percentilecont :percentiledisc)
+     (let ((items (reverse (or (getf state :items) nil))))
+       (if (or (null items) (null (getf state :p)))
+           :cypher-null
+           (%percentile items (getf state :p) (eq kind :percentilecont)))))))
+
+(defun %percentile (sorted p cont?)
+  "Percentile of SORTED (ascending) values: CONT? = continuous
+(interpolating, always numeric) vs discrete (nearest member).
+Signals NumberOutOfRange when P is outside [0,1]."
+  (unless (and (numberp p) (not (cypher-null-p p)))
+    (cypher-signal "InvalidArgumentType"
+                   :detail "percentile must be a number between 0.0 and 1.0"))
+  (when (or (< p 0) (> p 1))
+    (cypher-signal "NumberOutOfRange"
+                   :detail "percentile must be between 0.0 and 1.0"))
+  (let ((n (length sorted)))
+    (if cont?
+        (let ((pos (* p (1- n))))
+          (if (integerp pos)
+              (nth pos sorted)
+              (let* ((lo (floor pos)) (hi (ceiling pos))
+                     (a (nth lo sorted)) (b (nth hi sorted)))
+                (+ a (* (- b a) (- pos lo))))))
+        (let ((idx (min (1- n) (max 0 (1- (ceiling (* p n)))))))
+          (nth idx sorted)))))
 
 (defun %agg-group-key (key-items row graph params)
   "The grouping key for ROW: an alist of (projected-name . value)."

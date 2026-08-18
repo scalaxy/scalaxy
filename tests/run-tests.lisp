@@ -1456,6 +1456,121 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
 
 ;;; ------------------------------------------------------------------
 
+
+;;; ------------------------------------------------------------------
+;;; graphql engine
+
+(defun test-percentile ()
+  (deftest percentile
+    (let* ((store (make-store))
+           (g (make-local-graph store)))
+      (dolist (price '(10.0 20.0 30.0))
+        (graph-create-node g :labels '("N") :props (list (cons "price" price))))
+      (labels ((one (q) (row-get (first (cypher-query q g)) (ast-var "p"))))
+        (check-equal (one "MATCH (n) RETURN percentileDisc(n.price, 0.0) AS p") 10.0d0
+                     "percentileDisc 0.0")
+        (check-equal (one "MATCH (n) RETURN percentileDisc(n.price, 0.5) AS p") 20.0d0
+                     "percentileDisc 0.5")
+        (check-equal (one "MATCH (n) RETURN percentileDisc(n.price, 1.0) AS p") 30.0d0
+                     "percentileDisc 1.0")
+        (check-equal (one "MATCH (n) RETURN percentileCont(n.price, 0.5) AS p") 20.0d0
+                     "percentileCont 0.5")
+        (handler-case
+            (progn (cypher-query "MATCH (n) RETURN percentileCont(n.price, 1.1) AS p" g)
+                   (check nil "percentileCont out-of-range must raise"))
+          (scalaxy:cypher-error (e)
+            (check (equal (scalaxy:cypher-error-kind e) "NumberOutOfRange")
+                   "percentileCont NumberOutOfRange kind")))))))
+
+(defun %gql-roundtrip (graph query &key variables)
+  "Full round trip through the JSON wire format (also exercises json-encode)."
+  (json-decode (json-encode (graphql-execute query graph :variables variables))))
+
+(defun test-graphql ()
+  (deftest graphql
+    (let* ((gr (%mk-graph))
+           (data (%gql-roundtrip gr "{ nodes { id labels } }")))
+      (check (null (gethash "errors" data)) "graphql: no errors on basic query")
+      (let* ((nodes (gethash "nodes" (gethash "data" data)))
+             (labels (mapcar (lambda (n) (gethash "labels" n)) nodes)))
+        (check (= (length nodes) 4) "graphql: all nodes returned")
+        (check (every (lambda (l) (equal l '("Person"))) (subseq labels 0 3))
+               "graphql: person labels")
+        (check (equal (first (last labels)) '("Company")) "graphql: company label"))
+    ;; label filter + limit
+    (let* ((data (%gql-roundtrip gr "{ nodes(label: \"Person\", limit: 2) { id } }"))
+           (nodes (gethash "nodes" (gethash "data" data))))
+      (check (= (length nodes) 2) "graphql: label filter + limit"))
+    ;; nested relationship traversal with direction and type
+    (let* ((data (%gql-roundtrip gr
+                       "{ nodes(label: \"Person\") { relationships(type: \"KNOWS\", direction: OUT) { type to { labels } } } }"))
+           (nodes (gethash "nodes" (gethash "data" data)))
+           (ada (find-if (lambda (n) (string= (gethash "id" n) (gethash "id" (first nodes)))) nodes))
+           (rels (gethash "relationships" ada)))
+      (check (every (lambda (r) (string= (gethash "type" r) "KNOWS")) rels)
+             "graphql: relationship type filter")
+      (check (every (lambda (r) (equal (gethash "labels" (gethash "to" r)) '("Person")))
+                    rels)
+             "graphql: traversal reaches typed nodes"))
+    ;; variables
+    (let* ((data (%gql-roundtrip gr "query ($l: String) { nodes(label: $l) { id } }"
+                       :variables (json-decode "{\"l\": \"Company\"}")))
+           (nodes (gethash "nodes" (gethash "data" data))))
+      (check (= (length nodes) 1) "graphql: variable substitution"))
+    ;; aliases
+    (let* ((data (%gql-roundtrip gr "{ n1: nodes(label: \"Company\") { id } }"))
+           (n1 (gethash "n1" (gethash "data" data))))
+      (check (= (length n1) 1) "graphql: aliased root field"))
+    ;; unknown field -> errors, data null
+    (let* ((data (%gql-roundtrip gr "{ nodes { bogus } }")))
+      (check (null (gethash "data" data)) "graphql: error -> data null")
+      (check (string/= (gethash "message" (first (gethash "errors" data))) "")
+             "graphql: error message present"))
+    ;; extensions.graph: every edge endpoint is in the node set
+    (let* ((data (%gql-roundtrip gr "{ nodes(label: \"Person\") { out { to { id } } } }"))
+           (graph (gethash "graph" (gethash "extensions" data)))
+           (node-ids (mapcar (lambda (n) (gethash "id" n)) (gethash "nodes" graph))))
+      (check (plusp (length (gethash "edges" graph))) "graphql: extensions contains edges")
+      (dolist (e (gethash "edges" graph))
+        (check (member (gethash "start" e) node-ids :test #'string=)
+               "graphql: edge start in node set")
+        (check (member (gethash "end" e) node-ids :test #'string=)
+               "graphql: edge end in node set")))
+    ;; fragments
+    (let* ((data (%gql-roundtrip gr "fragment F on Node { id } { nodes(label: \"Company\") { ...F } }"))
+           (nodes (gethash "nodes" (gethash "data" data))))
+      (check (= (length nodes) 1) "graphql: fragment spread"))
+    ;; parse errors
+    (let* ((data (%gql-roundtrip gr "{ nodes {")))
+      (check (gethash "errors" data) "graphql: parse error reported"))
+    ;; relationship fields: from/to and bare id fallback
+    (let* ((data (%gql-roundtrip gr "{ relationships(limit: 1) { id start end } }"))
+           (rels (gethash "relationships" (gethash "data" data))))
+      (check (= (length rels) 1) "graphql: relationship limit")
+      (check (stringp (gethash "start" (first rels))) "graphql: bare start -> id string"))
+    ;; HTTP endpoint round trip
+    (let* ((node (make-node :id "gqlweb"))
+           (http-server (http-serve
+                         (make-web-handler :node node :web-dir "web/"
+                                           :address "127.0.0.1:7200"
+                                           :http-address "127.0.0.1:8080")
+                         :port 0)))
+      (unwind-protect
+           (let ((port (http-server-port http-server))
+                 (local (make-local-graph (node-store node))))
+             (graph-create-node local :labels '("Api") :props '(("name" . "gql")))
+             (multiple-value-bind (status hdrs body)
+                 (http-request "127.0.0.1" port "POST" "/api/graphql"
+                               :body "{\"query\": \"{ nodes(label: \\\"Api\\\") { id } }\"}")
+               (declare (ignore hdrs))
+               (let ((d (json-decode body)))
+                 (check (= status 200) "graphql api status")
+                 (let ((nodes (gethash "nodes" (gethash "data" d))))
+                   (check (= (length nodes) 1) "graphql api nodes")
+                   (check (gethash "graph" (gethash "extensions" d))
+                          "graphql api extensions")))))
+        (http-stop http-server))))))
+
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)
   (test-consistent-hash)
@@ -1485,6 +1600,8 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-graph-persistence)
   (test-graph-multidb)
   (test-graph-gateway)
+  (test-percentile)
+  (test-graphql)
   (test-databases)
   (test-databases-gateway)
   (test-gateway)
