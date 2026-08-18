@@ -323,7 +323,9 @@ minutes east of UTC (a :timezone key holds the raw text)."
   (let ((months (getf (cdr v) :months))
         (days (getf (cdr v) :days))
         (nanos (getf (cdr v) :nanos)))
-    (with-output-to-string (o)
+    (if (and (zerop months) (zerop days) (zerop nanos))
+        "PT0S"
+        (with-output-to-string (o)
       (write-string "P" o)
       ;; months -> years + months, shared sign
       (let ((mneg (minusp months)) (am (abs months)))
@@ -348,7 +350,7 @@ minutes east of UTC (a :timezone key holds the raw text)."
               (when (plusp m2) (format o "~a~aM" tsg m2))
               (when (or (plusp s2) (plusp frac))
                 (format o "~a~a~aS" tsg s2
-                        (if (zerop frac) "" (format nil ".~a" (string-right-trim "0" (%pad frac 9)))))))))))))
+                        (if (zerop frac) "" (format nil ".~a" (string-right-trim "0" (%pad frac 9))))))))))))))
 
 (defun %temporal-to-string (v)
   (cond
