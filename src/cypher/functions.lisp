@@ -92,6 +92,8 @@ Boolean results use the T/:CYPHER-FALSE convention, never CL NIL."
       ((or (%tv-null a) (%tv-null b)) :cypher-null)
       ((and (numberp a) (numberp b)) (b (= a b)))
       ((and (stringp a) (stringp b)) (b (string= a b)))
+      ((and (%temporal-p a) (%temporal-p b))
+       (b (and (%temporal-same-kind-p a b) (eq (%temporal-compare a b) 0))))
       ((and (or (eq a t) (cypher-false-p a))
             (or (eq b t) (cypher-false-p b)))
        (b (eq (%tv-true a) (%tv-true b))))
@@ -146,6 +148,7 @@ string < boolean < number < NaN < null."
     ((cypher-list-p v) 3)
     ((%rel-p v) 2)
     ((%node-p v) 1)
+    ((%temporal-p v) 0.5)
     (t 0)))  ; maps and anything else
 
 (defun %sort-compare (a b)
@@ -180,6 +183,11 @@ null), nulls last."
            ((< a b) :lt) ((> a b) :gt) (t :eq)))
     ((and (stringp a) (stringp b))
      (cond ((string< a b) :lt) ((string> a b) :gt) (t :eq)))
+    ((and (%temporal-p a) (%temporal-p b))
+     (if (%temporal-same-kind-p a b)
+         (let ((c (%temporal-compare a b))) (if (minusp c) :lt (if (plusp c) :gt :eq)))
+         (let ((ra (%sort-rank a)) (rb (%sort-rank b)))
+           (cond ((< ra rb) :lt) ((> ra rb) :gt) (t :eq)))))
     ((and (or (eq a t) (cypher-false-p a))
           (or (eq b t) (cypher-false-p b)))
      (let ((x (%tv-true a)) (y (%tv-true b)))
@@ -210,6 +218,7 @@ null), nulls last."
         ((stringp v) v)
         ((floatp v) (format nil "~f" v))
         ((integerp v) (format nil "~d" v))
+        ((%temporal-p v) (%temporal-to-string v))
         (t (%fn-error "toString" (list v)))))
 
 (defun %to-integer (v)
@@ -467,6 +476,11 @@ null), nulls last."
                        collect x))))))
         ((string-equal name "exists")
          (%fn-error name args))
+        ((member name '("date" "localtime" "time" "localdatetime"
+                        "datetime" "duration" "currentDate" "currentTime"
+                        "currentDateTime" "currentTimestamp" "truncate")
+                 :test #'string-equal)
+         (%temporal-call name args row graph params))
         (t (cypher-signal "InvalidArgumentType"
                           :detail (format nil "unknown function ~a" name)))))))
 
@@ -791,6 +805,8 @@ graph-view used by EXISTS patterns; PARAMS is a hash-table or nil."
                       ((or (%node-p v) (%rel-p v) (cypher-map-p v))
                        (%check-entity-live v graph)
                        (%map-access v (getf (cdr expr) :prop)))
+                      ((%temporal-p v)
+                       (%temporal-component v (getf (cdr expr) :prop)))
                       (t (cypher-signal "InvalidArgumentType"
                                          :detail (format nil "property access on ~a"
                                                          (cypher-type-name v)))))))

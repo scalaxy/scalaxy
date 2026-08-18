@@ -20,7 +20,11 @@
     "properties" "rTrim" "rand" "range" "relationships" "replace"
     "reverse" "right" "round" "sign" "size" "split" "sqrt"
     "startNode" "substring" "tail" "toBoolean" "toFloat" "toInteger"
-    "toLower" "toString" "toUpper" "trim" "type"))
+    "toLower" "toString" "toUpper" "trim" "type"
+    "date" "localtime" "time" "localdatetime" "datetime" "duration"
+    "currentDate" "currentTime" "currentDateTime" "currentTimestamp"
+    "truncate"))
+
 
 (defun %entity-kind-of (expr scope)
   "Static entity kind of EXPR (:node/:rel/:path/:other) or nil if unknown."

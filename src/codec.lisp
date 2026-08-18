@@ -35,6 +35,7 @@
 (defconstant +tag-bytes+  6)
 (defconstant +tag-list+   7)
 (defconstant +tag-map+    8)
+(defconstant +tag-temporal+ 9)
 
 (defun cypher-null-p (v) (eq v :cypher-null))
 (defun cypher-false-p (v) (eq v :cypher-false))
@@ -42,9 +43,11 @@
 
 (defun cypher-list-p (v)
   "True when V is a Cypher list: a proper CL list, or #() (the empty
-list sentinel).  Dotted pairs, maps and graph entities are not lists."
+list sentinel).  Dotted pairs, maps, graph entities and temporal values
+are not lists."
   (or (and (consp v) (not (eq (car v) :cypher-map))
            (not (%entity-plist-p v))
+           (not (%temporal-p v))
            (null (cdr (last v))))
       (cypher-empty-list-p v)))
 
@@ -140,6 +143,12 @@ The wrapper removes the list-of-pairs ambiguity: a Cypher map is
      (let ((items (cypher-list-elements v)))
        (buf-write-u32 buf (length items))
        (dolist (x items) (%codec-write buf x))))
+    ((%temporal-p v)
+     (buf-write-u8 buf +tag-temporal+)
+     (let ((ints (%temporal-encode-ints v)))
+       (buf-write-u8 buf (length ints))
+       (dolist (z ints)
+         (buf-write-u64 buf (logand z #xFFFFFFFFFFFFFFFF)))))
     (t (error "codec: cannot encode ~s (CL NIL is not a Cypher value)" v))))
 
 (defun codec-encode (value)
@@ -188,6 +197,14 @@ Returns (values value next-position)."
                         (push (cons k x) pairs)
                         (setf pos q))))
            (values (cypher-map (nreverse pairs)) pos))))
+      (#.+tag-temporal+
+       (multiple-value-bind (n j) (read-u8 v (1+ i))
+         (let ((ints nil) (pos j))
+           (loop repeat n
+                 do (multiple-value-bind (u q) (read-u64 v pos)
+                      (push u ints)
+                      (setf pos q)))
+           (values (%temporal-from-encode-ints (nreverse ints)) pos))))
       (t (error "codec: unknown tag ~d at position ~d" tag i)))))
 
 (defun codec-decode (octets &optional (start 0))

@@ -35,6 +35,7 @@
                                            (:file "lexer")
                                            (:file "parser")
                                            (:file "functions")
+                                           (:file "temporal")
                                            (:file "semantics")
                                            (:file "updates")
                                            (:file "executor")
