@@ -192,7 +192,8 @@ minutes east of UTC (a :timezone key holds the raw text)."
             (setf nanosecond (* v (expt 10 (- 9 (length frac)))))))))
     ;; timezone
     (when (< i n)
-      (let ((c (char str i)))
+      (let ((tz-start i)
+            (c (char str i)))
         (cond ((char= c #\Z) (setf offset 0 tz "Z") (incf i))
               ((member c '(#\+ #\-))
                (let ((neg (char= c #\-)))
@@ -208,7 +209,7 @@ minutes east of UTC (a :timezone key holds the raw text)."
                      (incf i)
                      (setf os (parse-integer (subseq str i (+ i 2)))) (incf i 2))
                    (setf offset (* (if neg -1 1) (+ (* oh 60) om (if (plusp os) 1 0)))))
-                 (setf tz (subseq str (- (length str) 1)))))))
+                 (setf tz (subseq str tz-start))))))
       (when (< i n) (error "time: trailing ~s" str)))
     (list :hour hour :minute minute :second second :nanosecond nanosecond
           :offset offset :timezone tz)))
@@ -538,7 +539,10 @@ RESULT-KIND value, applying MAP (component overrides)."
   (let* ((y (getf (cdr v) :year)) (mo (or (getf (cdr v) :month) 1)) (d (or (getf (cdr v) :day) 1))
          (h (or (getf (cdr v) :hour) 0)) (mi (or (getf (cdr v) :minute) 0))
          (s2 (or (getf (cdr v) :second) 0)) (ns (or (getf (cdr v) :nanosecond) 0))
-         (off (or (getf (cdr v) :offset) 0)))
+         (off (or (getf (cdr v) :offset) 0))
+         (tz (getf (cdr v) :timezone)))
+    (when (and map-pairs (%map-get map-pairs "timezone"))
+      (setf off 0 tz (%map-get map-pairs "timezone")))
     (multiple-value-bind (ty tmo td th tmi ts tns) (%truncate-components y mo d h mi s2 ns unit)
       (when map-pairs
         (let ((my (%map-get map-pairs "year")) (mmo (%map-get map-pairs "month"))
@@ -552,7 +556,10 @@ RESULT-KIND value, applying MAP (component overrides)."
       (when (and (member (string-downcase unit) '("week") :test #'string-equal) (zerop td))
         ;; handled above; td should already be correct
         nil)
-      (%build-truncated result-kind ty tmo td th tmi ts tns off))))
+      (let ((res (%build-truncated result-kind ty tmo td th tmi ts tns off)))
+        (if (and tz (or (%time-p res) (%datetime-p res)))
+            (plist-put res :timezone tz)
+            res)))))
 
 (defun %now ()
   "Current local wall-clock broken down for date()/datetime() zero-arg."
