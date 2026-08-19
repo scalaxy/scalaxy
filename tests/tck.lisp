@@ -672,13 +672,9 @@ engine does not implement, or NIL."
       ((or (search "STDEV(" up) (search "STDEVP(" up)) "stDev aggregates")
       ((search "{.*}" q) "map projections")
       ;; pattern/list comprehensions are implemented (Pattern2, List6)
-      ;; Precedence1 [20]/[22]: associativity of comparison operators
-      ;; with boolean operators over {true,false,null} is not
-      ;; satisfiable under openCypher's three-valued null semantics
-      ;; (for a null operand the compared sides are never both true),
-      ;; so no conforming implementation can return the expected true
-      ((and (search "ALL(X IN EQ WHERE X)" up) (null (search "NEQ" up)))
-       "spec-inconsistent associativity with null")
+      ;; Precedence1 associativity cases are exercised normally; the current
+      ;; evaluator handles their null truth-table expectations.
+
       (t nil))))
 
 ;;; ------------------------------------------------------------------
@@ -894,7 +890,8 @@ into (values kind phase detail)."
                                     (subseq text 0 (min 60 (length text))))))
                      ((member kind '("SyntaxError" "TypeError" "ArgumentError"
                                      "EntityNotFound" "ProcedureError"
-                                     "ParameterMissing")
+                                     "ParameterMissing" "ConstraintVerificationFailed"
+                                     "SemanticError")
                               :test #'string-equal)
                       (let ((ok (and error-kind
                                      (if (string-equal detail "*")
@@ -935,12 +932,9 @@ a single .feature file, return that file alone."
       (dolist (scenario (%parse-gherkin (namestring path)))
         (dolist (expanded (%expand-outline scenario))
           (let ((name (first expanded)) (tags (second expanded)))
-            (if (member "ignore" tags :test #'string-equal)
-                (progn
-                  (incf (getf *tck-stats* :unsupported))
-                  (incf (gethash "TCK @ignore" (getf *tck-stats* :reasons) 0))
-                  (incf (getf *tck-stats* :total)))
-                (let ((result (%tck-run-scenario feature expanded)))
+            ;; Execute @ignore scenarios as well: this local runner intentionally
+            ;; exposes every case in the corpus.
+            (let ((result (%tck-run-scenario feature expanded)))
                   (incf (getf *tck-stats* (first result)))
                   (incf (getf *tck-stats* :total))
                   (when (eq (first result) :fail)
@@ -954,7 +948,7 @@ a single .feature file, return that file alone."
                     (incf (gethash (second result)
                                    (getf *tck-stats* :reasons) 0)))
                   (when verbose
-                    (format t "~a ~a: ~a~%" (first result) name (second result))))))
+                    (format t "~a ~a: ~a~%" (first result) name (second result)))))
           (when (and limit (>= (getf *tck-stats* :total) limit))
             (return-from run-tck *tck-stats*))))))
   *tck-stats*)

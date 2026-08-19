@@ -201,7 +201,12 @@ sign (-9223372036854775808 is the smallest int64)."
            (when (member (lx-peek lx) '(#\+ #\-)) (lx-advance lx))
            (loop while (%digit-p (lx-peek lx)) do (lx-advance lx)))
          (when (%ident-char-p (lx-peek lx))
-           (lx-err lx "InvalidNumberLiteral" "junk after number"))
+           ;; A number cannot be a map key; report the grammar error rather
+           ;; than the lexer-level malformed-number diagnostic.
+           (if (and (lexer-ctx-tokens lx)
+                    (equal (cytoken-value (first (lexer-ctx-tokens lx))) "{"))
+               (lx-err lx "UnexpectedSyntax" "map keys must be identifiers or strings")
+               (lx-err lx "InvalidNumberLiteral" "junk after number")))
          (let ((text (subseq s start (lexer-ctx-i lx))))
            (if float?
                (let ((v

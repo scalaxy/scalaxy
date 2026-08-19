@@ -67,6 +67,13 @@ entities (openCypher InvalidPropertyType)."
             (cypher-list-elements v)))
     (t t)))
 
+(defun %check-merge-pattern-properties (props row graph params)
+  "MERGE pattern properties cannot contain null values."
+  (dolist (p props)
+    (when (%tv-null (eval-expr (cdr p) row graph params))
+      (cypher-signal "MergeReadOwnWrites"
+                     :detail (format nil "MERGE property ~a is null" (car p))))))
+
 (defun %check-prop-values (props)
   "Signal InvalidPropertyType when a property map contains an invalid
 value."
@@ -103,7 +110,11 @@ value."
           (let ((elements (if (eq (car chain) :path-var) (cddr chain) chain)))
             (let ((ids nil))
               (loop for el in elements when (eq (car el) :node)
-                    do (multiple-value-bind (r eid)
+                    do (when (and (eq (car clause) :merge)
+                                  (getf (cdr el) :props)
+                                  (not (equal (getf (cdr el) :props) (list :empty-props t))))
+                         (%check-merge-pattern-properties (getf (cdr el) :props) row2 graph params))
+                       (multiple-value-bind (r eid)
                            (%instantiate-node g row2 el graph params)
                          (push (cons el eid) ids)
                          (setf row2 r)))
@@ -114,6 +125,10 @@ value."
                     do (let ((src-id (cdr (assoc src-el ids)))
                              (end-id (cdr (assoc node-el ids)))
                              (r row2))
+                         (when (and (eq (car clause) :merge)
+                                    (getf (cdr rel) :props)
+                                    (not (equal (getf (cdr rel) :props) (list :empty-props t))))
+                           (%check-merge-pattern-properties (getf (cdr rel) :props) r graph params))
                          (let* ((props (%filter-null-props
                                         (mapcar (lambda (p)
                                                   (cons (car p)
@@ -316,6 +331,13 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
   ;; refresh the bound entities so subsequent clauses see the new state
   (mapcar (lambda (row) (%refresh-row-entities g row)) rows))
 
+(defun %cypher-delete-node (g eid detach)
+  (handler-case
+      (graph-delete-node g eid :detach detach)
+    (error (e)
+      (declare (ignore e))
+      (cypher-signal "DeleteConnectedNode" :detail "node has relationships"))))
+
 (defun %delete-clause (g rows clause graph params)
   (let ((detach? (getf (cdr clause) :detach)))
     (dolist (expr (getf (cdr clause) :items))
@@ -323,7 +345,7 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
         (let ((v (eval-expr expr row graph params)))
           (when (not (cypher-null-p v))
             (cond
-              ((%node-p v) (graph-delete-node g (getf v :id) :detach detach?))
+              ((%node-p v) (%cypher-delete-node g (getf v :id) detach?))
               ((%rel-p v) (graph-delete-relationship g (getf v :id)))
               ((%path-p v)
                ;; deleting a path deletes every element; relationships
@@ -336,7 +358,7 @@ ON MATCH / ON CREATE SET items are applied to the matched/created rows."
               ((cypher-list-p v)
                (dolist (x (cypher-list-elements v))
                  (cond
-                   ((%node-p x) (graph-delete-node g (getf x :id) :detach detach?))
+                   ((%node-p x) (%cypher-delete-node g (getf x :id) detach?))
                    ((%rel-p x) (graph-delete-relationship g (getf x :id)))
                    ((%path-p x)
                     (let ((els (second x)))

@@ -480,13 +480,15 @@ null), nulls last."
                           "datetime" "duration" "currentDate" "currentTime"
                           "currentDateTime" "currentTimestamp" "truncate")
                    :test #'string-equal)
-             (and (> (length name) 4)
-                  (or (search "date.truncate" name :test #'char-equal)
-                      (search "time.truncate" name :test #'char-equal)
-                      (search "localtime.truncate" name :test #'char-equal)
-                      (search "datetime.truncate" name :test #'char-equal)
-                      (search "localdatetime.truncate" name :test #'char-equal)
-                      (search "duration." name :test #'char-equal))))
+             ;; any dotted <temporal-type>.<function> static call
+             ;; (truncate, between, fromepoch, transaction, ...)
+             (and (search "." name)
+                  (let ((dot (position #\. name)))
+                    (and dot
+                         (member (subseq name 0 dot)
+                                 '("date" "time" "localtime" "datetime"
+                                   "localdatetime" "duration")
+                                 :test #'string-equal)))))
          (%temporal-call name args row graph params))
         (t (cypher-signal "InvalidArgumentType"
                           :detail (format nil "unknown function ~a" name)))))))
@@ -555,10 +557,18 @@ pair values (pairs are (key . expr) conses)."
      (cypher-list (cons a (cypher-list-elements b))))
     ((and (eq op :+) (cypher-list-p a) (%tv-null b)) a)
     ((and (eq op :+) (%tv-null a) (cypher-list-p b)) b)
+    ;; note: %duration-p values are also %temporal-p, so duration+-
+    ;; duration must be tested before the temporal+duration branch
+    ((and (member op '(:+ :-)) (%duration-p a) (%duration-p b))
+     (%duration-add a b (eq op :-)))
     ((and (member op '(:+ :-)) (%temporal-p a) (%duration-p b))
      (%temporal-add-duration a b (eq op :-)))
     ((and (member op '(:+ :-)) (%duration-p a) (%temporal-p b))
      (%temporal-add-duration b a (eq op :-)))
+    ((and (member op '(:* :/)) (%duration-p a) (numberp b))
+     (%duration-scale a b (eq op :/)))
+    ((and (eq op :*) (numberp a) (%duration-p b))
+     (%duration-scale b a nil))
     ((and (eq op :+) (numberp a) (stringp b))
      (concatenate 'string (format nil "~a" a) b))
     ((stringp a)

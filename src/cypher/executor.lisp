@@ -319,14 +319,22 @@ repeats a relationship (openCypher paths are trails)."
                                                                       r2)))
                                                           (walk (+ idx 2) r3 p v)))))))
                                               (when (< hops max-hops)
-                                                (let ((pairs (if bound-list
-                                                                  ;; the relationship at this hop must be
-                                                                  ;; the one from the bound list
-                                                                  (let ((want (nth hops (cypher-list-elements bound-list))))
-                                                                    (loop for pair in (%rel-step-pairs g el src cur graph params)
-                                                                          when (equal (getf (car pair) :id) (getf want :id))
-                                                                            collect pair))
-                                                                  (%rel-step-pairs g el src cur graph params))))
+                                                (let* ((bound-rel (and rvar (row-get cur rvar)))
+                                                       (pairs (cond
+                                                                (bound-list
+                                                                 ;; a variable-length relationship list is consumed in order
+                                                                 (let ((want (nth hops (cypher-list-elements bound-list))))
+                                                                   (loop for pair in (%rel-step-pairs g el src cur graph params)
+                                                                         when (equal (getf (car pair) :id) (getf want :id))
+                                                                           collect pair)))
+                                                                ((%rel-p bound-rel)
+                                                                 ;; A fixed relationship variable already bound by an earlier
+                                                                 ;; MATCH must match that exact relationship here.
+                                                                 (loop for pair in (%rel-step-pairs g el src cur graph params)
+                                                                       when (equal (getf (car pair) :id)
+                                                                                   (getf bound-rel :id))
+                                                                         collect pair))
+                                                                (t (%rel-step-pairs g el src cur graph params)))))
                                                   (dolist (pair pairs)
                                                     (unless (member (getf (car pair) :id) v :test #'equal)
                                                       (push (list cur (1+ hops)
