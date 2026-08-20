@@ -333,6 +333,61 @@ through the ring.  Returns the write reply."
            :type (getf (cdr rel) :type) :limit limit)
           (nreverse rows))))))
 
+(defun %gateway-topk-summary (graph prefix type property limit descending)
+  (let ((gw (graph-gateway graph)) (seen (make-hash-table :test #'equal)) (values nil)
+        (healthy 0))
+    (dolist (peer (gateway-peers gw))
+      (let* ((id (car peer))
+             (reply (ignore-errors
+                      (gateway-request gw id
+                                       (list :op #.+op-topk+ :prefix prefix :type type
+                                             :property property :limit limit
+                                             :descending descending)))))
+        (when (and reply (eql (getf reply :status) #.+status-ok+))
+          (incf healthy)
+          (let ((local (car (multiple-value-list (codec-decode (getf reply :value))))))
+            (dolist (entry local)
+              (let ((rid (first entry)) (value (second entry)))
+                (unless (gethash rid seen)
+                  (setf (gethash rid seen) t)
+                  (push (cons value rid) values))))))))
+    (when (plusp healthy)
+      (let ((ordered (sort values (if descending #'> #'<) :key #'car)))
+        (subseq ordered 0 (min limit (length ordered)))))))
+
+(defun %gateway-topk-query (ast graph)
+  (when (and (consp ast) (eq (car ast) :query))
+    (let* ((clauses (rest ast)) (match (first clauses)) (ret (second clauses))
+           (ord (getf (cdr ret) :order)) (lim (third clauses))
+           (pattern (and match (getf (cdr match) :pattern)))
+           (chain (and pattern (= (length pattern) 1) (first pattern)))
+           (left (and chain (first chain))) (rel (and chain (second chain)))
+           (right (and chain (third chain)))
+           (item (and ret (eq (car ret) :return)
+                      (= (length (getf (cdr ret) :items)) 1)
+                      (first (getf (cdr ret) :items))))
+           (expr (and item (getf (cdr item) :expr)))
+           (spec (and ord (= (length ord) 1) (first ord)))
+           (lexpr (and lim (eq (car lim) :limit) (getf (cdr lim) :expr)))
+           (limit (and (consp lexpr) (eq (car lexpr) :lit) (second lexpr))))
+      (when (and match ret ord lim (eq (car match) :match)
+                 (null (getf (cdr match) :where)) (null (getf (cdr ret) :distinct))
+                 left right (eq (car left) :node) (eq (car right) :node)
+                 (null (getf (cdr left) :labels)) (null (getf (cdr right) :labels))
+                 (null (getf (cdr left) :props)) (null (getf (cdr right) :props))
+                 rel (eq (car rel) :rel) (eq (getf (cdr rel) :dir) :out)
+                 (null (getf (cdr rel) :min)) (null (getf (cdr rel) :max))
+                 (integerp limit) (plusp limit) spec
+                 (equal (getf (cdr spec) :expr) (getf (cdr item) :as))
+                 (consp expr) (eq (car expr) :prop)
+                 (equal (getf (cdr expr) :expr) (getf (cdr rel) :var)))
+        (let* ((prefix (db-key (graph-db graph) ""))
+               (values (%gateway-topk-summary graph prefix (getf (cdr rel) :type)
+                                               (getf (cdr expr) :prop) limit
+                                               (getf (cdr spec) :desc))))
+          (when values
+            (mapcar (lambda (p) (list (cons (getf (cdr item) :as) (car p)))) values)))))))
+
 (defun gateway-cypher (gateway query &key (db +default-db+) params)
   "Evaluate a Cypher QUERY across the cluster: the executor runs on the
 coordinator with a gateway graph-view, so every scan/expand/point-read
@@ -342,6 +397,7 @@ through the normal replicated path (plan section 10, Phase A)."
          (ast (cypher-parse query)))
     (or (%gateway-node-count ast graph)
         (%gateway-limited-relationship-projection ast graph)
+        (%gateway-topk-query ast graph)
         (%gateway-pushdown-aggregate ast graph)
         (%gateway-stream-aggregate ast graph)
         (%fast-count-query ast graph)

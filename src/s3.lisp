@@ -82,8 +82,8 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1") (prefix "scalaxy/") cache-dir lazy)
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
@@ -109,7 +109,9 @@
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
-                     t 0 0 0 (and lazy (make-hash-table :test #'equal)))))
+                     t 0 0 0
+                     (and lazy (make-hash-table :test #'equal))
+                     (and lazy (make-hash-table :test #'equal)))))
 
 (defun %s3-hex-key (key)
   ;; Encode Unicode code points directly so object names remain reversible
@@ -293,6 +295,18 @@ sequence order so overwrite/delete semantics remain deterministic."
               (if (eq kind :nodes) (incf (car counts) delta)
                   (incf (cdr counts) delta)))))))))
 
+(defun %s3-lazy-topk-add (cfg db type property rid value)
+  (let* ((db-index (or (gethash db (s3-config-lazy-topk-summaries cfg))
+                       (setf (gethash db (s3-config-lazy-topk-summaries cfg))
+                             (make-hash-table :test #'equal))))
+         (pair (cons value rid)))
+    (dolist (direction '(:asc :desc))
+      (let* ((key (list type property direction))
+             (values (cons pair (gethash key db-index))))
+        (setf (gethash key db-index)
+              (subseq (sort values (if (eq direction :asc) #'< #'>) :key #'car)
+                      0 (min 100 (length values))))))))
+
 (defun %s3-lazy-type-key (cfg key bytes)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
@@ -307,7 +321,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                                (car (multiple-value-list (%codec-read bytes 0)))
                                bytes))
                    (type (%codec-map-field-light record "type"))
-                   (props (%codec-map-field-light record "props")))
+                   (props (%codec-map-field-light record "props"))
+                   (rid (subseq local 2)))
               (when type
                 (incf (gethash type counts 0))
                 (when (cypher-map-p props)
@@ -317,7 +332,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                              (sums (or (gethash db (s3-config-lazy-sums cfg))
                                        (setf (gethash db (s3-config-lazy-sums cfg))
                                              (make-hash-table :test #'equal)))))
-                        (incf (gethash key sums 0) (cdr pair))))))))))))))
+                        (incf (gethash key sums 0) (cdr pair))
+                        (%s3-lazy-topk-add cfg db type (car pair) rid (cdr pair))))))))))))))
 
 (defun %s3-index-batch (cfg relative)
   "Index keys in a packed segment without decoding record values."

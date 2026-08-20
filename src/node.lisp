@@ -255,6 +255,21 @@
 
 )
 
+(defun %node-topk-summary (node msg)
+  (let* ((store (node-store node)) (cfg (store-backend store))
+         (prefix (getf msg :prefix)) (sep (position #\: prefix :start 2)))
+    (when (and cfg (typep cfg 's3-config) (s3-config-lazy cfg)
+               (s3-config-summary-valid cfg) sep)
+      (let* ((db (subseq prefix 2 sep))
+             (index (gethash db (s3-config-lazy-topk-summaries cfg)))
+             (key (list (getf msg :type) (getf msg :property)
+                        (if (getf msg :descending) :desc :asc)))
+             (values (and index (gethash key index))))
+        (when values
+          (cypher-list
+           (mapcar (lambda (p) (cypher-list (list (cdr p) (car p))))
+                   (subseq values 0 (min (getf msg :limit) (length values))))))))))
+
 (defun node-dispatch (node msg)
   "Handle a decoded request message and return a reply message plist.
 Writes go through NODE-PUT/NODE-DELETE so they are replicated to the
@@ -303,6 +318,13 @@ node's followers (in-process or TCP) before the client is acknowledged."
     (#.+op-scan+
      (list :op #.+op-response+ :status #.+status-ok+
            :pairs (store-scan-fast (node-store node) (getf msg :prefix))))
+    (#.+op-topk+
+     (let ((value (%node-topk-summary node msg)))
+       (if value
+           (list :op #.+op-response+ :status #.+status-ok+
+                 :value (codec-encode value))
+           (list :op #.+op-response+ :status #.+status-error+
+                 :value (codec-encode "top-k summary unavailable")))))
     (#.+op-aggregate+
      (list :op #.+op-response+ :status #.+status-ok+
            :value (codec-encode (node-aggregate-relationships node msg))))

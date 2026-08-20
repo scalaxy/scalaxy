@@ -24,9 +24,11 @@
 (defconstant +op-bulk-replicate+ 14)
 (defconstant +op-scan-page+ 15)
 (defconstant +op-aggregate+ 16)
+(defconstant +op-topk+ 17)
 
 (defconstant +status-ok+        0)
 (defconstant +status-not-found+ 1)
+(defconstant +status-error+ 2)
 
 (defun make-buffer ()
   (make-array 0 :element-type '(unsigned-byte 8) :adjustable t :fill-pointer 0))
@@ -124,6 +126,12 @@
        (buf-write-string buf (getf msg :prefix))
        (buf-write-u64 buf (or (getf msg :offset) 0))
        (buf-write-u32 buf (or (getf msg :limit) 10000)))
+      (#.+op-topk+
+       (buf-write-string buf (getf msg :prefix))
+       (buf-write-string buf (or (getf msg :type) ""))
+       (buf-write-string buf (getf msg :property))
+       (buf-write-u32 buf (getf msg :limit))
+       (buf-write-u8 buf (if (getf msg :descending) 1 0)))
       (#.+op-aggregate+
        (buf-write-string buf (getf msg :prefix))
        (buf-write-string buf (or (getf msg :type) ""))
@@ -191,6 +199,15 @@
          (multiple-value-bind (offset k) (read-u64 v j)
            (multiple-value-bind (limit m) (read-u32 v k)
              (list :op op :prefix prefix :offset offset :limit limit)))))
+      (#.+op-topk+
+       (multiple-value-bind (prefix j) (read-string v i)
+         (multiple-value-bind (type k) (read-string v j)
+           (multiple-value-bind (property m) (read-string v k)
+             (multiple-value-bind (limit n) (read-u32 v m)
+               (multiple-value-bind (descending o) (read-u8 v n)
+                 (declare (ignore o))
+                 (list :op op :prefix prefix :type type :property property
+                       :limit limit :descending (= descending 1))))))))
       (#.+op-aggregate+
        (multiple-value-bind (prefix j) (read-string v i)
          (multiple-value-bind (type k) (read-string v j)

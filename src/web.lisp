@@ -96,6 +96,13 @@
                 (and backend (typep backend 's3-config)
                      (s3-config-lazy backend)
                      (s3-config-summary-valid backend))))
+        (cons "s3TopkSummaryEntries"
+              (let ((backend (store-backend (node-store node))))
+                (if (and backend (typep backend 's3-config))
+                    (loop for index being the hash-values of
+                          (s3-config-lazy-topk-summaries backend)
+                          sum (hash-table-count index))
+                    0)))
         (cons "graphRelationshipTypeCounts"
               (let ((backend (store-backend (node-store node))))
                 (if (and backend (typep backend 's3-config)
