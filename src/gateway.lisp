@@ -225,7 +225,7 @@ through the ring.  Returns the write reply."
                                                    :db (graph-db graph)
                                                    :label (first labels)))))))))))
 
-(defun gateway-aggregate-relationships (gateway db type function property)
+(defun gateway-aggregate-relationships (gateway db type function property &key (left-label "") (right-label "") left-ids right-ids)
   "Push a scalar relationship aggregate to every node and remove replicas."
   (let ((total (if (string-equal function "COUNT") 0 0.0))
         (seen nil) (healthy 0))
@@ -234,7 +234,9 @@ through the ring.  Returns the write reply."
                      (gateway-request gateway (car peer)
                                       (list :op #.+op-aggregate+
                                             :prefix (db-key db "") :type type
-                                            :property property :function function)))))
+                                            :property property :function function
+                                            :left-label left-label :right-label right-label
+                                            :left-ids left-ids :right-ids right-ids)))))
         (when (and reply (eql (getf reply :status) #.+status-ok+))
           (incf healthy)
           (let ((value (car (multiple-value-list
@@ -265,8 +267,10 @@ through the ring.  Returns the write reply."
                  (null (getf (cdr ret) :distinct)) (null (getf (cdr ret) :order))
                  rel (eq (car rel) :rel)
                  left right (eq (car left) :node) (eq (car right) :node)
-                 (null (getf (cdr left) :labels)) (null (getf (cdr left) :props))
-                 (null (getf (cdr right) :labels)) (null (getf (cdr right) :props))
+                 (<= (length (getf (cdr left) :labels)) 1)
+                 (<= (length (getf (cdr right) :labels)) 1)
+                 (null (getf (cdr left) :props))
+                 (null (getf (cdr right) :props))
                  (eq (getf (cdr rel) :dir) :out)
                  (consp expr)
                  (or (eq (car expr) :count-*)
@@ -281,7 +285,15 @@ through the ring.  Returns the write reply."
                              ""))
                (value (gateway-aggregate-relationships
                        (graph-gateway graph) (graph-db graph)
-                       (getf (cdr rel) :type) function property)))
+                       (getf (cdr rel) :type) function property
+                       :left-label (or (first (getf (cdr left) :labels)) "")
+                       :right-label (or (first (getf (cdr right) :labels)) "")
+                       :left-ids (and (first (getf (cdr left) :labels))
+                                      (format nil "~{~a~^,~}" (graph-scan-node-ids
+                                                              graph :label (first (getf (cdr left) :labels)))))
+                       :right-ids (and (first (getf (cdr right) :labels))
+                                       (format nil "~{~a~^,~}" (graph-scan-node-ids
+                                                               graph :label (first (getf (cdr right) :labels))))))))
           (list (list (cons (%item-name item) value))))))))
 
 (defun gateway-cypher (gateway query &key (db +default-db+) params)

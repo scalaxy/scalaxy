@@ -106,6 +106,10 @@
                          (list :op #.+op-get+ :key "k")
                          (list :op #.+op-delete+ :key "k")
                          (list :op #.+op-scan+ :prefix "pre")
+                         (list :op #.scalaxy::+op-aggregate+ :prefix "d:g:" :type "TRIP"
+                               :property "distance" :function "SUM"
+                               :left-label "Zone" :right-label "Zone"
+                               :left-ids "a,b" :right-ids "c,d")
                          (list :op #.+op-replicate+ :seq 42 :sub-op #.+op-put+
                                :key "rk" :value (string-to-octets "rv"))
                          (list :op #.+op-replicate+ :seq 43 :sub-op #.+op-delete+
@@ -129,6 +133,10 @@
           (check (equal (getf decoded :status) (getf msg :status)) "status preserved")
           (check (equal (getf decoded :message) (getf msg :message)) "message preserved")
           (check (equal (getf decoded :prefix) (getf msg :prefix)) "prefix preserved")
+          (check (equal (getf decoded :left-label) (getf msg :left-label)) "left label preserved")
+          (check (equal (getf decoded :right-label) (getf msg :right-label)) "right label preserved")
+          (check (equal (getf decoded :left-ids) (getf msg :left-ids)) "left ids preserved")
+          (check (equal (getf decoded :right-ids) (getf msg :right-ids)) "right ids preserved")
           (check (deep-equal (getf decoded :pairs) (getf msg :pairs)) "pairs preserved"))))))
 
 ;;; ------------------------------------------------------------------

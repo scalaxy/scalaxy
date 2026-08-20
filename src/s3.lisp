@@ -370,7 +370,8 @@ sequence order so overwrite/delete semantics remain deterministic."
         (let ((key (%s3-unhex-key relative)))
           (cond
             ((and (>= (length key) 7) (string= key "@batch:" :end1 7))
-             (push relative segments))
+             (push relative segments)
+             (setf (gethash relative (s3-config-lazy-segments cfg)) t))
             ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
              (push key tombstones))
             (t (push (cons key relative) ordinary)))))

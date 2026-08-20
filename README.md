@@ -257,7 +257,7 @@ HTTP S3 endpoints and is tested against the open-source Garage S3 service. Start
 `scripts/test-s3-garage.sh` (Docker required). S3 credentials must be kept in
 runtime secrets, not committed configuration. Local S3-backed graph views
 persist only authoritative node/relationship records; derived label and
-adjacency indexes are rebuilt in memory on startup. Lazy startup also builds lightweight relationship-type and numeric-property summaries from packed records. Whole-relationship `count()` and simple `sum()` queries are pushed down to the owning nodes and return scalar results instead of materializing relationship rows. The summaries are in-memory derived metadata and are rebuilt from authoritative S3 objects on restart. Import/rebuild jobs can
+adjacency indexes are rebuilt in memory on startup. Lazy startup also builds lightweight relationship-type and numeric-property summaries from packed records. Whole-relationship `count()` and simple `sum()` queries are pushed down to the owning nodes and return scalar results instead of materializing relationship rows. The summaries are in-memory derived metadata and are rebuilt from authoritative S3 objects on restart. For simple relationship aggregates with one endpoint label on each side, the gateway also sends the globally resolved node-ID sets to storage nodes, allowing packed segments to be filtered without returning relationship rows. Import/rebuild jobs can
 use the explicit `with-s3-batch` operation to pack queued mutations into one
 object per backend while retaining synchronous writes for normal operations.
 Storage backends are pluggable through the `storage-plugin-*` protocol. Each S3

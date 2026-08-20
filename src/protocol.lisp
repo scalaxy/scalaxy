@@ -128,7 +128,11 @@
        (buf-write-string buf (getf msg :prefix))
        (buf-write-string buf (or (getf msg :type) ""))
        (buf-write-string buf (or (getf msg :property) ""))
-       (buf-write-string buf (getf msg :function)))
+       (buf-write-string buf (getf msg :function))
+       (buf-write-string buf (or (getf msg :left-label) ""))
+       (buf-write-string buf (or (getf msg :right-label) ""))
+       (buf-write-string buf (or (getf msg :left-ids) ""))
+       (buf-write-string buf (or (getf msg :right-ids) "")))
       ((or #.+op-bulk-put+ #.+op-bulk-replicate+)
        (let ((pairs (getf msg :pairs)))
          (buf-write-u32 buf (length pairs))
@@ -192,8 +196,15 @@
          (multiple-value-bind (type k) (read-string v j)
            (multiple-value-bind (property m) (read-string v k)
              (multiple-value-bind (function n) (read-string v m)
-               (list :op op :prefix prefix :type type :property property
-                     :function function))))))
+               (multiple-value-bind (left-label o) (read-string v n)
+                 (multiple-value-bind (right-label p) (read-string v o)
+                   (multiple-value-bind (left-ids q) (read-string v p)
+                     (multiple-value-bind (right-ids r) (read-string v q)
+                       (declare (ignore r))
+                       (list :op op :prefix prefix :type type :property property
+                             :function function :left-label left-label
+                             :right-label right-label :left-ids left-ids
+                             :right-ids right-ids))))))))))
       ((or #.+op-bulk-put+ #.+op-bulk-replicate+)
        (multiple-value-bind (n j) (read-u32 v i)
          (let ((pairs nil) (pos j))
