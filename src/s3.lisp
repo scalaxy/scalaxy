@@ -234,6 +234,25 @@ The segment is a codec list of MAGIC and a second codec list of records."
                  (format nil "lazy-index-~a.idx"
                          (%s3-hex (%s3-sha256 (string-to-octets relative))))))
 
+(defun %s3-bloom-add (bloom key)
+  (let ((digest (%s3-sha256 (string-to-octets key))))
+    (dotimes (i 4)
+      (let* ((base (* i 4))
+             (hash (+ (ash (aref digest base) 24)
+                      (ash (aref digest (+ base 1)) 16)
+                      (ash (aref digest (+ base 2)) 8)
+                      (aref digest (+ base 3))))
+             (bit (mod hash (* 8 (length bloom))))
+             (byte (floor bit 8)))
+        (setf (aref bloom byte)
+              (logior (aref bloom byte) (ash 1 (mod bit 8)))))))
+  bloom)
+
+(defun %s3-sidecar-bloom (keys)
+  (let ((bloom (make-array 32 :element-type '(unsigned-byte 8)
+                           :initial-element 0)))
+    (dolist (key keys bloom) (%s3-bloom-add bloom key))))
+
 (defun %s3-index-sidecar-write (cfg relative entries)
   (let ((path (%s3-index-sidecar-path cfg relative)))
     (when path
@@ -243,7 +262,12 @@ The segment is a codec list of MAGIC and a second codec list of records."
         (with-open-file (out tmp :direction :output :if-exists :supersede
                                   :external-format :utf-8)
           (with-standard-io-syntax
-            (prin1 (list :version 1 :segment relative) out) (terpri out)
+            (let* ((keys (mapcar #'first entries))
+                   (sorted (sort (copy-list keys) #'string<)))
+              (prin1 (list :version 2 :segment relative :count (length keys)
+                           :key-range (list (first sorted) (car (last sorted)))
+                           :bloom (%s3-sidecar-bloom keys)) out)
+              (terpri out))
             (dolist (entry entries)
               (prin1 (list (first entry) (third entry) (fourth entry)
                            (fifth entry)) out)
@@ -256,17 +280,26 @@ The segment is a codec list of MAGIC and a second codec list of records."
       (handler-case
           (with-open-file (in path :external-format :utf-8)
             (let ((header (with-standard-io-syntax (read in nil nil))))
-              (when (and (listp header) (eql (getf header :version) 1)
+              (when (and (listp header) (member (getf header :version) '(1 2))
                          (equal (getf header :segment) relative))
-                (loop for line = (read-line in nil nil)
-                      while line
-                      do (let ((entry (with-standard-io-syntax
-                                        (car (multiple-value-list
-                                              (read-from-string line))))))
-                           (funcall fn (list (first entry) relative
-                                              (second entry) (third entry)
-                                              (fourth entry)))))
-                t)))
+                (let ((count 0) (keys nil))
+                  (loop for line = (read-line in nil nil)
+                        while line
+                        do (let ((entry (with-standard-io-syntax
+                                          (car (multiple-value-list
+                                                (read-from-string line))))))
+                             (push (first entry) keys)
+                             (incf count)
+                             (funcall fn (list (first entry) relative
+                                                (second entry) (third entry)
+                                                (fourth entry)))))
+                  (or (and (eql (getf header :version) 2)
+                           (= count (getf header :count))
+                           (equal (getf header :key-range)
+                                  (let ((sorted (sort (copy-list keys) #'string<)))
+                                    (list (first sorted) (car (last sorted)))))
+                           (equal (getf header :bloom) (%s3-sidecar-bloom keys)))
+                      (eql (getf header :version) 1))))))
         (error () nil)))))
 
 (defun %s3-summary-path (cfg)
@@ -650,10 +683,10 @@ sequence order so overwrite/delete semantics remain deterministic."
                                  (setf cursor after)))
                                (progn
                                  (push (list key relative nil nil :delete) out)
-                                 (setf cursor p2)))))))))))
+                                 (setf cursor p2))))))))))
     (let ((result (nreverse out)))
       (%s3-index-sidecar-write cfg relative result)
-      result))
+      result)))
 
 (defun %s3-load-lazy (cfg table)
   "Load ordinary objects and build a deterministic packed-segment index."
@@ -692,7 +725,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                       (codec-decode (%s3-get-cached cfg (cdr pair)))))))
         (labels ((apply-entry (entry)
                    (let ((key (first entry)) (delete-p (eq (fifth entry) :delete)))
-                     (when (gethash key (s3-config-lazy-index cfg))
+                     (when (and (not summary-loaded)
+                                (gethash key (s3-config-lazy-index cfg)))
                        (setf (s3-config-summary-valid cfg) nil))
                      (if delete-p
                          (progn
@@ -702,7 +736,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                              (%s3-lazy-count-key cfg key -1))
                            (remhash key (s3-config-lazy-index cfg))
                            (remhash key table)
-                           (setf (s3-config-summary-valid cfg) nil))
+                           (unless summary-loaded
+                             (setf (s3-config-summary-valid cfg) nil)))
                          (progn
                            (when (and (not summary-loaded)
                                       (not (gethash key (s3-config-lazy-index cfg))))
@@ -726,7 +761,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                     (%s3-lazy-count-key cfg key -1))
                   (remhash key (s3-config-lazy-index cfg))
                   (remhash key table)
-                  (setf (s3-config-summary-valid cfg) nil)))))
+                  (unless summary-loaded
+                    (setf (s3-config-summary-valid cfg) nil))))))
           (unless endpoint-loaded
             (when summary-loaded (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
             (dolist (relative (sort segments #'string<))
