@@ -488,7 +488,10 @@ individual objects while retaining deterministic restart semantics."
 
 (defun %s3-clear-aggregate-cache (cfg)
   (when (s3-config-lazy-aggregate-cache cfg)
-    (clrhash (s3-config-lazy-aggregate-cache cfg))))
+    (clrhash (s3-config-lazy-aggregate-cache cfg)))
+  ;; Top-k summaries are built from the immutable replay state and must not
+  ;; be used after any successful mutation until the next reload.
+  (setf (s3-config-summary-valid cfg) nil))
 
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
