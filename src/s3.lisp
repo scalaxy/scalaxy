@@ -339,18 +339,34 @@ The segment is a codec list of MAGIC and a second codec list of records."
               (when (and bytes (ignore-errors (delete-file file)))
                 (decf total bytes)))))))))
 
+(defun %s3-valid-packed-segment-p (relative bytes)
+  (handler-case
+      (let ((key (%s3-unhex-key relative)))
+        (if (and (>= (length key) 7) (string= key "@batch:" :end1 7))
+            (multiple-value-bind (outer pos) (read-u32 bytes 1)
+              (declare (ignore outer))
+              (multiple-value-bind (magic ignored) (%codec-read bytes pos)
+                (declare (ignore ignored))
+                (string= magic "scalaxy-s3-batch-v1")))
+            t))
+    (error () nil)))
+
 (defun %s3-get-cached (cfg relative)
-  "Read an object through the local persistent cache and record metrics."
-  (let ((path (%s3-cache-file cfg relative)))
-    (if (and path (probe-file path))
+  "Read an object through the local persistent cache and self-heal bad segments."
+  (let ((path (%s3-cache-file cfg relative)) (cached nil))
+    (when (and path (probe-file path))
+      (with-open-file (in path :element-type '(unsigned-byte 8))
+        (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
+          (read-sequence v in)
+          (when (%s3-valid-packed-segment-p relative v)
+            (setf cached v)))))
+    (if cached
         (progn
           (incf (s3-config-cache-hits cfg))
-          (with-open-file (in path :element-type '(unsigned-byte 8))
-            (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-              (read-sequence v in)
-              (incf (s3-config-cache-bytes cfg) (length v))
-              v)))
+          (incf (s3-config-cache-bytes cfg) (length cached))
+          cached)
         (progn
+          (when (and path (probe-file path)) (ignore-errors (delete-file path)))
           (incf (s3-config-cache-misses cfg))
           (multiple-value-bind (status headers body)
               (%s3-call cfg "GET" relative :binary t)
