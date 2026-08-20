@@ -761,23 +761,27 @@ incident (axiom A1 forbids dangling endpoints)."
       (hash-table-count (slot-value g 'rel-index))
       (length (graph-scan-rel-ids g))))
 
-(defun graph-stream-relationships (g fn &key type)
+(defun graph-stream-relationships (g fn &key type limit)
   "Call FN for each primary-owned relationship without materializing ids.
-FN receives the relationship plist.  This is the execution primitive for
-streaming aggregates over object-backed graphs."
-  (g-map g
-         (lambda (p)
-           (let ((key (car p)))
-             (when (and (>= (length key) 2) (string= key "r:" :end1 2))
-               (let* ((rid (subseq key 2)) (rec (%decode-record (cdr p)))
-                      (rtype (%record-get rec "type")))
-                 (when (or (null type) (equal type rtype))
-                   (funcall fn
-                            (list :id rid :type rtype
-                                  :start (%record-get rec "start")
-                                  :end (%record-get rec "end")
-                                  :props (%resolve-props g
-                                                          (%record-get rec "props")))))))))))
+When LIMIT is supplied, stop traversal after that many matching records."
+  (let ((seen 0))
+    (catch 'graph-stream-stop
+      (g-map g
+             (lambda (p)
+               (let ((key (car p)))
+                 (when (and (>= (length key) 2) (string= key "r:" :end1 2))
+                   (let* ((rid (subseq key 2)) (rec (%decode-record (cdr p)))
+                          (rtype (%record-get rec "type")))
+                     (when (or (null type) (equal type rtype))
+                       (incf seen)
+                       (funcall fn
+                                (list :id rid :type rtype
+                                      :start (%record-get rec "start")
+                                      :end (%record-get rec "end")
+                                      :props (%resolve-props g
+                                                              (%record-get rec "props"))))
+                       (when (and limit (>= seen limit))
+                         (throw 'graph-stream-stop nil)))))))))))
 
 (defun graph-check-invariants (g)
   "Verify axioms A1-A3 and index consistency."
