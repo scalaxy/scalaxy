@@ -128,7 +128,13 @@
          (left-ids (%node-aggregate-id-set (getf msg :left-ids)))
          (right-ids (%node-aggregate-id-set (getf msg :right-ids)))
          (labels (%node-lazy-label-map store prefix))
-         (count 0) (sum 0) (sum-seen nil))
+         (count 0) (sum 0) (sum-seen nil)
+         (cache (s3-config-lazy-aggregate-cache cfg))
+         (cache-key (list prefix type (getf msg :function) property
+                          (getf msg :left-label) (getf msg :right-label)))
+         (cached-pair (multiple-value-list (gethash cache-key cache))))
+    (when (second cached-pair)
+      (return-from %node-lazy-filtered-aggregate (first cached-pair)))
     (labels ((has-id (id ids wanted)
                (or (and ids (gethash id ids))
                    (and (null ids) (plusp (length wanted))
@@ -175,8 +181,10 @@
                                                         (incf sum v) (setf sum-seen t)))))))))
                                         (setf cursor after))))))))))))))
        (s3-config-lazy-segments cfg)))
-    (if (string-equal (getf msg :function) "COUNT") count
-        (if sum-seen sum :cypher-null))))
+    (let ((result (if (string-equal (getf msg :function) "COUNT") count
+                      (if sum-seen sum :cypher-null))))
+      (setf (gethash cache-key cache) result)
+      result)))
 
 (defun node-aggregate-relationships (node msg)
   "Compute a scalar relationship aggregate locally, without returning rows."

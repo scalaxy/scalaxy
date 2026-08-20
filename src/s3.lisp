@@ -82,8 +82,8 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1") (prefix "scalaxy/") cache-dir lazy)
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
@@ -109,7 +109,7 @@
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
-                     t 0 0 0)))
+                     t 0 0 0 (and lazy (make-hash-table :test #'equal)))))
 
 (defun %s3-hex-key (key)
   ;; Encode Unicode code points directly so object names remain reversible
@@ -470,6 +470,10 @@ individual objects while retaining deterministic restart semantics."
           (when sep
             (remhash (%s3-unhex-key (subseq marker 11 sep)) table))))))
 
+(defun %s3-clear-aggregate-cache (cfg)
+  (when (s3-config-lazy-aggregate-cache cfg)
+    (clrhash (s3-config-lazy-aggregate-cache cfg))))
+
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
 RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
@@ -481,21 +485,24 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
           (%s3-call cfg "PUT" (%s3-hex-key id) :body payload)
         (declare (ignore headers))
         (unless (member status '(200 201 204))
-          (error "S3 batch PUT failed with HTTP ~d: ~a" status body))))))
+          (error "S3 batch PUT failed with HTTP ~d: ~a" status body))
+        (%s3-clear-aggregate-cache cfg)))))
 
 (defun %s3-put-raw (cfg key bytes)
   (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body bytes)
     (declare (ignore headers))
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
-    (%s3-cache-invalidate cfg (%s3-hex-key key))))
+    (%s3-cache-invalidate cfg (%s3-hex-key key))
+    (%s3-clear-aggregate-cache cfg)))
 
 (defun %s3-put (cfg key value)
   (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (codec-encode value))
     (declare (ignore headers))
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
-    (%s3-cache-invalidate cfg (%s3-hex-key key))))
+    (%s3-cache-invalidate cfg (%s3-hex-key key))
+    (%s3-clear-aggregate-cache cfg)))
 
 (defun %s3-delete (cfg key)
   (let ((encoded (%s3-hex-key key)))
@@ -503,6 +510,7 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
       (declare (ignore headers body))
       (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
     (%s3-cache-invalidate cfg encoded)
+    (%s3-clear-aggregate-cache cfg)
     ;; A tombstone prevents an older packed import segment from resurrecting
     ;; this key when the store is reconstructed after restart.
     (let ((marker (format nil "@tombstone:~a:~d" encoded (get-universal-time))))
