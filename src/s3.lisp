@@ -631,6 +631,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                   (setf (s3-config-summary-valid cfg) nil)))))
           (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
           (%s3-label-id-save cfg (mapcar #'cdr ordinary) segments)
+          (%s3-aggregate-cache-load cfg segments)
           table)))))
 
 (defun %s3-get-cached-range (cfg relative start end)
@@ -696,16 +697,42 @@ individual objects while retaining deterministic restart semantics."
           (when sep
             (remhash (%s3-unhex-key (subseq marker 11 sep)) table))))))
 
+(defun %s3-aggregate-cache-path (cfg)
+  (%s3-meta-path cfg
+                 (format nil "lazy-aggregate-cache-~a.sexp"
+                         (%s3-hex (%s3-sha256
+                                   (string-to-octets
+                                    (format nil "~a/~a" (s3-config-bucket cfg)
+                                            (s3-config-prefix cfg))))))))
+
+(defun %s3-aggregate-cache-save (cfg)
+  (when (and (s3-config-summary-valid cfg) (s3-config-cache-dir cfg))
+    (%s3-write-sexp (%s3-aggregate-cache-path cfg)
+                    (list :version 1
+                          :segments (sort (loop for key being the hash-keys
+                                                       of (s3-config-lazy-segments cfg)
+                                                 collect key)
+                                          #'string<)
+                          :values (%s3-hash-pairs
+                                   (s3-config-lazy-aggregate-cache cfg))))))
+
+(defun %s3-aggregate-cache-load (cfg segments)
+  (let ((value (%s3-read-sexp (%s3-aggregate-cache-path cfg))))
+    (when (and (listp value) (eql (getf value :version) 1)
+               (equal (getf value :segments) (sort (copy-list segments) #'string<)))
+      (dolist (pair (getf value :values))
+        (setf (gethash (car pair) (s3-config-lazy-aggregate-cache cfg))
+              (cdr pair)))
+      t)))
+
 (defun %s3-clear-aggregate-cache (cfg)
   (when (s3-config-lazy-aggregate-cache cfg)
     (clrhash (s3-config-lazy-aggregate-cache cfg)))
-  ;; Top-k summaries are built from the immutable replay state and must not
-  ;; be used after any successful mutation until the next reload.
   (setf (s3-config-summary-valid cfg) nil)
-  (let ((path (%s3-summary-path cfg)))
-    (when (and path (probe-file path)) (ignore-errors (delete-file path)))
-  (let ((path (%s3-label-id-path cfg)))
-    (when (and path (probe-file path)) (ignore-errors (delete-file path))))))
+  (dolist (path (list (%s3-summary-path cfg)
+                      (%s3-label-id-path cfg)
+                      (%s3-aggregate-cache-path cfg)))
+    (when (and path (probe-file path)) (ignore-errors (delete-file path)))))
 
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.

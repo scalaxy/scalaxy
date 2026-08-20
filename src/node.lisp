@@ -184,6 +184,7 @@
     (let ((result (if (string-equal (getf msg :function) "COUNT") count
                       (if sum-seen sum :cypher-null))))
       (setf (gethash cache-key cache) result)
+      (%s3-aggregate-cache-save cfg)
       result)))
 
 (defun node-aggregate-relationships (node msg)
