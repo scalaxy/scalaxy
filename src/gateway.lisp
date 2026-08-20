@@ -377,7 +377,7 @@ through the ring.  Returns the write reply."
                  (null (getf (cdr left) :props)) (null (getf (cdr right) :props))
                  rel (eq (car rel) :rel) (eq (getf (cdr rel) :dir) :out)
                  (null (getf (cdr rel) :min)) (null (getf (cdr rel) :max))
-                 (integerp limit) (plusp limit) spec
+                 (integerp limit) (plusp limit) (<= limit 100) spec
                  (equal (getf (cdr spec) :expr) (getf (cdr item) :as))
                  (consp expr) (eq (car expr) :prop)
                  (equal (getf (cdr expr) :expr) (getf (cdr rel) :var)))
