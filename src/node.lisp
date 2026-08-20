@@ -270,6 +270,18 @@
            (mapcar (lambda (p) (cypher-list (list (cdr p) (car p))))
                    (subseq values 0 (min (getf msg :limit) (length values))))))))))
 
+(defun %node-label-ids-summary (node msg)
+  (let* ((store (node-store node)) (cfg (store-backend store))
+         (prefix (getf msg :prefix)) (sep (position #\: prefix :start 2)))
+    (when (and cfg (typep cfg 's3-config) (s3-config-lazy cfg)
+               (s3-config-summary-valid cfg) sep)
+      (let* ((db (subseq prefix 2 sep))
+             (by-label (gethash db (s3-config-lazy-label-ids cfg)))
+             (ids (and by-label (gethash (getf msg :label) by-label))))
+        (when ids
+          (cypher-list (sort (loop for id being the hash-keys of ids collect id)
+                             #'string<)))))))
+
 (defun node-dispatch (node msg)
   "Handle a decoded request message and return a reply message plist.
 Writes go through NODE-PUT/NODE-DELETE so they are replicated to the
@@ -318,6 +330,13 @@ node's followers (in-process or TCP) before the client is acknowledged."
     (#.+op-scan+
      (list :op #.+op-response+ :status #.+status-ok+
            :pairs (store-scan-fast (node-store node) (getf msg :prefix))))
+    (#.+op-label-ids+
+     (let ((value (%node-label-ids-summary node msg)))
+       (if value
+           (list :op #.+op-response+ :status #.+status-ok+
+                 :value (codec-encode value))
+           (list :op #.+op-response+ :status #.+status-error+
+                 :value (codec-encode "label summary unavailable")))))
     (#.+op-topk+
      (let ((value (%node-topk-summary node msg)))
        (if value

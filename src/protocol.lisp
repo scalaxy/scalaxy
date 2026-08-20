@@ -25,6 +25,7 @@
 (defconstant +op-scan-page+ 15)
 (defconstant +op-aggregate+ 16)
 (defconstant +op-topk+ 17)
+(defconstant +op-label-ids+ 18)
 
 (defconstant +status-ok+        0)
 (defconstant +status-not-found+ 1)
@@ -126,6 +127,9 @@
        (buf-write-string buf (getf msg :prefix))
        (buf-write-u64 buf (or (getf msg :offset) 0))
        (buf-write-u32 buf (or (getf msg :limit) 10000)))
+      (#.+op-label-ids+
+       (buf-write-string buf (getf msg :prefix))
+       (buf-write-string buf (getf msg :label)))
       (#.+op-topk+
        (buf-write-string buf (getf msg :prefix))
        (buf-write-string buf (or (getf msg :type) ""))
@@ -199,6 +203,10 @@
          (multiple-value-bind (offset k) (read-u64 v j)
            (multiple-value-bind (limit m) (read-u32 v k)
              (list :op op :prefix prefix :offset offset :limit limit)))))
+      (#.+op-label-ids+
+       (multiple-value-bind (prefix j) (read-string v i)
+         (multiple-value-bind (label k) (read-string v j)
+           (list :op op :prefix prefix :label label))))
       (#.+op-topk+
        (multiple-value-bind (prefix j) (read-string v i)
          (multiple-value-bind (type k) (read-string v j)

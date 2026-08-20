@@ -583,9 +583,34 @@ than +blob-inline-limit+ are spilled to their own key."
                                 (string= (car p) "r:" :end1 2))
                        (setf (gethash (subseq (car p) 2) (slot-value g 'rel-index)) t))))))))
 
+(defun %gateway-summary-node-ids (g label)
+  (let ((gw (graph-gateway g)) (ids (make-hash-table :test #'equal)) (healthy 0)
+        (prefix (db-key (graph-db g) "")))
+    (dolist (peer (gateway-peers gw))
+      (let ((reply (ignore-errors
+                     (gateway-request gw (car peer)
+                                      (list :op #.+op-label-ids+ :prefix prefix :label label)))))
+        (when (and reply (eql (getf reply :status) #.+status-ok+))
+          (incf healthy)
+          (dolist (id (cypher-list-elements
+                       (car (multiple-value-list (codec-decode (getf reply :value))))))
+            (setf (gethash id ids) t)))))
+    (when (plusp healthy)
+      (cypher-list (sort (loop for id being the hash-keys of ids collect id) #'string<)))))
+
 (defun graph-scan-node-ids (g &key label)
   "Element ids of all nodes (with LABEL when given), sorted."
-  (if (typep g 'local-graph-view)
+  (if (typep g 'gateway-graph-view)
+      (if label
+          (or (%gateway-summary-node-ids g label)
+              (let ((prefix (format nil "nl:~a:" label)) (out nil))
+                (dolist (p (g-scan g prefix))
+                  (push (subseq (car p) (1+ (position #\: (car p) :from-end t))) out))
+                (sort (remove-duplicates out :test #'equal) #'string<)))
+          (let ((out nil))
+            (dolist (p (g-scan g "n:")) (push (subseq (car p) 2) out))
+            (sort (remove-duplicates out :test #'equal) #'string<)))
+      (if (typep g 'local-graph-view)
       (progn (%ensure-node-index g)
         (let ((out nil))
         (if label
@@ -604,7 +629,7 @@ than +blob-inline-limit+ are spilled to their own key."
                       (subseq k 2))
                   out)))
         (sort (remove-duplicates out :test #'equal) #'string<))))
-
+)
 (defun graph-scan-rel-ids (g &key type)
   "Element ids of all relationships (of TYPE when given), sorted."
   (if (typep g 'local-graph-view)

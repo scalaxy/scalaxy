@@ -82,8 +82,8 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1")
                               (prefix "scalaxy/") cache-dir lazy
@@ -108,6 +108,7 @@
                      (and cache-dir (uiop:ensure-directory-pathname cache-dir))
                      (or cache-max-bytes 0)
                      lazy (and lazy (make-hash-table :test #'equal))
+                     (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
@@ -412,8 +413,51 @@ sequence order so overwrite/delete semantics remain deterministic."
                 (let* ((db (subseq key 2 sep))
                        (labels (or (gethash db (s3-config-lazy-labels cfg))
                                    (setf (gethash db (s3-config-lazy-labels cfg))
-                                         (make-hash-table :test #'equal)))))
-                  (incf (gethash label labels 0)))))))))))))
+                                         (make-hash-table :test #'equal))))
+                       (by-label (or (gethash db (s3-config-lazy-label-ids cfg))
+                                     (setf (gethash db (s3-config-lazy-label-ids cfg))
+                                           (make-hash-table :test #'equal))))
+                       (ids (or (gethash label by-label)
+                                (setf (gethash label by-label)
+                                      (make-hash-table :test #'equal)))))
+                  (incf (gethash label labels 0))
+                  (setf (gethash (subseq local 2) ids) t))))))))))))
+
+(defun %s3-label-id-path (cfg)
+  (%s3-meta-path cfg
+                 (format nil "lazy-label-ids-~a.sexp"
+                         (%s3-hex (%s3-sha256
+                                   (string-to-octets
+                                    (format nil "~a/~a" (s3-config-bucket cfg)
+                                            (s3-config-prefix cfg))))))))
+
+(defun %s3-label-id-save (cfg ordinary segments)
+  (when (and (s3-config-summary-valid cfg) (s3-config-cache-dir cfg))
+    (%s3-write-sexp (%s3-label-id-path cfg)
+                    (list :version 1
+                          :ordinary (sort (copy-list ordinary) #'string<)
+                          :segments (sort (copy-list segments) #'string<)
+                          :ids (loop for db being the hash-keys of
+                                                   (s3-config-lazy-label-ids cfg)
+                                     using (hash-value labels)
+                                     collect (cons db
+                                                   (loop for label being the hash-keys of labels
+                                                         using (hash-value ids)
+                                                         collect (cons label (%s3-hash-pairs ids)))))))))
+
+(defun %s3-label-id-load (cfg ordinary segments)
+  (let ((value (%s3-read-sexp (%s3-label-id-path cfg))))
+    (when (and (listp value) (eql (getf value :version) 1)
+               (equal (getf value :ordinary) (sort (copy-list ordinary) #'string<))
+               (equal (getf value :segments) (sort (copy-list segments) #'string<)))
+      (dolist (db-pair (getf value :ids))
+        (let ((labels (make-hash-table :test #'equal)))
+          (dolist (label-pair (cdr db-pair))
+            (let ((ids (make-hash-table :test #'equal)))
+              (dolist (id-pair (cdr label-pair)) (setf (gethash (car id-pair) ids) t))
+              (setf (gethash (car label-pair) labels) ids)))
+          (setf (gethash (car db-pair) (s3-config-lazy-label-ids cfg)) labels)))
+      t)))
 
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
@@ -526,8 +570,10 @@ sequence order so overwrite/delete semantics remain deterministic."
             ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
              (push key tombstones))
             (t (push (cons key relative) ordinary)))))
-      (let ((summary-loaded
-              (%s3-summary-load cfg (mapcar #'cdr ordinary) segments)))
+      (let* ((ordinary-relative (mapcar #'cdr ordinary))
+             (summary-loaded
+              (and (%s3-summary-load cfg ordinary-relative segments)
+                   (%s3-label-id-load cfg ordinary-relative segments))))
         (dolist (pair ordinary)
           (setf (gethash (car pair) table)
                 (car (multiple-value-list
@@ -538,13 +584,15 @@ sequence order so overwrite/delete semantics remain deterministic."
                        (setf (s3-config-summary-valid cfg) nil))
                      (if delete-p
                          (progn
-                           (when (gethash key (s3-config-lazy-index cfg))
+                           (when (and (not summary-loaded)
+                                      (gethash key (s3-config-lazy-index cfg)))
                              (%s3-lazy-count-key cfg key -1))
                            (remhash key (s3-config-lazy-index cfg))
                            (remhash key table)
                            (setf (s3-config-summary-valid cfg) nil))
                          (progn
-                           (unless (gethash key (s3-config-lazy-index cfg))
+                           (when (and (not summary-loaded)
+                                      (not (gethash key (s3-config-lazy-index cfg))))
                              (%s3-lazy-count-key cfg key 1))
                            (remhash key table)
                            (setf (gethash key (s3-config-lazy-index cfg))
@@ -567,6 +615,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                   (remhash key table)
                   (setf (s3-config-summary-valid cfg) nil)))))
           (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
+          (%s3-label-id-save cfg (mapcar #'cdr ordinary) segments)
           table)))))
 
 (defun %s3-get-cached-range (cfg relative start end)
@@ -639,7 +688,9 @@ individual objects while retaining deterministic restart semantics."
   ;; be used after any successful mutation until the next reload.
   (setf (s3-config-summary-valid cfg) nil)
   (let ((path (%s3-summary-path cfg)))
-    (when (and path (probe-file path)) (ignore-errors (delete-file path)))))
+    (when (and path (probe-file path)) (ignore-errors (delete-file path)))
+  (let ((path (%s3-label-id-path cfg)))
+    (when (and path (probe-file path)) (ignore-errors (delete-file path))))))
 
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
