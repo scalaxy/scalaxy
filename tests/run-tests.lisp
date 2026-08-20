@@ -1722,7 +1722,14 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
         (scalaxy::%s3-cache-enforce-budget limited 8
                                             (merge-pathnames "new.bin"
                                                              (uiop:ensure-directory-pathname limited-dir)))
-        (check (not (probe-file old)) "S3 cache budget evicts oldest entry")))))
+        (check (not (probe-file old)) "S3 cache budget evicts oldest entry"))
+      (let ((entries (list (list "d:g:r:1" "segment-1" 10 20 :put)
+                           (list "d:g:r:2" "segment-1" 20 30 :delete)))
+            (seen nil))
+        (scalaxy::%s3-index-sidecar-write cached "segment-1" entries)
+        (scalaxy::%s3-index-sidecar-map
+         cached "segment-1" (lambda (entry) (push entry seen)))
+        (check-equal (nreverse seen) entries "S3 streaming index sidecar round-trip")))))
 
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)

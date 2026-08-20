@@ -206,6 +206,115 @@ The segment is a codec list of MAGIC and a second codec list of records."
     (when dir
       (merge-pathnames (format nil "~a.bin" (%s3-hex (%s3-sha256 (string-to-octets relative)))) dir))))
 
+(defun %s3-meta-path (cfg name)
+  (let ((dir (s3-config-cache-dir cfg)))
+    (when dir (merge-pathnames name dir))))
+
+(defun %s3-write-sexp (path value)
+  (when path
+    (ensure-directories-exist path)
+    (let ((tmp (format nil "~a.tmp.~d.~d" path (get-universal-time)
+                       (random 1000000000))))
+      (with-open-file (out tmp :direction :output :if-exists :supersede
+                              :external-format :utf-8)
+        (with-standard-io-syntax (prin1 value out) (terpri out)))
+      (rename-file tmp path))))
+
+(defun %s3-read-sexp (path)
+  (when (and path (probe-file path))
+    (handler-case
+        (with-open-file (in path :external-format :utf-8)
+          (with-standard-io-syntax (read in nil nil)))
+      (error () nil))))
+
+(defun %s3-index-sidecar-path (cfg relative)
+  (%s3-meta-path cfg
+                 (format nil "lazy-index-~a.idx"
+                         (%s3-hex (%s3-sha256 (string-to-octets relative))))))
+
+(defun %s3-index-sidecar-write (cfg relative entries)
+  (let ((path (%s3-index-sidecar-path cfg relative)))
+    (when path
+      (ensure-directories-exist path)
+      (let ((tmp (format nil "~a.tmp.~d.~d" path (get-universal-time)
+                         (random 1000000000))))
+        (with-open-file (out tmp :direction :output :if-exists :supersede
+                                  :external-format :utf-8)
+          (with-standard-io-syntax
+            (prin1 (list :version 1 :segment relative) out) (terpri out)
+            (dolist (entry entries)
+              (prin1 (list (first entry) (third entry) (fourth entry)
+                           (fifth entry)) out)
+              (terpri out))))
+        (rename-file tmp path)))))
+
+(defun %s3-index-sidecar-map (cfg relative fn)
+  (let ((path (%s3-index-sidecar-path cfg relative)))
+    (when (and path (probe-file path))
+      (handler-case
+          (with-open-file (in path :external-format :utf-8)
+            (let ((header (with-standard-io-syntax (read in nil nil))))
+              (when (and (listp header) (eql (getf header :version) 1)
+                         (equal (getf header :segment) relative))
+                (loop for line = (read-line in nil nil)
+                      while line
+                      do (let ((entry (with-standard-io-syntax
+                                        (car (multiple-value-list
+                                              (read-from-string line))))))
+                           (funcall fn (list (first entry) relative
+                                              (second entry) (third entry)
+                                              (fourth entry)))))
+                t)))
+        (error () nil)))))
+
+(defun %s3-summary-path (cfg)
+  (%s3-meta-path cfg
+                 (format nil "lazy-summary-~a.sexp"
+                         (%s3-hex (%s3-sha256
+                                   (string-to-octets
+                                    (format nil "~a/~a" (s3-config-bucket cfg)
+                                            (s3-config-prefix cfg))))))))
+
+(defun %s3-hash-pairs (table)
+  (loop for key being the hash-keys of table using (hash-value value)
+        collect (cons key value)))
+
+(defun %s3-nested-pairs (table)
+  (loop for key being the hash-keys of table using (hash-value value)
+        collect (cons key (%s3-hash-pairs value))))
+
+(defun %s3-summary-save (cfg ordinary segments)
+  (when (and (s3-config-summary-valid cfg) (s3-config-cache-dir cfg))
+    (%s3-write-sexp
+     (%s3-summary-path cfg)
+     (list :version 1 :ordinary (sort (copy-list ordinary) #'string<)
+           :segments (sort (copy-list segments) #'string<)
+           :counts (%s3-hash-pairs (s3-config-lazy-counts cfg))
+           :labels (%s3-nested-pairs (s3-config-lazy-labels cfg))
+           :types (%s3-nested-pairs (s3-config-lazy-type-counts cfg))
+           :sums (%s3-nested-pairs (s3-config-lazy-sums cfg))
+           :topk (%s3-nested-pairs (s3-config-lazy-topk-summaries cfg))))))
+
+(defun %s3-summary-load (cfg ordinary segments)
+  (let ((value (%s3-read-sexp (%s3-summary-path cfg))))
+    (when (and (listp value) (eql (getf value :version) 1)
+               (equal (getf value :ordinary) (sort (copy-list ordinary) #'string<))
+               (equal (getf value :segments) (sort (copy-list segments) #'string<)))
+      (labels ((restore (target pairs)
+                 (dolist (pair pairs) (setf (gethash (car pair) target) (cdr pair))))
+               (restore-nested (target pairs)
+                 (dolist (pair pairs)
+                   (let ((index (make-hash-table :test #'equal)))
+                     (restore index (cdr pair))
+                     (setf (gethash (car pair) target) index)))))
+        (restore (s3-config-lazy-counts cfg) (getf value :counts))
+        (restore-nested (s3-config-lazy-labels cfg) (getf value :labels))
+        (restore-nested (s3-config-lazy-type-counts cfg) (getf value :types))
+        (restore-nested (s3-config-lazy-sums cfg) (getf value :sums))
+        (restore-nested (s3-config-lazy-topk-summaries cfg) (getf value :topk))
+        (setf (s3-config-summary-valid cfg) t)
+        t))))
+
 (defun %s3-cache-invalidate (cfg relative)
   (let ((path (%s3-cache-file cfg relative)))
     (when (and path (probe-file path))
@@ -359,7 +468,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                         (incf (gethash key sums 0) (cdr pair))
                         (%s3-lazy-topk-add cfg db type (car pair) rid (cdr pair))))))))))))))
 
-(defun %s3-index-batch (cfg relative)
+(defun %s3-index-batch (cfg relative &optional (build-metadata t))
   "Index keys in a packed segment without decoding record values."
   (let ((bytes (%s3-get-cached cfg relative)) (out nil))
     (multiple-value-bind (outer pos) (read-u32 bytes 1)
@@ -378,15 +487,19 @@ sequence order so overwrite/delete semantics remain deterministic."
                          (multiple-value-bind (key p2) (%codec-read bytes p1)
                            (if (string= op "PUT")
                                (let ((after (%codec-skip bytes p2)))
-                                 (%s3-lazy-type-key cfg key (subseq bytes p2 after))
+                                 (when build-metadata
+                                   (%s3-lazy-type-key cfg key (subseq bytes p2 after)))
                                  (push (list key relative p2 after) out)
-                                 (when (and (>= (length key) 4) (string= key "d:" :end1 2))
+                                 (when (and build-metadata
+                                            (>= (length key) 4) (string= key "d:" :end1 2))
                                    (%s3-lazy-label-key cfg key (subseq bytes p2 after)))
                                  (setf cursor after))
                                (progn
                                  (push (list key relative nil nil :delete) out)
                                  (setf cursor p2)))))))))))
-    (nreverse out)))
+    (let ((result (nreverse out)))
+      (%s3-index-sidecar-write cfg relative result)
+      result)))
 
 (defun %s3-load-lazy (cfg table)
   "Load ordinary objects and build a deterministic packed-segment index."
@@ -404,8 +517,6 @@ sequence order so overwrite/delete semantics remain deterministic."
           (setf token (first (%s3-xml-values body "NextContinuationToken")))
           (unless token (return)))))
     (let ((ordinary nil) (segments nil) (tombstones nil))
-      ;; S3 LIST order is not a mutation log.  Classify first and apply
-      ;; immutable batches in their monotonic batch-id order.
       (dolist (relative objects)
         (let ((key (%s3-unhex-key relative)))
           (cond
@@ -415,37 +526,48 @@ sequence order so overwrite/delete semantics remain deterministic."
             ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
              (push key tombstones))
             (t (push (cons key relative) ordinary)))))
-      (dolist (pair ordinary)
-        (setf (gethash (car pair) table)
-              (car (multiple-value-list
-                    (codec-decode (%s3-get-cached cfg (cdr pair)))))))
-      (dolist (relative (sort segments #'string<))
-        (dolist (entry (%s3-index-batch cfg relative))
-          (let ((key (first entry)) (delete-p (eq (fifth entry) :delete)))
-            (when (gethash key (s3-config-lazy-index cfg))
-              (setf (s3-config-summary-valid cfg) nil))
-            (if delete-p
-                (progn
+      (let ((summary-loaded
+              (%s3-summary-load cfg (mapcar #'cdr ordinary) segments)))
+        (dolist (pair ordinary)
+          (setf (gethash (car pair) table)
+                (car (multiple-value-list
+                      (codec-decode (%s3-get-cached cfg (cdr pair)))))))
+        (labels ((apply-entry (entry)
+                   (let ((key (first entry)) (delete-p (eq (fifth entry) :delete)))
+                     (when (gethash key (s3-config-lazy-index cfg))
+                       (setf (s3-config-summary-valid cfg) nil))
+                     (if delete-p
+                         (progn
+                           (when (gethash key (s3-config-lazy-index cfg))
+                             (%s3-lazy-count-key cfg key -1))
+                           (remhash key (s3-config-lazy-index cfg))
+                           (remhash key table)
+                           (setf (s3-config-summary-valid cfg) nil))
+                         (progn
+                           (unless (gethash key (s3-config-lazy-index cfg))
+                             (%s3-lazy-count-key cfg key 1))
+                           (remhash key table)
+                           (setf (gethash key (s3-config-lazy-index cfg))
+                                 (cdr entry)))))))
+          (dolist (relative (sort segments #'string<))
+            (let ((used nil))
+              (when summary-loaded
+                (setf used (%s3-index-sidecar-map
+                            cfg relative #'apply-entry)))
+              (unless used
+                (dolist (entry (%s3-index-batch cfg relative (not summary-loaded)))
+                  (apply-entry entry)))))
+          (dolist (marker tombstones)
+            (let ((sep (position #\: marker :start 11)))
+              (when sep
+                (let ((key (%s3-unhex-key (subseq marker 11 sep))))
                   (when (gethash key (s3-config-lazy-index cfg))
                     (%s3-lazy-count-key cfg key -1))
                   (remhash key (s3-config-lazy-index cfg))
                   (remhash key table)
-                  (setf (s3-config-summary-valid cfg) nil))
-                (progn
-                  (unless (gethash key (s3-config-lazy-index cfg))
-                    (%s3-lazy-count-key cfg key 1))
-                  (remhash key table)
-                  (setf (gethash key (s3-config-lazy-index cfg)) (cdr entry)))))))
-      (dolist (marker tombstones)
-        (let ((sep (position #\: marker :start 11)))
-          (when sep
-            (let ((key (%s3-unhex-key (subseq marker 11 sep))))
-              (when (gethash key (s3-config-lazy-index cfg))
-                (%s3-lazy-count-key cfg key -1))
-              (remhash key (s3-config-lazy-index cfg))
-              (remhash key table)
-              (setf (s3-config-summary-valid cfg) nil)))))
-      table)))
+                  (setf (s3-config-summary-valid cfg) nil)))))
+          (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
+          table)))))
 
 (defun %s3-get-cached-range (cfg relative start end)
   "Read one immutable packed value from the persistent cache when present."
@@ -515,7 +637,9 @@ individual objects while retaining deterministic restart semantics."
     (clrhash (s3-config-lazy-aggregate-cache cfg)))
   ;; Top-k summaries are built from the immutable replay state and must not
   ;; be used after any successful mutation until the next reload.
-  (setf (s3-config-summary-valid cfg) nil))
+  (setf (s3-config-summary-valid cfg) nil)
+  (let ((path (%s3-summary-path cfg)))
+    (when (and path (probe-file path)) (ignore-errors (delete-file path)))))
 
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
