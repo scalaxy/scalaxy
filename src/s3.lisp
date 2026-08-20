@@ -459,6 +459,20 @@ sequence order so overwrite/delete semantics remain deterministic."
           (setf (gethash (car db-pair) (s3-config-lazy-label-ids cfg)) labels)))
       t)))
 
+(defun %s3-remove-lazy-label-id (cfg key)
+  "Remove a deleted node id from every persisted label summary."
+  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
+    (let ((sep (position #\: key :start 2)))
+      (when sep
+        (let ((local (subseq key (1+ sep))))
+          (when (and (>= (length local) 2) (string= local "n:" :end1 2))
+            (let* ((db (subseq key 2 sep))
+                   (id (subseq local 2))
+                   (labels (gethash db (s3-config-lazy-label-ids cfg))))
+              (when labels
+                (loop for label being the hash-values of labels
+                      do (remhash id label))))))))))
+
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
@@ -584,6 +598,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                        (setf (s3-config-summary-valid cfg) nil))
                      (if delete-p
                          (progn
+                           (%s3-remove-lazy-label-id cfg key)
                            (when (and (not summary-loaded)
                                       (gethash key (s3-config-lazy-index cfg)))
                              (%s3-lazy-count-key cfg key -1))

@@ -1730,7 +1730,15 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
         (scalaxy::%s3-index-sidecar-write cached "segment-1" entries)
         (scalaxy::%s3-index-sidecar-map
          cached "segment-1" (lambda (entry) (push entry seen)))
-        (check-equal (nreverse seen) entries "S3 streaming index sidecar round-trip")))))
+        (check-equal (nreverse seen) entries "S3 streaming index sidecar round-trip")
+        (let* ((ids (scalaxy::s3-config-lazy-label-ids cached))
+               (labels (make-hash-table :test #'equal))
+               (zone-ids (make-hash-table :test #'equal)))
+          (setf (gethash "z1" zone-ids) t
+                (gethash "Zone" labels) zone-ids
+                (gethash "g" ids) labels)
+          (scalaxy::%s3-remove-lazy-label-id cached "d:g:n:z1")
+          (check (not (gethash "z1" zone-ids)) "S3 label summary removes deleted node"))))))
 
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)
