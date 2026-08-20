@@ -1,0 +1,72 @@
+;;;; scripts/test-full-nyc-s3-cluster.lisp
+(require :asdf)
+(asdf:load-asd (merge-pathnames "../scalaxy.asd" *load-truename*))
+(asdf:load-system "scalaxy")
+(in-package #:scalaxy)
+(load (merge-pathnames "../benchmarks/nyc-taxi/load.lisp" *load-truename*))
+
+(defclass bulk-cluster-graph (local-graph-view)
+  ((cluster :initarg :cluster :reader bulk-cluster)))
+(defmethod g-put ((g bulk-cluster-graph) key value) (cluster-put (bulk-cluster g) (db-key (graph-db g) key) value))
+(defmethod g-get ((g bulk-cluster-graph) key) (cluster-get (bulk-cluster g) (db-key (graph-db g) key)))
+(defmethod g-delete ((g bulk-cluster-graph) key) (cluster-delete (bulk-cluster g) (db-key (graph-db g) key)))
+(defmethod g-scan ((g bulk-cluster-graph) prefix)
+  (loop for (key . value) in (cluster-scan (bulk-cluster g) (db-key (graph-db g) prefix))
+        collect (cons (db-strip (graph-db g) key) value)))
+(defun req (name) (or #+sbcl (sb-ext:posix-getenv name) (error "missing ~a" name)))
+(defun env (name default) (or #+sbcl (sb-ext:posix-getenv name) default))
+(let* ((endpoint (env "SCALAXY_S3_ENDPOINT" "http://127.0.0.1:3900"))
+       (prefix (format nil "full-~d/" (get-universal-time)))
+       (ids '("node-0" "node-1" "node-2"))
+       (local-store (make-store))
+       (local-graph (make-local-graph local-store))
+       (cluster (make-cluster :ids ids :replicas 1))
+       (stores (loop for i below 3 collect
+                 (make-store :s3-endpoint endpoint
+                             :s3-bucket (req (format nil "SCALAXY_S3_BUCKET_~d" i))
+                             :s3-access-key (req (format nil "SCALAXY_S3_ACCESS_KEY_~d" i))
+                             :s3-secret-key (req (format nil "SCALAXY_S3_SECRET_KEY_~d" i))
+                              :s3-prefix (format nil "~anode-~d/" (string-right-trim "/" prefix) i)))))
+  (loop for id in ids for store in stores do (setf (node-store (gethash id (cluster-nodes cluster))) store))
+  (format t "Full NYC taxi S3 cluster bulk test~%prefix: ~a~%~%" prefix)
+  (let ((t0 (get-internal-real-time)))
+    (multiple-value-bind (zones trips) (load-nyc-taxi local-graph
+                                                       (merge-pathnames "../benchmarks/nyc-taxi/"
+                                                                        (uiop:pathname-directory-pathname *load-truename*))
+                                                       :mode :per-trip)
+      (format t "local source graph: ~d zones, ~d trips in ~,2f s~%"
+              zones trips (/ (- (get-internal-real-time) t0) internal-time-units-per-second))))
+  (let ((by-node (make-hash-table :test #'equal))
+        (ordered (sort (copy-seq ids) #'string<)))
+    (dolist (id ids) (setf (gethash id by-node) nil))
+    (maphash
+     (lambda (key value)
+       (unless (or (search "d:default:e:" key)
+                   (search "d:default:nl:" key))
+         (let* ((owner (ring-lookup (cluster-ring cluster) key))
+                (pos (position owner ordered :test #'equal)))
+           (dotimes (replica 2)
+             (let ((target (nth (mod (+ pos replica) (length ordered)) ordered)))
+               (push (list "PUT" key value) (gethash target by-node)))))))
+     (store-table local-store))
+    (let ((t0 (get-internal-real-time)))
+      (loop for id in ordered
+            for store in stores
+            for records = (gethash id by-node)
+            do (format t "upload ~a: ~d records~%" id (length records))
+               (%s3-put-batch (store-backend store) records))
+      (format t "packed S3 upload in ~,2f s~%" (/ (- (get-internal-real-time) t0) internal-time-units-per-second))))
+  (let ((reloaded (loop for i below 3 collect
+                    (make-store :s3-endpoint endpoint
+                                :s3-bucket (req (format nil "SCALAXY_S3_BUCKET_~d" i))
+                                :s3-access-key (req (format nil "SCALAXY_S3_ACCESS_KEY_~d" i))
+                                :s3-secret-key (req (format nil "SCALAXY_S3_SECRET_KEY_~d" i))
+                                :s3-prefix (format nil "~anode-~d/" (string-right-trim "/" prefix) i)))))
+    (loop for id in ids for store in reloaded do (setf (node-store (gethash id (cluster-nodes cluster))) store))
+    (let ((g (make-instance 'bulk-cluster-graph :cluster cluster :store (first reloaded) :db +default-db+)))
+      (graph-rebuild-indexes g)
+      (format t "reloaded cluster: ~d nodes, ~d relationships~%"
+              (graph-count-nodes g) (graph-count-rels g))
+      (assert (= 263 (graph-count-nodes g)))
+      (assert (= 2933097 (graph-count-rels g)))
+      (format t "FULL DATASET S3 CLUSTER TEST PASSED~%"))))

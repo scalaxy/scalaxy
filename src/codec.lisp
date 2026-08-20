@@ -96,9 +96,11 @@ The wrapper removes the list-of-pairs ambiguity: a Cypher map is
 
 (defun bits-double-float (bits)
   "Double float whose raw IEEE-754 bits are BITS (unsigned u64)."
-  #+sbcl (sb-kernel:%make-double-float (if (logbitp 63 bits)
-                                           (- bits #x10000000000000000)
-                                           bits))
+  #+sbcl
+  (let* ((hi0 (ldb (byte 32 32) bits))
+         (hi (if (logbitp 31 hi0) (- hi0 #x100000000) hi0))
+         (lo (ldb (byte 32 0) bits)))
+    (sb-kernel:make-double-float hi lo))
   #-sbcl
   (let* ((sign (if (logbitp 63 bits) -1 1))
          (biased (logand (ash bits -52) #x7FF))
@@ -150,6 +152,21 @@ The wrapper removes the list-of-pairs ambiguity: a Cypher map is
        (dolist (z ints)
          (buf-write-u64 buf (logand z #xFFFFFFFFFFFFFFFF)))))
     (t (error "codec: cannot encode ~s (CL NIL is not a Cypher value)" v))))
+
+(defun %codec-map-field-light (bytes wanted)
+  "Return a map field while skipping all unrelated encoded values."
+  (when (and (vectorp bytes) (= (aref bytes 0) +tag-bytes+))
+    (setf bytes (car (multiple-value-list (%codec-read bytes 0)))))
+  (when (and (vectorp bytes) (= (aref bytes 0) +tag-map+))
+    (multiple-value-bind (n pos0) (read-u32 bytes 1)
+      (let ((pos pos0) (found nil))
+        (loop repeat n
+              do (multiple-value-bind (key p) (read-string bytes pos)
+                   (if (equal key wanted)
+                       (multiple-value-bind (value q) (%codec-read bytes p)
+                         (setf found value pos q))
+                       (setf pos (%codec-skip bytes p)))))
+        found))))
 
 (defun codec-encode (value)
   "Encode a Cypher value as an octet vector."
@@ -206,6 +223,27 @@ Returns (values value next-position)."
                       (setf pos q)))
            (values (%temporal-from-encode-ints (nreverse ints)) pos))))
       (t (error "codec: unknown tag ~d at position ~d" tag i)))))
+
+(defun %codec-skip (v i)
+  "Return the position immediately after one encoded value without allocating it."
+  (case (aref v i)
+    ((#.+tag-null+ #.+tag-true+ #.+tag-false+) (1+ i))
+    ((#.+tag-int+ #.+tag-float+) (+ i 9))
+    ((#.+tag-string+ #.+tag-bytes+)
+     (multiple-value-bind (n j) (read-u32 v (1+ i)) (+ j n)))
+    (#.+tag-list+
+     (multiple-value-bind (n j) (read-u32 v (1+ i))
+       (dotimes (k n j) (setf j (%codec-skip v j)))))
+    (#.+tag-map+
+     (multiple-value-bind (n j) (read-u32 v (1+ i))
+       (dotimes (k n j)
+         ;; Map keys are raw length-prefixed strings, not codec values.
+         (multiple-value-bind (key p) (read-string v j)
+           (declare (ignore key))
+           (setf j (%codec-skip v p))))))
+    (#.+tag-temporal+
+     (multiple-value-bind (n j) (read-u8 v (1+ i)) (+ j (* n 8))))
+    (t (error "codec: unknown tag ~d at position ~d" (aref v i) i))))
 
 (defun codec-decode (octets &optional (start 0))
   "Decode a Cypher value from OCTETS at START.

@@ -64,15 +64,53 @@
 ;;; ------------------------------------------------------------------
 ;;; node status
 
-(defun node-status-plist (node &key (address "unknown") (http-address "unknown"))
-  (list (cons "id" (node-id node))
+(defvar *node-graph-metrics-cache* (make-hash-table :test #'equal))
+(defun %node-graph-metrics (node db)
+  (let ((key (list node db)))
+    (or (gethash key *node-graph-metrics-cache*)
+        (setf (gethash key *node-graph-metrics-cache*)
+              (multiple-value-list (graph-store-counts (node-store node) :db db))))))
+(defun invalidate-node-graph-metrics (node)
+  (maphash (lambda (key value) (declare (ignore value))
+             (when (eq (first key) node) (remhash key *node-graph-metrics-cache*)))
+           *node-graph-metrics-cache*))
+
+(defun node-status-plist (node &key (address "unknown") (http-address "unknown") (db +default-db+))
+  (multiple-value-bind (graph-nodes graph-rels graph-labels)
+      (ignore-errors (apply #'values (%node-graph-metrics node db)))
+    (list (cons "id" (node-id node))
         (cons "address" address)
         (cons "http" http-address)
         (cons "keys" (store-count (node-store node)))
+        (cons "graphNodes" (or graph-nodes 0))
+        (cons "graphRelationships" (or graph-rels 0))
+        (cons "s3SummaryValid"
+              (let ((backend (store-backend (node-store node))))
+                (and backend (typep backend 's3-config)
+                     (s3-config-lazy backend)
+                     (s3-config-summary-valid backend))))
+        (cons "graphRelationshipTypeCounts"
+              (let ((backend (store-backend (node-store node))))
+                (if (and backend (typep backend 's3-config)
+                         (s3-config-lazy backend))
+                    (let ((types (gethash db (s3-config-lazy-type-counts backend)))
+                          (pairs nil))
+                      (when types (maphash (lambda (k v) (push (cons k v) pairs)) types))
+                      pairs)
+                    nil)))
+        (cons "graphLabels" (if graph-labels (hash-table-count graph-labels) 0))
+        (cons "graphLabelCounts"
+              (if graph-labels
+                  (let ((pairs nil))
+                    (maphash (lambda (label count)
+                               (push (cons label (or (and (numberp count) count) 1)) pairs))
+                             graph-labels)
+                    pairs)
+                  nil))
         (cons "uptime" (max 0 (- (get-universal-time) (node-started-at node))))
         (cons "replicas" (length (node-followers node)))
         (cons "version" +version+)
-        (cons "status" "ok")))
+        (cons "status" "ok"))))
 
 ;;; ------------------------------------------------------------------
 ;;; command console
@@ -193,7 +231,7 @@ The USE command returns the new database name as its output."
              (json-response (list (cons "error" "asset not found")) :status 404))))
       ;; node-local status (used for cluster aggregation)
       ((and (string= path "/api/node-status") (string= method "GET"))
-       (json-response (node-status-plist node :address address :http-address http-address)))
+       (json-response (node-status-plist node :address address :http-address http-address :db db)))
       ;; databases (multiple databases per cluster)
       ((and (string= path "/api/databases") (string= method "GET"))
        (%api-list-databases node gateway))
@@ -210,6 +248,9 @@ The USE command returns the new database name as its output."
        (%api-keys node gateway request db))
       ((and (string= path "/api/keys") (string= method "POST"))
        (json-response (list (cons "error" "use PUT /api/keys/<key>")) :status 405))
+      ;; packed, owner-routed graph import
+      ((and (string= path "/api/bulk-keys") (string= method "POST"))
+       (%api-bulk-keys node gateway request db))
       ;; key item
       ((and (equal (first segments) "api") (equal (second segments) "keys") (= (length segments) 3))
        (let ((key (http-url-decode (third segments))))
@@ -315,6 +356,34 @@ The USE command returns the new database name as its output."
      (dolist (p (node-scan node (db-key name "")))
        (node-delete node (car p)))
      (json-response (list (cons "ok" t) (cons "name" name))))))
+
+(defun %api-bulk-keys (node gateway request db)
+  (let ((body (getf request :body)))
+    (if (null body)
+        (json-response (list (cons "error" "request body required")) :status 400)
+        (handler-case
+            (let* ((data (json-decode body))
+                   (items (or (gethash "records" data) nil))
+                   (pairs
+                     (mapcar
+                      (lambda (item)
+                        (let ((key (gethash "key" item))
+                              (hex (gethash "value" item)))
+                          (unless (and (stringp key) (stringp hex)
+                                       (evenp (length hex)))
+                            (error "invalid bulk record"))
+                          (cons (db-key db key) (%hex-octets hex))))
+                      items))
+                   (reply (if gateway
+                              (gateway-bulk-put gateway pairs)
+                              (node-dispatch node (list :op #.+op-bulk-put+
+                                                        :pairs pairs)))))
+              (json-response (list (cons "ok" t)
+                                   (cons "count" (or (getf reply :count)
+                                                     (getf reply :seq)
+                                                     (length pairs))))))
+          (error (e)
+            (json-response (list (cons "error" (princ-to-string e))) :status 400))))))
 
 (defun %api-keys (node gateway request db)
   (let* ((query (getf request :query))

@@ -185,7 +185,7 @@ available via (http-server-port SERVER)."
                                           :timeout 2))
     server)
 
-  (defun http-request (host port method path &key (headers nil) (body nil))
+  (defun http-request (host port method path &key (headers nil) (body nil) (binary nil))
     "Issue an HTTP request and return (VALUES STATUS HEADER-ALIST BODY-STRING)."
     (let ((socket (make-instance 'sb-bsd-sockets:inet-socket
                                  :type :stream :protocol :tcp)))
@@ -233,6 +233,6 @@ available via (http-server-port SERVER)."
                      (let ((body-str (when (plusp len)
                                        (let ((buf (make-array len :element-type '(unsigned-byte 8))))
                                          (read-sequence buf stream)
-                                         (octets-to-string buf)))))
+                                          (if binary buf (octets-to-string buf))))))
                        (values status (nreverse headers) body-str)))))))
         (ignore-errors (sb-bsd-sockets:socket-close socket))))))

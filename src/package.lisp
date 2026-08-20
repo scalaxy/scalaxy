@@ -27,7 +27,7 @@
    #:graph-remove-node-property #:graph-remove-relationship-property
    #:graph-add-node-label #:graph-remove-node-label
    #:graph-delete-node #:graph-delete-relationship
-   #:graph-scan-node-ids #:graph-scan-rel-ids #:graph-expand
+   #:graph-scan-node-ids #:graph-scan-rel-ids #:graph-expand #:graph-store-counts
    #:graph-rebuild-indexes #:graph-check-invariants
    #:graphql-execute
    #:register-procedure
@@ -43,9 +43,12 @@
    ;; storage
    #:store #:make-store #:store-put #:store-get #:store-delete #:store-scan
    #:store-count #:store-snapshot #:store-restore #:store-apply-log-record
+   #:with-s3-batch #:make-encrypted-storage-plugin #:storage-plugin-load
+   #:storage-plugin-put #:storage-plugin-delete #:graph-db-backend #:make-graph-db-backend
    ;; node & replication
    #:node #:make-node #:node-id #:node-store #:node-put #:node-get
-   #:node-delete #:node-dispatch #:node-add-follower #:node-replicate
+   #:node-delete #:node-dispatch #:node-add-follower #:node-replicate #:node-retry-replication
+   #:node-outbox #:node-quorum #:node-last-replication-error
    #:node-next-seq #:node-scan #:node-replicator
    #:replicator #:replicator-seq #:replicator-record #:replicator-entries
    ;; TCP server / client
@@ -84,4 +87,4 @@
    #:cypher-value->json #:cypher-result->json #:cypher-print-value
    #:+op-cypher+
    ;; entry points
-   #:start-node #:main #:parse-args #:parse-host-port))
+   #:start-node #:make-node-store #:main #:parse-args #:parse-host-port))

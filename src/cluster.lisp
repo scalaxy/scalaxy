@@ -27,13 +27,13 @@
                  node fid
                  (lambda (msg) (node-dispatch (gethash fid nodes) msg)))))))))))
 
-(defun make-cluster (&key (ids nil) (vnodes-per-node 128) (replicas 1))
+(defun make-cluster (&key (ids nil) (vnodes-per-node 128) (replicas 1) (quorum 0))
   "Build a cluster from IDS (list of strings).  Writes go to the node that
 owns the key on the consistent-hash ring; the owning node synchronously
 replicates to the next REPLICAS nodes in ring order."
   (let ((nodes (make-hash-table :test #'equal)))
     (dolist (id ids)
-      (setf (gethash id nodes) (make-node :id id)))
+      (setf (gethash id nodes) (make-node :id id :quorum quorum)))
     (let ((cluster (%make-cluster (make-ring :nodes ids
                                              :vnodes-per-node vnodes-per-node)
                                   nodes

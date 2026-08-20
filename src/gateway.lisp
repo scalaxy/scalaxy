@@ -46,6 +46,22 @@ when the owner is unreachable the data can still be served."
          (others (remove owner (mapcar #'car (gateway-peers gateway)) :test #'equal)))
     (cons owner others)))
 
+(defun gateway-bulk-put (gateway pairs)
+  "Route PAIRS to their owners using one packed request per node."
+  (let ((groups (make-hash-table :test #'equal)))
+    (dolist (pair pairs)
+      (let ((owner (ring-lookup (gateway-ring gateway) (car pair))))
+        (push pair (gethash owner groups))))
+    (maphash
+     (lambda (owner owner-pairs)
+       (let ((reply (gateway-request gateway owner
+                                     (list :op #.+op-bulk-put+
+                                           :pairs (nreverse owner-pairs)))))
+         (unless (and reply (eql (getf reply :status) #.+status-ok+))
+           (error "Scalaxy: bulk owner ~a failed" owner))))
+     groups)
+    (list :status #.+status-ok+ :count (length pairs))))
+
 (defun gateway-put (gateway key value)
   (dolist (id (%ring-owner-order gateway key))
     (when id
@@ -91,6 +107,36 @@ when the owner is unreachable the data can still be served."
           (subseq sorted offset (min (+ offset limit) (length sorted)))
           (subseq sorted offset)))))
 
+(defun gateway-scan-fast (gateway prefix)
+  "Scan all peers without sorting or allocating a second merged list.
+Callers that require deterministic order sort their final identifiers."
+  (let ((seen (make-hash-table :test #'equal)) (pairs nil))
+    (dolist (peer (gateway-peers gateway))
+      (let ((reply (ignore-errors
+                     (gateway-request gateway (car peer)
+                                      (list :op #.+op-scan+ :prefix prefix)))))
+        (when (and reply (eql (getf reply :status) #.+status-ok+))
+          (dolist (p (getf reply :pairs))
+            (unless (gethash (car p) seen)
+              (setf (gethash (car p) seen) t)
+              (push p pairs))))))
+    pairs))
+
+(defun gateway-graph-count (gateway kind &key (db +default-db+) label)
+  "Return a fast authoritative graph count from node status metrics.
+Physical replicas are divided out using the configured replica count."
+  (let* ((status (gateway-status gateway :db db))
+         (nodes (getf status :nodes))
+         (field (if (eq kind :nodes) "graphNodes" "graphRelationships"))
+         (total (if label
+                    (reduce #'+ nodes
+                            :key (lambda (n)
+                                   (or (gethash label (gethash "graphLabelCounts" n)) 0))
+                            :initial-value 0)
+                    (reduce #'+ nodes :key (lambda (n) (or (gethash field n) 0)) :initial-value 0)))
+         (replicas (1+ (or (and nodes (gethash "replicas" (first nodes))) 1))))
+    (floor total replicas)))
+
 (defun gateway-count (gateway)
   "Total number of distinct keys across the cluster."
   (length (gateway-scan gateway "")))
@@ -115,14 +161,143 @@ through the ring.  Returns the write reply."
     (gateway-delete gateway (car p)))
   (gateway-list-databases gateway))
 
+(defun %gateway-stream-aggregate (ast graph)
+  "Stream simple relationship count/sum projections over primary owners."
+  (when (and (consp ast) (eq (car ast) :query))
+    (let* ((clauses (rest ast)) (match (first clauses)) (ret (second clauses)))
+      (when (and match ret (eq (car match) :match) (eq (car ret) :return)
+                 (null (cddr clauses)) (null (getf (cdr match) :where))
+                 (null (getf (cdr ret) :distinct)) (null (getf (cdr ret) :order))
+                 (= (length (getf (cdr ret) :items)) 1))
+        (let* ((item (first (getf (cdr ret) :items)))
+               (expr (getf (cdr item) :expr))
+               (pattern (getf (cdr match) :pattern))
+               (chain (and (= (length pattern) 1) (first pattern)))
+               (rel (and (= (length chain) 3) (second chain)))
+               (rtype (and (consp rel) (getf (cdr rel) :type))))
+          (when (and rel (eq (car rel) :rel)
+                     (null (getf (cdr rel) :min)) (null (getf (cdr rel) :max))
+                     (or (and (consp expr) (eq (car expr) :count-*))
+                         (and (consp expr) (string-equal (getf (cdr expr) :fn) "count")
+                              (= (length (getf (cdr expr) :args)) 1))
+                         (and (consp expr) (string-equal (getf (cdr expr) :fn) "sum")
+                              (= (length (getf (cdr expr) :args)) 1))))
+            (let* ((count 0) (sum 0) (sum-seen nil)
+                   (arg (and (consp expr) (first (getf (cdr expr) :args))))
+                  (prop (and (consp arg) (eq (car arg) :prop)
+                             (getf (cdr arg) :prop)))
+                  (graph-rel graph))
+              (graph-stream-relationships
+               graph-rel
+               (lambda (r)
+                 (incf count)
+                 (when prop
+                   (let ((v (cdr (assoc prop (getf r :props) :test #'equal))))
+                     (unless (or (null v) (eq v :cypher-null))
+                       (incf sum v) (setf sum-seen t)))))
+               :type rtype)
+              (let ((value (if (or (eq (car expr) :count-*)
+                                   (and (consp expr)
+                                        (string-equal (getf (cdr expr) :fn) "count")))
+                               count
+                               (if sum-seen sum :cypher-null))))
+                (list (list (cons (%item-name item) value)))))))))))
+
+(defun %gateway-node-count (ast graph)
+  (when (and (consp ast) (eq (car ast) :query))
+    (let* ((clauses (rest ast)) (match (first clauses)) (ret (second clauses))
+           (pattern (and match (getf (cdr match) :pattern)))
+           (chain (and pattern (= (length pattern) 1) (first pattern)))
+           (item (and ret (eq (car ret) :return) (first (getf (cdr ret) :items))))
+           (expr (and item (getf (cdr item) :expr))))
+      (when (and match ret (eq (car match) :match) (eq (car ret) :return)
+                 (null (cddr clauses)) (null (getf (cdr match) :where))
+                 (= (length (getf (cdr ret) :items)) 1)
+                 (consp chain) (= (length chain) 1) (eq (car (first chain)) :node)
+                 (consp expr)
+                 (or (eq (car expr) :count-*)
+                     (and (eq (car expr) :call)
+                          (string-equal (getf (cdr expr) :fn) "count"))))
+        (let ((labels (getf (cdr (first chain)) :labels)))
+          (when (= (length labels) 1)
+            (list (list (cons (%item-name item)
+                              (gateway-graph-count (graph-gateway graph) :nodes
+                                                   :db (graph-db graph)
+                                                   :label (first labels)))))))))))
+
+(defun gateway-aggregate-relationships (gateway db type function property)
+  "Push a scalar relationship aggregate to every node and remove replicas."
+  (let ((total (if (string-equal function "COUNT") 0 0.0))
+        (seen nil) (healthy 0))
+    (dolist (peer (gateway-peers gateway))
+      (let ((reply (ignore-errors
+                     (gateway-request gateway (car peer)
+                                      (list :op #.+op-aggregate+
+                                            :prefix (db-key db "") :type type
+                                            :property property :function function)))))
+        (when (and reply (eql (getf reply :status) #.+status-ok+))
+          (incf healthy)
+          (let ((value (car (multiple-value-list
+                             (codec-decode (getf reply :value))))))
+            (incf total value)))))
+    (unless (plusp healthy) (error "no nodes available for aggregate"))
+    (let ((replicas (1+ (or (and (gateway-peers gateway)
+                                 ;; configured followers are one in the
+                                 ;; current ring; status reports this too.
+                                 1)
+                            1))))
+      (if (string-equal function "COUNT") (floor total replicas)
+          (/ total replicas)))))
+
+(defun %gateway-pushdown-aggregate (ast graph)
+  (when (and (consp ast) (eq (car ast) :query))
+    (let* ((clauses (rest ast)) (match (first clauses)) (ret (second clauses))
+           (pattern (and match (getf (cdr match) :pattern)))
+           (chain (and pattern (= (length pattern) 1) (first pattern)))
+           (item (and ret (eq (car ret) :return)
+                      (first (getf (cdr ret) :items))))
+           (expr (and item (getf (cdr item) :expr)))
+           (rel (and chain (= (length chain) 3) (second chain)))
+           (left (and chain (= (length chain) 3) (first chain)))
+           (right (and chain (= (length chain) 3) (third chain))))
+      (when (and match ret (eq (car match) :match)
+                 (null (cddr clauses)) (null (getf (cdr match) :where))
+                 (null (getf (cdr ret) :distinct)) (null (getf (cdr ret) :order))
+                 rel (eq (car rel) :rel)
+                 left right (eq (car left) :node) (eq (car right) :node)
+                 (null (getf (cdr left) :labels)) (null (getf (cdr left) :props))
+                 (null (getf (cdr right) :labels)) (null (getf (cdr right) :props))
+                 (eq (getf (cdr rel) :dir) :out)
+                 (consp expr)
+                 (or (eq (car expr) :count-*)
+                     (and (eq (car expr) :call)
+                          (member (string-upcase (getf (cdr expr) :fn)) '("COUNT" "SUM")
+                                  :test #'string=))))
+        (let* ((function (if (eq (car expr) :count-*) "COUNT"
+                             (string-upcase (getf (cdr expr) :fn))))
+               (property (if (string= function "SUM")
+                             (let ((arg (first (getf (cdr expr) :args))))
+                               (and (consp arg) (getf (cdr arg) :prop)))
+                             ""))
+               (value (gateway-aggregate-relationships
+                       (graph-gateway graph) (graph-db graph)
+                       (getf (cdr rel) :type) function property)))
+          (list (list (cons (%item-name item) value))))))))
+
 (defun gateway-cypher (gateway query &key (db +default-db+) params)
   "Evaluate a Cypher QUERY across the cluster: the executor runs on the
 coordinator with a gateway graph-view, so every scan/expand/point-read
 routes to the ring owners with the existing failover order; writes go
 through the normal replicated path (plan section 10, Phase A)."
-  (cypher-query query (make-gateway-graph gateway :db db) :params params))
+  (let* ((graph (make-gateway-graph gateway :db db))
+         (ast (cypher-parse query)))
+    (or (%gateway-node-count ast graph)
+        (%gateway-pushdown-aggregate ast graph)
+        (%gateway-stream-aggregate ast graph)
+        (%fast-count-query ast graph)
+        (cypher-query ast graph :params params))))
 
-(defun gateway-status (gateway)
+(defun gateway-status (gateway &key (db +default-db+))
   "Aggregate per-node status over each node's HTTP endpoint.
 Returns a plist with :nodes (list of status plists) and :total-keys."
   (let ((nodes nil)
@@ -133,7 +308,7 @@ Returns a plist with :nodes (list of status plists) and :total-keys."
              (reply (ignore-errors
                      (multiple-value-bind (status hdrs body)
                          (http-request host (gateway-peer-http-port gateway id)
-                                       "GET" "/api/node-status")
+                                       "GET" (format nil "/api/node-status?db=~a" db))
                        (declare (ignore hdrs))
                        (when (and (= status 200) body)
                          (json-decode body))))))

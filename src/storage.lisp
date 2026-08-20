@@ -6,23 +6,70 @@
 
 (in-package #:scalaxy)
 
-(defstruct (store (:constructor %make-store (table log path)))
+(defstruct (store (:constructor %make-store (table log path &optional backend)))
   table
   log
-  path)
+  path
+  ;; NIL/local or an S3-CONFIG.  The hash table remains a read cache and
+  ;; startup loads the owned bucket before the store is returned.
+  backend)
 
-(defun make-store (&key path)
-  "Create a store.  If PATH is given, mutations are appended to an
-append-only log at PATH and replayed on open."
-  (let ((store (%make-store (make-hash-table :test #'equal) nil path)))
-    (when path
-      (ensure-directories-exist path)
-      (let ((stream (open path :direction :io
-                               :if-exists :append
-                               :if-does-not-exist :create
-                               :element-type '(unsigned-byte 8))))
-        (setf (store-log store) stream)
-        (store-replay store)))
+(defvar *s3-batch-queues* nil)
+
+(defun %s3-batch-queue (cfg key op value)
+  (let ((entry (assoc cfg *s3-batch-queues* :test #'eq)))
+    (unless entry
+        (setf entry (cons cfg (make-hash-table :test #'equal)))
+      (push entry *s3-batch-queues*))
+    ;; The key is already the hash-table key; do not retain a second copy
+    ;; in the queue while a large import is resident in memory.
+    (setf (gethash key (cdr entry)) (cons op value)))
+  value)
+
+(defun %s3-flush-batches ()
+  (dolist (entry *s3-batch-queues*)
+    (let ((cfg (car entry)) (queue (cdr entry)))
+      (%s3-put-batch
+       cfg (loop for key being the hash-keys of queue
+                 using (hash-value record)
+                 collect (list (car record) key (cdr record)))))))
+
+(defvar *s3-batch-active* nil)
+
+(defmacro with-s3-batch (() &body body)
+  "Run bulk imports with one packed S3 object per backend.
+Normal STORE-PUT remains synchronous; this explicit import mode flushes all
+queued mutations before returning and is intended for rebuilds/imports."
+  `(let ((*s3-batch-active* t)
+         (*s3-batch-queues* nil))
+     (unwind-protect (progn ,@body)
+       (%s3-flush-batches))))
+
+(defun make-store (&key path backend encryption-key s3-endpoint s3-bucket s3-access-key s3-secret-key
+                         (s3-region "us-east-1") (s3-prefix "scalaxy/") cache-path lazy)
+  "Create a store.  S3 configuration selects a write-through remote backend;
+otherwise PATH selects the existing local append-only log."
+  (let* ((backend (or backend
+                       (when s3-endpoint
+                         (make-s3-config :endpoint s3-endpoint :bucket s3-bucket
+                                         :access-key s3-access-key :secret-key s3-secret-key
+                                         :region s3-region :prefix s3-prefix
+                                         :cache-dir cache-path :lazy lazy))))
+         (backend (if encryption-key
+                      (progn (unless backend (error "encryption requires a storage backend"))
+                             (make-encrypted-storage-plugin backend encryption-key))
+                      backend))
+         (store (%make-store (make-hash-table :test #'equal) nil path backend)))
+    (if backend
+        (storage-plugin-load backend (store-table store))
+        (when path
+          (ensure-directories-exist path)
+          (let ((stream (open path :direction :io
+                                   :if-exists :append
+                                   :if-does-not-exist :create
+                                   :element-type '(unsigned-byte 8))))
+            (setf (store-log store) stream)
+            (store-replay store))))
     store))
 
 (defun store-replay (store)
@@ -41,13 +88,22 @@ append-only log at PATH and replayed on open."
                        (setf pos (+ j len))))))))))
 
 (defun store-apply-log-record (store msg)
-  "Apply a mutation message (PUT/DELETE or REPLICATE with :sub-op) to the
-in-memory table without writing to the log."
+  "Apply a mutation message (PUT/DELETE or REPLICATE with :sub-op).
+S3-backed stores persist replicated mutations directly; local stores only
+update memory because the leader owns the durable log."
   (let ((op (or (getf msg :sub-op) (getf msg :op))))
     (ecase op
       (#.+op-put+
+       (if (store-backend store)
+           (if *s3-batch-queues*
+               (%s3-batch-queue (store-backend store) (getf msg :key) "PUT" (getf msg :value))
+               (storage-plugin-put (store-backend store) (getf msg :key) (getf msg :value))))
        (setf (gethash (getf msg :key) (store-table store)) (getf msg :value)))
       (#.+op-delete+
+       (if (store-backend store)
+           (if *s3-batch-queues*
+               (%s3-batch-queue (store-backend store) (getf msg :key) "DELETE" nil)
+               (storage-plugin-delete (store-backend store) (getf msg :key))))
        (remhash (getf msg :key) (store-table store))))
     msg))
 
@@ -59,32 +115,114 @@ in-memory table without writing to the log."
       (finish-output log))))
 
 (defun store-put (store key value)
+  ;; Remote persistence happens first: a failed S3 request must not expose a
+  ;; value that was never durably uploaded.
+  (if (store-backend store)
+      (if *s3-batch-active*
+          (%s3-batch-queue (store-backend store) key "PUT" value)
+          (storage-plugin-put (store-backend store) key value))
+      (store-log-mutation store (list :op #.+op-put+ :key key :value value)))
   (setf (gethash key (store-table store)) value)
-  (store-log-mutation store (list :op #.+op-put+ :key key :value value))
   value)
 
 (defun store-get (store key)
-  (gethash key (store-table store)))
+  (multiple-value-bind (value present) (gethash key (store-table store))
+    (if present value
+        (when (and (store-backend store)
+                   (typep (store-backend store) 's3-config)
+                   (s3-config-lazy (store-backend store)))
+          (let ((v (storage-plugin-get (store-backend store) key)))
+            (when v (setf (gethash key (store-table store)) v))
+            v)))))
 
 (defun store-delete (store key)
   (let ((present? (nth-value 1 (gethash key (store-table store)))))
     (when present?
-      (remhash key (store-table store))
-      (store-log-mutation store (list :op #.+op-delete+ :key key)))
+      (if (store-backend store)
+          (if *s3-batch-queues*
+              (%s3-batch-queue (store-backend store) key "DELETE" nil)
+              (storage-plugin-delete (store-backend store) key))
+          (store-log-mutation store (list :op #.+op-delete+ :key key)))
+      (remhash key (store-table store)))
     present?))
+
+(defun %store-internal-key-p (key)
+  (and (>= (length key) 2) (string= key "__" :end1 2)))
+
+(defun store-map (store fn)
+  "Visit stored pairs without allocating or sorting a result list."
+  (maphash (lambda (k v)
+             (unless (%store-internal-key-p k) (funcall fn k v)))
+           (store-table store))
+  (when (and (store-backend store)
+             (typep (store-backend store) 's3-config)
+             (s3-config-lazy (store-backend store)))
+    (storage-plugin-map (store-backend store)
+                        (lambda (k v)
+                          (unless (%store-internal-key-p k)
+                            (unless (nth-value 1 (gethash k (store-table store)))
+                              (funcall fn k v))))))
+  store)
+
+(defun store-scan-page (store prefix offset limit)
+  "Return one bounded page of prefix matches without materializing the scan."
+  (let ((seen 0) (out nil) (stop (+ offset limit)))
+    (labels ((consider (key value)
+               (when (and (not (%store-internal-key-p key))
+                          (>= (length key) (length prefix))
+                          (string= prefix key :end2 (length prefix)))
+                 (when (and (>= seen offset) (< seen stop))
+                   (push (cons key value) out))
+                 (incf seen))))
+      (maphash (lambda (k v) (consider k v)) (store-table store))
+      (when (and (< (length out) limit) (store-backend store)
+                 (typep (store-backend store) 's3-config)
+                 (s3-config-lazy (store-backend store)))
+        (maphash (lambda (k entry)
+                   (declare (ignore entry))
+                   (unless (nth-value 1 (gethash k (store-table store)))
+                     (consider k (store-get store k))))
+                 (s3-config-lazy-index (store-backend store)))))
+    (nreverse out)))
+
+(defun store-scan-fast (store prefix)
+  "Return prefix matches without sorting; includes lazy S3 index values."
+  (let ((results nil))
+    (maphash (lambda (k v)
+               (when (and (not (%store-internal-key-p k))
+                          (>= (length k) (length prefix))
+                          (string= prefix k :end2 (length prefix)))
+                 (push (cons k v) results)))
+             (store-table store))
+    (when (and (store-backend store)
+               (typep (store-backend store) 's3-config)
+               (s3-config-lazy (store-backend store)))
+      (maphash (lambda (k entry)
+                 (declare (ignore entry))
+                 (when (and (not (%store-internal-key-p k))
+                            (>= (length k) (length prefix))
+                            (string= prefix k :end2 (length prefix)))
+                   (unless (nth-value 1 (gethash k (store-table store)))
+                     (push (cons k (store-get store k)) results))))
+               (s3-config-lazy-index (store-backend store))))
+    results))
 
 (defun store-scan (store prefix)
   "Return all (key . value) pairs whose key starts with PREFIX, sorted by key."
   (let ((results nil))
     (maphash (lambda (k v)
-               (when (and (>= (length k) (length prefix))
+               (when (and (not (%store-internal-key-p k))
+                          (>= (length k) (length prefix))
                           (string= prefix k :end2 (length prefix)))
                  (push (cons k v) results)))
              (store-table store))
     (sort results #'string< :key #'car)))
 
 (defun store-count (store)
-  (hash-table-count (store-table store)))
+  (let ((n 0))
+    (maphash (lambda (k v) (declare (ignore v))
+               (unless (%store-internal-key-p k) (incf n)))
+             (store-table store)) n))
 
 (defun store-snapshot (store)
   "Return all (key . value) pairs as a fresh list."
@@ -94,6 +232,14 @@ in-memory table without writing to the log."
 
 (defun store-restore (store pairs)
   "Replace the table contents with PAIRS (used by snapshot transfer)."
+  (if (store-backend store)
+      (progn
+        (dolist (old (store-snapshot store))
+          (unless (assoc (car old) pairs :test #'equal)
+            (storage-plugin-delete (store-backend store) (car old))))
+        (dolist (p pairs)
+          (storage-plugin-put (store-backend store) (car p) (cdr p))))
+      nil)
   (clrhash (store-table store))
   (dolist (p pairs)
     (setf (gethash (car p) (store-table store)) (cdr p)))

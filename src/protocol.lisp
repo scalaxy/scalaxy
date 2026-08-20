@@ -20,6 +20,10 @@
 (defconstant +op-snapshot+  10)
 (defconstant +op-response+  11)
 (defconstant +op-cypher+    12)
+(defconstant +op-bulk-put+ 13)
+(defconstant +op-bulk-replicate+ 14)
+(defconstant +op-scan-page+ 15)
+(defconstant +op-aggregate+ 16)
 
 (defconstant +status-ok+        0)
 (defconstant +status-not-found+ 1)
@@ -75,8 +79,7 @@
     (values (octets-to-string octets) j)))
 
 (defun encode-message (msg)
-  "Encode message plist MSG (keys :op, :key, :value, :seq, :sub-op, :status,
-:message, :pairs) into an octet vector."
+  "Encode message plist MSG into an octet vector."
   (let ((buf (make-buffer))
         (op (getf msg :op)))
     (buf-write-u8 buf op)
@@ -84,25 +87,19 @@
       (#.+op-put+
        (buf-write-string buf (getf msg :key))
        (buf-write-octets buf (getf msg :value)))
-      (#.+op-get+
-       (buf-write-string buf (getf msg :key)))
-      (#.+op-delete+
-       (buf-write-string buf (getf msg :key)))
-      (#.+op-scan+
-       (buf-write-string buf (getf msg :prefix)))
+      (#.+op-get+ (buf-write-string buf (getf msg :key)))
+      (#.+op-delete+ (buf-write-string buf (getf msg :key)))
+      (#.+op-scan+ (buf-write-string buf (getf msg :prefix)))
       (#.+op-replicate+
        (buf-write-u64 buf (getf msg :seq))
        (buf-write-u8 buf (getf msg :sub-op))
-       (if (= (getf msg :sub-op) #.+op-put+)
-           (progn
-             (buf-write-string buf (getf msg :key))
-             (buf-write-octets buf (getf msg :value)))
-           (buf-write-string buf (getf msg :key))))
+       (buf-write-string buf (getf msg :key))
+       (when (= (getf msg :sub-op) #.+op-put+)
+         (buf-write-octets buf (getf msg :value))))
       (#.+op-ack+
        (buf-write-u64 buf (or (getf msg :seq) 0))
        (buf-write-u8 buf (getf msg :status)))
-      (#.+op-error+
-       (buf-write-string buf (getf msg :message)))
+      (#.+op-error+ (buf-write-string buf (getf msg :message)))
       (#.+op-ping+)
       (#.+op-pong+)
       (#.+op-snapshot+
@@ -122,7 +119,22 @@
       (#.+op-cypher+
        (buf-write-string buf (or (getf msg :db) +default-db+))
        (buf-write-string buf (getf msg :query))
-       (buf-write-octets buf (or (getf msg :params) #()))))
+       (buf-write-octets buf (or (getf msg :params) #())))
+      (#.+op-scan-page+
+       (buf-write-string buf (getf msg :prefix))
+       (buf-write-u64 buf (or (getf msg :offset) 0))
+       (buf-write-u32 buf (or (getf msg :limit) 10000)))
+      (#.+op-aggregate+
+       (buf-write-string buf (getf msg :prefix))
+       (buf-write-string buf (or (getf msg :type) ""))
+       (buf-write-string buf (or (getf msg :property) ""))
+       (buf-write-string buf (getf msg :function)))
+      ((or #.+op-bulk-put+ #.+op-bulk-replicate+)
+       (let ((pairs (getf msg :pairs)))
+         (buf-write-u32 buf (length pairs))
+         (dolist (p pairs)
+           (buf-write-string buf (car p))
+           (buf-write-octets buf (cdr p))))))
     buf))
 
 (defun decode-message (v)
@@ -170,6 +182,27 @@
                         (push (cons key value) pairs)
                         (setf pos q))))
            (list :op op :pairs (nreverse pairs)))))
+      (#.+op-scan-page+
+       (multiple-value-bind (prefix j) (read-string v i)
+         (multiple-value-bind (offset k) (read-u64 v j)
+           (multiple-value-bind (limit m) (read-u32 v k)
+             (list :op op :prefix prefix :offset offset :limit limit)))))
+      (#.+op-aggregate+
+       (multiple-value-bind (prefix j) (read-string v i)
+         (multiple-value-bind (type k) (read-string v j)
+           (multiple-value-bind (property m) (read-string v k)
+             (multiple-value-bind (function n) (read-string v m)
+               (list :op op :prefix prefix :type type :property property
+                     :function function))))))
+      ((or #.+op-bulk-put+ #.+op-bulk-replicate+)
+       (multiple-value-bind (n j) (read-u32 v i)
+         (let ((pairs nil) (pos j))
+           (loop repeat n
+                 do (multiple-value-bind (key p) (read-string v pos)
+                      (multiple-value-bind (value q) (read-octets v p)
+                        (push (cons key value) pairs)
+                        (setf pos q))))
+           (list :op op :pairs (nreverse pairs)))) )
       (#.+op-cypher+
        (multiple-value-bind (db j) (read-string v i)
          (multiple-value-bind (query k) (read-string v j)

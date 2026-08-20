@@ -58,7 +58,8 @@ element record.")
   "Graph view over the local STORE for database DB.  Derived indexes are
 rebuilt from the store contents."
   (let ((g (make-instance 'local-graph-view :store store :db db)))
-    (graph-rebuild-indexes g)
+    (unless (store-backend store)
+      (graph-rebuild-indexes g))
     g))
 
 (defun make-gateway-graph (gateway &key (db +default-db+))
@@ -95,6 +96,37 @@ rebuilt from the store contents."
 (defmethod g-scan ((g local-graph-view) prefix)
   (loop for (pkey . value) in (store-scan (graph-store g) (db-key (graph-db g) prefix))
         collect (cons (db-strip (graph-db g) pkey) value)))
+(defgeneric g-map (g fn)
+  (:documentation "Visit graph key/value pairs without allocating a sorted scan list."))
+(defmethod g-map ((g local-graph-view) fn)
+  (store-map (graph-store g)
+             (lambda (key value)
+               (funcall fn (cons (db-strip (graph-db g) key) value)))))
+(defmethod g-map ((g graph-view) fn)
+  (dolist (p (g-scan g "")) (funcall fn p)))
+
+(defmethod g-map ((g gateway-graph-view) fn)
+  "Stream bounded pages of primary-owned pairs without merging a
+cluster-wide result list."
+  (let ((gw (graph-gateway g)) (prefix (db-key (graph-db g) ""))
+        (page-size 20000))
+    (dolist (peer (gateway-peers gw))
+      (let ((id (car peer)) (offset 0) (continue t))
+        (loop while continue
+              do (let ((reply (ignore-errors
+                                (gateway-request
+                                 gw id (list :op #.+op-scan-page+
+                                             :prefix prefix :offset offset
+                                             :limit page-size)))))
+                   (if (and reply (eql (getf reply :status) #.+status-ok+))
+                       (let ((pairs (getf reply :pairs)))
+                         (dolist (p pairs)
+                           (when (equal id (ring-lookup (gateway-ring gw) (car p)))
+                             (funcall fn (cons (db-strip (graph-db g) (car p))
+                                               (cdr p)))))
+                         (incf offset (length pairs))
+                         (when (< (length pairs) page-size) (setf continue nil)))
+                       (setf continue nil))))))))
 
 (defmethod g-counter ((g local-graph-view) key)
   (macrolet ((with-lock (() &body body)
@@ -118,7 +150,7 @@ rebuilt from the store contents."
   (gateway-delete (graph-gateway g) (db-key (graph-db g) key)))
 
 (defmethod g-scan ((g gateway-graph-view) prefix)
-  (loop for (pkey . value) in (gateway-scan (graph-gateway g) (db-key (graph-db g) prefix))
+  (loop for (pkey . value) in (gateway-scan-fast (graph-gateway g) (db-key (graph-db g) prefix))
         collect (cons (db-strip (graph-db g) pkey) value)))
 
 (defmethod g-counter ((g gateway-graph-view) key)
@@ -222,6 +254,14 @@ in the record (the blob reference, or V unchanged)."
       (let ((by-rid (gethash type by-type)))
         (when by-rid (remhash rid by-rid))))))
 
+(defun %graph-persist-derived-indexes-p (g)
+  "Whether derived label/adjacency index entries should be durable.
+Local S3-backed graphs rebuild these indexes from node and relationship
+records, avoiding one object per label and two objects per relationship.
+Gateway graphs retain the entries because remote expansion uses them."
+  (not (and (typep g 'local-graph-view)
+            (store-backend (graph-store g)))))
+
 (defun %idx-node-add (g eid)
   (when (typep g 'local-graph-view)
     (setf (gethash eid (slot-value g 'node-index)) t)))
@@ -264,7 +304,7 @@ indexes are a pure function of the store; a rebuild restores them after
 replay or after any inconsistency)."
   (when (typep g 'local-graph-view)
     (%index-clear g)
-    (dolist (p (g-scan g ""))
+    (g-map g (lambda (p)
       (let ((k (car p)))
         (cond
           ((and (>= (length k) 2) (string= k "n:" :end1 2))
@@ -278,8 +318,17 @@ replay or after any inconsistency)."
                                     (make-hash-table :test #'equal)))))
                    (setf (gethash eid s) t))))))
           ((and (>= (length k) 2) (string= k "r:" :end1 2))
-           (let ((rid (subseq k 2)))
-             (setf (gethash rid (slot-value g 'rel-index)) t)))
+           (let* ((rid (subseq k 2))
+                  (rec (%decode-record (cdr p)))
+                  (type (%record-get rec "type"))
+                  (start (%record-get rec "start"))
+                  (end (%record-get rec "end")))
+             (setf (gethash rid (slot-value g 'rel-index)) t)
+             ;; Adjacency markers are optional for compact S3 stores.  The
+             ;; relationship record is authoritative and sufficient to
+             ;; reconstruct both directions at startup.
+             (%index-adj g 'adj-out start type rid)
+             (%index-adj g 'adj-in end type rid)))
           ((and (>= (length k) 3) (string= k "nl:" :end1 3))
            (let* ((rest (subseq k 3))
                   (sep (position #\: rest)))
@@ -305,7 +354,7 @@ replay or after any inconsistency)."
                  (when p3
                    (let ((type (subseq rest3 0 p3))
                          (rid (subseq rest3 (1+ p3))))
-                     (%index-adj g (if (eq dir :out) 'adj-out 'adj-in) eid type rid))))))))))
+                     (%index-adj g (if (eq dir :out) 'adj-out 'adj-in) eid type rid)))))))))))
     g))
 
 ;;; ------------------------------------------------------------------
@@ -327,7 +376,8 @@ replay or after any inconsistency)."
       (g-put g (format nil "n:~a" eid) (%encode-node-record labels spilled))
       (%idx-node-add g eid)
       (dolist (l labels)
-        (g-put g (format nil "nl:~a:~a" l eid) #())
+        (when (%graph-persist-derived-indexes-p g)
+          (g-put g (format nil "nl:~a:~a" l eid) #()))
         (%idx-label-add g l eid))
       eid)))
 
@@ -343,8 +393,9 @@ Returns the new relationship id."
     (let ((spilled (mapcar (lambda (p) (cons (car p) (%spill-prop g rid (car p) (cdr p))))
                            props)))
       (g-put g (format nil "r:~a" rid) (%encode-rel-record type start end spilled))
-      (g-put g (format nil "e:~a:o:~a:~a" start type rid) #())
-      (g-put g (format nil "e:~a:i:~a:~a" end type rid) #())
+      (when (%graph-persist-derived-indexes-p g)
+        (g-put g (format nil "e:~a:o:~a:~a" start type rid) #())
+        (g-put g (format nil "e:~a:i:~a:~a" end type rid) #()))
       (%idx-rel-add g rid)
       (%idx-adj-add g :out start type rid)
       (%idx-adj-add g :in end type rid)
@@ -485,17 +536,65 @@ than +blob-inline-limit+ are spilled to their own key."
 ;;; ------------------------------------------------------------------
 ;;; reads: scans and expansion
 
+(defun %ensure-node-index (g)
+  (when (and (typep g 'local-graph-view)
+             (zerop (hash-table-count (slot-value g 'node-index))))
+    (let ((store (graph-store g)) (backend (store-backend (graph-store g))))
+      (if (and (typep backend 's3-config) (s3-config-lazy backend))
+          (maphash
+           (lambda (key entry)
+             (declare (ignore entry))
+             (when (and (>= (length key) 2) (string= key "n:" :end1 2))
+               (let* ((eid (subseq key 2)) (rec (%decode-record (store-get store key)))
+                      (labels (cypher-list-elements (%record-get rec "labels"))))
+                 (setf (gethash eid (slot-value g 'node-index)) t)
+                 (dolist (label labels)
+                   (let ((bucket (or (gethash label (slot-value g 'label-index))
+                                     (setf (gethash label (slot-value g 'label-index))
+                                           (make-hash-table :test #'equal)))))
+                     (setf (gethash eid bucket) t))))))
+           (s3-config-lazy-index backend))
+          (g-map g
+                 (lambda (p)
+                   (when (and (>= (length (car p)) 2)
+                              (string= (car p) "n:" :end1 2))
+                     (let* ((eid (subseq (car p) 2))
+                            (rec (%decode-record (cdr p)))
+                            (labels (cypher-list-elements (%record-get rec "labels"))))
+                       (setf (gethash eid (slot-value g 'node-index)) t)
+                       (dolist (label labels)
+                         (let ((bucket (or (gethash label (slot-value g 'label-index))
+                                           (setf (gethash label (slot-value g 'label-index))
+                                                 (make-hash-table :test #'equal)))))
+                           (setf (gethash eid bucket) t)))))))))))
+
+(defun %ensure-rel-index (g)
+  (when (and (typep g 'local-graph-view)
+             (zerop (hash-table-count (slot-value g 'rel-index))))
+    (let ((backend (store-backend (graph-store g))))
+      (if (and (typep backend 's3-config) (s3-config-lazy backend))
+          (maphash (lambda (key entry)
+                     (declare (ignore entry))
+                     (when (and (>= (length key) 2) (string= key "r:" :end1 2))
+                       (setf (gethash (subseq key 2) (slot-value g 'rel-index)) t)))
+                   (s3-config-lazy-index backend))
+          (g-map g (lambda (p)
+                     (when (and (>= (length (car p)) 2)
+                                (string= (car p) "r:" :end1 2))
+                       (setf (gethash (subseq (car p) 2) (slot-value g 'rel-index)) t))))))))
+
 (defun graph-scan-node-ids (g &key label)
   "Element ids of all nodes (with LABEL when given), sorted."
   (if (typep g 'local-graph-view)
-      (let ((out nil))
+      (progn (%ensure-node-index g)
+        (let ((out nil))
         (if label
             (let ((s (gethash label (slot-value g 'label-index))))
               (when s
                 (maphash (lambda (eid v) (declare (ignore v)) (push eid out)) s)))
             (maphash (lambda (eid v) (declare (ignore v)) (push eid out))
                      (slot-value g 'node-index)))
-        (sort out #'string<))
+        (sort out #'string<)))
       (let ((prefix (if label (format nil "nl:~a:" label) "n:"))
             (out nil))
         (dolist (p (g-scan g prefix))
@@ -509,13 +608,14 @@ than +blob-inline-limit+ are spilled to their own key."
 (defun graph-scan-rel-ids (g &key type)
   "Element ids of all relationships (of TYPE when given), sorted."
   (if (typep g 'local-graph-view)
-      (let ((out nil))
+      (progn (%ensure-rel-index g)
+        (let ((out nil))
         (maphash (lambda (rid v) (declare (ignore v))
                    (when (or (null type)
                              (equal type (getf (graph-relationship g rid) :type)))
                      (push rid out)))
                  (slot-value g 'rel-index))
-        (sort out #'string<))
+        (sort out #'string<)))
       (let ((out nil))
         (dolist (p (g-scan g "r:"))
           (let* ((rid (subseq (car p) 2))
@@ -578,8 +678,9 @@ by RID."
       (let ((type (getf rel :type))
             (start (getf rel :start))
             (end (getf rel :end)))
-        (g-delete g (format nil "e:~a:o:~a:~a" start type rid))
-        (g-delete g (format nil "e:~a:i:~a:~a" end type rid))
+        (when (%graph-persist-derived-indexes-p g)
+          (g-delete g (format nil "e:~a:o:~a:~a" start type rid))
+          (g-delete g (format nil "e:~a:i:~a:~a" end type rid)))
         (%idx-adj-del g :out start type rid)
         (%idx-adj-del g :in end type rid)
         (%delete-blobs g rid)
@@ -598,7 +699,8 @@ incident (axiom A1 forbids dangling endpoints)."
     (let ((node (graph-node g eid)))
       (when node
         (dolist (l (getf node :labels))
-          (g-delete g (format nil "nl:~a:~a" l eid))
+          (when (%graph-persist-derived-indexes-p g)
+            (g-delete g (format nil "nl:~a:~a" l eid)))
           (%idx-label-del g l eid))
         (%delete-blobs g eid)
         (g-delete g (format nil "n:~a" eid))
@@ -607,6 +709,47 @@ incident (axiom A1 forbids dangling endpoints)."
 
 ;;; ------------------------------------------------------------------
 ;;; counts and invariants
+
+(defun graph-store-counts (store &key (db +default-db+))
+  "Count authoritative records without materializing scan results."
+  (let ((nodes 0) (rels 0) (labels (make-hash-table :test #'equal))
+        (prefix (db-key db ""))
+        (backend (store-backend store)))
+    (if (and (typep backend 's3-config) (s3-config-lazy backend))
+        (let ((counts (gethash db (s3-config-lazy-counts backend))))
+          (if counts
+              (progn
+                (setf nodes (car counts) rels (cdr counts))
+                (let ((known (gethash db (s3-config-lazy-labels backend))))
+                  (when known
+                    (maphash (lambda (label count) (setf (gethash label labels) count)) known))))
+              (maphash
+               (lambda (key entry)
+                 (declare (ignore entry))
+                 (when (and (>= (length key) (length prefix))
+                            (string= prefix key :end2 (length prefix)))
+                   (let ((local (db-strip db key)))
+                     (cond
+                       ((and (>= (length local) 2) (string= local "n:" :end1 2))
+                        (incf nodes))
+                       ((and (>= (length local) 2) (string= local "r:" :end1 2))
+                        (incf rels))))))
+               (s3-config-lazy-index backend))))
+        (store-map
+         store
+         (lambda (key value)
+           (when (and (>= (length key) (length prefix))
+                      (string= prefix key :end2 (length prefix)))
+             (let ((local (db-strip db key)))
+               (cond
+                 ((and (>= (length local) 2) (string= local "n:" :end1 2))
+                  (incf nodes)
+                  (dolist (label (cypher-list-elements
+                                  (%record-get (%decode-record value) "labels")))
+                    (setf (gethash label labels) t)))
+                 ((and (>= (length local) 2) (string= local "r:" :end1 2))
+                  (incf rels))))))))
+    (values nodes rels labels)))
 
 (defun graph-count-nodes (g)
   (if (typep g 'local-graph-view)
@@ -618,15 +761,32 @@ incident (axiom A1 forbids dangling endpoints)."
       (hash-table-count (slot-value g 'rel-index))
       (length (graph-scan-rel-ids g))))
 
+(defun graph-stream-relationships (g fn &key type)
+  "Call FN for each primary-owned relationship without materializing ids.
+FN receives the relationship plist.  This is the execution primitive for
+streaming aggregates over object-backed graphs."
+  (g-map g
+         (lambda (p)
+           (let ((key (car p)))
+             (when (and (>= (length key) 2) (string= key "r:" :end1 2))
+               (let* ((rid (subseq key 2)) (rec (%decode-record (cdr p)))
+                      (rtype (%record-get rec "type")))
+                 (when (or (null type) (equal type rtype))
+                   (funcall fn
+                            (list :id rid :type rtype
+                                  :start (%record-get rec "start")
+                                  :end (%record-get rec "end")
+                                  :props (%resolve-props g
+                                                          (%record-get rec "props")))))))))))
+
 (defun graph-check-invariants (g)
-  "Verify axioms A1-A3 and index consistency (plan section 4.1).
-Returns a list of violation descriptions (empty = valid graph)."
+  "Verify axioms A1-A3 and index consistency."
   (let ((violations nil))
     (dolist (p (g-scan g "r:"))
       (let* ((rid (subseq (car p) 2))
              (rec (%decode-record (cdr p)))
              (type (%record-get rec "type"))
-             (start (%record-get rec "start"))
+             (start ( %record-get rec "start"))
              (end (%record-get rec "end")))
         (unless (and (stringp type) (plusp (length type)))
           (push (format nil "rel ~a has no type" rid) violations))
@@ -634,38 +794,32 @@ Returns a list of violation descriptions (empty = valid graph)."
           (push (format nil "rel ~a start ~a missing" rid start) violations))
         (unless (g-get g (format nil "n:~a" end))
           (push (format nil "rel ~a end ~a missing" rid end) violations))
-        (unless (g-get g (format nil "e:~a:o:~a:~a" start type rid))
-          (push (format nil "rel ~a missing out-adjacency entry" rid) violations))
-        (unless (g-get g (format nil "e:~a:i:~a:~a" end type rid))
-          (push (format nil "rel ~a missing in-adjacency entry" rid) violations))))
+        (when (%graph-persist-derived-indexes-p g)
+          (unless (g-get g (format nil "e:~a:o:~a:~a" start type rid))
+            (push (format nil "rel ~a missing out-adjacency entry" rid) violations))
+          (unless (g-get g (format nil "e:~a:i:~a:~a" end type rid))
+            (push (format nil "rel ~a missing in-adjacency entry" rid) violations)))))
     (dolist (p (g-scan g "nl:"))
-      (let* ((k (car p))
-             (rest (subseq k 3))
-             (sep (position #\: rest)))
+      (let* ((k (car p)) (rest (subseq k 3)) (sep (position #\: rest)))
         (when sep
-          (let ((label (subseq rest 0 sep))
-                (eid (subseq rest (1+ sep))))
+          (let ((label (subseq rest 0 sep)) (eid (subseq rest (1+ sep))))
             (unless (g-get g (format nil "n:~a" eid))
               (push (format nil "label entry ~a -> missing node ~a" label eid) violations))))))
     (dolist (p (g-scan g "e:"))
-      (let* ((k (car p))
-             (rest (subseq k 2))
-             (p1 (position #\: rest)))
+      (let* ((k (car p)) (rest (subseq k 2)) (p1 (position #\: rest)))
         (when p1
           (let* ((eid (subseq rest 0 p1))
                  (dir (and (> (length rest) (+ p1 1))
                            (char= (char rest (1+ p1)) #\o)))
-                 (rest3 (subseq rest (+ p1 3)))  ; skip "<dir>:"
+                 (rest3 (subseq rest (+ p1 3)))
                  (p3 (position #\: rest3)))
             (when p3
-              (let* ((type (subseq rest3 0 p3))
-                     (rid (subseq rest3 (1+ p3))))
-                (let ((rel (graph-relationship g rid)))
-                  (unless rel
-                    (push (format nil "adjacency entry ~a -> missing rel" k) violations))
-                  (when rel
-                    (unless (and (equal (getf rel :type) type)
-                                 (equal (if dir (getf rel :start) (getf rel :end))
-                                        eid))
-                      (push (format nil "adjacency entry ~a inconsistent" k) violations))))))))))
+              (let* ((type (subseq rest3 0 p3)) (rid (subseq rest3 (1+ p3)))
+                     (rel (graph-relationship g rid)))
+                (unless rel
+                  (push (format nil "adjacency entry ~a -> missing rel" k) violations))
+                (when (and rel
+                           (not (and (equal (getf rel :type) type)
+                                     (equal (if dir (getf rel :start) (getf rel :end)) eid))))
+                  (push (format nil "adjacency entry ~a inconsistent" k) violations))))))))
     violations))

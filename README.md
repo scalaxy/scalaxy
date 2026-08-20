@@ -85,7 +85,8 @@ scalaxy.asd            ASDF system definition
 src/package.lisp       package definition
 src/util.lisp          FNV-1a + SplitMix64 hashing, octet/string helpers
 src/protocol.lisp      binary wire format + framing
-src/storage.lisp       durable key/value store (log + replay)
+src/storage.lisp       durable key/value store (local log or S3 backend)
+src/s3.lisp            S3-compatible HTTP/SigV4 backend (Garage-tested)
 src/consistent-hash.lisp  virtual-node consistent hashing ring
 src/replication.lisp   leader op log
 src/node.lisp          storage node + request dispatch
@@ -236,10 +237,40 @@ Configuration is 100% environment variables:
 | `SCALAXY_NODE_ID`      | auto             | Ring member id                       |
 | `SCALAXY_ADDRESS`      | `0.0.0.0:7200`   | Data-plane TCP listen address        |
 | `SCALAXY_HTTP_ADDRESS` | `0.0.0.0:8080`   | Web console / REST / health address  |
-| `SCALAXY_DATA_DIR`     | `./scalaxy-data` | Durability log directory             |
+| `SCALAXY_DATA_DIR`     | `./scalaxy-data` | Local durability log directory (local backend) |
+| `SCALAXY_STORE_BACKEND`| (local)          | Set to `s3` for write-through S3 storage      |
+| `SCALAXY_S3_ENDPOINT`  | (none)           | S3-compatible HTTP endpoint (Garage tested)   |
+| `SCALAXY_S3_BUCKET`    | (none)           | Bucket owned by this node                     |
+| `SCALAXY_S3_ACCESS_KEY`| (none)           | S3 access key (or `AWS_ACCESS_KEY_ID`)        |
+| `SCALAXY_S3_SECRET_KEY`| (none)           | S3 secret key (or `AWS_SECRET_ACCESS_KEY`)    |
+| `SCALAXY_S3_REGION`    | `us-east-1`      | S3 signing region                             |
+| `SCALAXY_S3_PREFIX`    | `scalaxy/`       | Base object prefix; node ID is appended        |
+| `SCALAXY_S3_LAZY`      | false            | Index packed segments; load values on demand   |
 | `SCALAXY_PEERS`        | (none)           | `id=host:data-port[:http-port],...`  |
 | `SCALAXY_REPLICATE_TO` | (none)           | Sync replication targets (same format) |
 | `SCALAXY_WEB_DIR`      | `web/`           | Console assets location              |
+
+When `SCALAXY_STORE_BACKEND=s3` (or an S3 endpoint is supplied), the node
+uses its bucket and node-specific prefix as the durable store; no local
+storage volume is required. The current dependency-free client supports
+HTTP S3 endpoints and is tested against the open-source Garage S3 service. Start the local integration check with
+`scripts/test-s3-garage.sh` (Docker required). S3 credentials must be kept in
+runtime secrets, not committed configuration. Local S3-backed graph views
+persist only authoritative node/relationship records; derived label and
+adjacency indexes are rebuilt in memory on startup. Lazy startup also builds lightweight relationship-type and numeric-property summaries from packed records. Whole-relationship `count()` and simple `sum()` queries are pushed down to the owning nodes and return scalar results instead of materializing relationship rows. The summaries are in-memory derived metadata and are rebuilt from authoritative S3 objects on restart. Import/rebuild jobs can
+use the explicit `with-s3-batch` operation to pack queued mutations into one
+object per backend while retaining synchronous writes for normal operations.
+Storage backends are pluggable through the `storage-plugin-*` protocol. Each S3
+node also maintains a persistent raw-segment cache under
+`SCALAXY_DATA_DIR/s3-cache/`; this is a local read-through cache, while S3
+remains authoritative. Startup fetch/decode uses bounded parallel segment
+workers, and distributed relationship aggregates use primary-owner streaming
+rather than cluster-wide row materialization. Put `SCALAXY_DATA_DIR` on local SSD/NVMe when restart
+latency matters. S3 supports optional authenticated pre-encryption via `:encryption-key`; the
+built-in `graph-db-backend` stores encoded blocks as `ScalaxyBlock` nodes in
+another Scalaxy graph database, allowing untrusted public storage to hold
+only ciphertext. Replication tracks failed acknowledgements in a retry
+outbox and supports configurable follower quorums.
 
 ```sh
 # Docker

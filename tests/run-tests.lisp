@@ -1665,10 +1665,24 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
                           "graphql api extensions")))))
         (http-stop http-server))))))
 
+(defun test-s3-primitives ()
+  (format t "== S3-PRIMITIVES ==~%")
+  (check-equal (scalaxy::%s3-hex (scalaxy::%s3-sha256 (string-to-octets "")))
+               "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+               "S3 SHA-256 empty vector")
+  (check-equal (scalaxy::%s3-hex (scalaxy::%s3-sha256 (string-to-octets "abc")))
+               "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+               "S3 SHA-256 abc")
+  (let ((cfg (scalaxy::make-s3-config :endpoint "http://127.0.0.1:3900"
+                                      :bucket "b" :access-key "a" :secret-key "s"
+                                      :prefix "node-1")))
+    (check-equal (scalaxy::s3-config-prefix cfg) "node-1/" "S3 prefix normalization")))
+
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)
   (test-consistent-hash)
   (test-storage)
+  (test-s3-primitives)
   (test-protocol)
   (test-replication)
   (test-cluster)
