@@ -120,6 +120,32 @@
      (s3-config-lazy-index cfg))
     labels))
 
+(defun %node-endpoint-aggregate (node msg)
+  "Aggregate relationship endpoint pairs without reading packed payloads."
+  (let* ((store (node-store node)) (cfg (store-backend store))
+         (prefix (getf msg :prefix))
+         (sep (and prefix (position #\: prefix :start 2)))
+         (left (%node-aggregate-id-set (getf msg :left-ids)))
+         (right (%node-aggregate-id-set (getf msg :right-ids)))
+         (table (and cfg (s3-config-lazy-endpoint-aggregates cfg)))
+         (count 0) (sum 0) (sum-seen nil))
+    (when (and sep left right table (not (gethash :disabled table)))
+      (let ((db (subseq prefix 2 sep)) (type (getf msg :type))
+            (property (getf msg :property)))
+        (maphash
+         (lambda (key values)
+           (when (and (listp key) (equal (first key) db)
+                      (equal (second key) type)
+                      (gethash (third key) left)
+                      (gethash (fourth key) right))
+             (incf count (gethash "~count" values 0))
+             (when (plusp (length property))
+               (multiple-value-bind (value present) (gethash property values)
+                 (when present (incf sum value) (setf sum-seen t))))))
+         table)
+        (values (if (string-equal (getf msg :function) "COUNT") count
+                    (if sum-seen sum :cypher-null)) t)))))
+
 (defun %node-lazy-filtered-aggregate (node msg)
   "Aggregate packed relationships using globally supplied endpoint IDs."
   (let* ((store (node-store node)) (cfg (store-backend store))
@@ -135,6 +161,12 @@
          (cached-pair (multiple-value-list (gethash cache-key cache))))
     (when (second cached-pair)
       (return-from %node-lazy-filtered-aggregate (first cached-pair)))
+    (multiple-value-bind (fast-value fast-p)
+        (%node-endpoint-aggregate node msg)
+      (when fast-p
+        (setf (gethash cache-key cache) fast-value)
+        (%s3-aggregate-cache-save cfg)
+        (return-from %node-lazy-filtered-aggregate fast-value)))
     (labels ((has-id (id ids wanted)
                (or (and ids (gethash id ids))
                    (and (null ids) (plusp (length wanted))

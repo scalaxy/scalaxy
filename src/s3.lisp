@@ -82,8 +82,8 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1")
                               (prefix "scalaxy/") cache-dir lazy
@@ -108,6 +108,7 @@
                      (and cache-dir (uiop:ensure-directory-pathname cache-dir))
                      (or cache-max-bytes 0)
                      lazy (and lazy (make-hash-table :test #'equal))
+                     (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
@@ -473,6 +474,81 @@ sequence order so overwrite/delete semantics remain deterministic."
                 (loop for label being the hash-values of labels
                       do (remhash id label))))))))))
 
+(defun %s3-endpoint-aggregate-path (cfg)
+  (%s3-meta-path cfg
+                 (format nil "lazy-endpoint-aggregates-~a.sexp"
+                         (%s3-hex (%s3-sha256
+                                   (string-to-octets
+                                    (format nil "~a/~a" (s3-config-bucket cfg)
+                                            (s3-config-prefix cfg))))))))
+
+(defun %s3-endpoint-aggregate-save (cfg segments)
+  (let ((table (s3-config-lazy-endpoint-aggregates cfg)))
+    (when (and (s3-config-summary-valid cfg)
+               (s3-config-cache-dir cfg) (not (gethash :disabled table)))
+      (%s3-write-sexp (%s3-endpoint-aggregate-path cfg)
+                      (list :version 1
+                            :segments (sort (copy-list segments) #'string<)
+                            :values (%s3-hash-pairs table))))))
+
+(defun %s3-endpoint-aggregate-load (cfg segments)
+  (let ((value (%s3-read-sexp (%s3-endpoint-aggregate-path cfg))))
+    (when (and (listp value) (eql (getf value :version) 1)
+               (equal (getf value :segments) (sort (copy-list segments) #'string<)))
+      (dolist (pair (getf value :values))
+        (setf (gethash (car pair) (s3-config-lazy-endpoint-aggregates cfg))
+              (cdr pair)))
+      t)))
+
+(defun %s3-endpoint-aggregate-add (cfg key bytes)
+  (let ((table (s3-config-lazy-endpoint-aggregates cfg))
+        (sep (position #\: key :start 2)))
+    (when (and sep (not (gethash :disabled table)))
+      (let ((local (subseq key (1+ sep))))
+        (when (and (>= (length local) 2) (string= local "r:" :end1 2))
+          (let* ((type (%codec-map-field-light bytes "type"))
+                 (start (%codec-map-field-light bytes "start"))
+                 (end (%codec-map-field-light bytes "end")))
+            (when (and type start end)
+              (let* ((db (subseq key 2 sep))
+                     (aggregate-key (list db (princ-to-string type)
+                                          (princ-to-string start)
+                                          (princ-to-string end)))
+                     (values (gethash aggregate-key table)))
+                (unless values
+                  (if (>= (hash-table-count table) 200000)
+                      (setf (gethash :disabled table) t)
+                      (setf values (make-hash-table :test #'equal)
+                            (gethash aggregate-key table) values)))
+                (when values
+                  (incf (gethash "~count" values 0))
+                  (let ((props (%codec-map-field-light bytes "props")))
+                    (when (cypher-map-p props)
+                      (dolist (pair (cypher-map-pairs props))
+                        (when (numberp (cdr pair))
+                          (incf (gethash (car pair) values 0) (cdr pair)))))))))))))))
+
+(defun %s3-index-endpoint-aggregates (cfg relative)
+  (let ((bytes (%s3-get-cached cfg relative)))
+    (multiple-value-bind (outer pos) (read-u32 bytes 1)
+      (declare (ignore outer))
+      (multiple-value-bind (magic next) (%codec-read bytes pos)
+        (declare (ignore magic))
+        (when (= (aref bytes next) +tag-list+)
+          (multiple-value-bind (count cursor0) (read-u32 bytes (1+ next))
+            (let ((cursor cursor0))
+              (loop repeat count
+                    do (when (= (aref bytes cursor) +tag-list+)
+                         (multiple-value-bind (fields p0) (read-u32 bytes (1+ cursor))
+                           (declare (ignore fields))
+                           (multiple-value-bind (op p1) (%codec-read bytes p0)
+                             (multiple-value-bind (key p2) (%codec-read bytes p1)
+                               (let ((after (%codec-skip bytes p2)))
+                                 (when (string= op "PUT")
+                                   (%s3-endpoint-aggregate-add cfg key
+                                                                 (subseq bytes p2 after)))
+                                 (setf cursor after)))))))))))))
+
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
@@ -546,12 +622,13 @@ sequence order so overwrite/delete semantics remain deterministic."
                            (if (string= op "PUT")
                                (let ((after (%codec-skip bytes p2)))
                                  (when build-metadata
-                                   (%s3-lazy-type-key cfg key (subseq bytes p2 after)))
+                                   (%s3-lazy-type-key cfg key (subseq bytes p2 after))
+                                   (%s3-endpoint-aggregate-add cfg key (subseq bytes p2 after)))
                                  (push (list key relative p2 after) out)
                                  (when (and build-metadata
                                             (>= (length key) 4) (string= key "d:" :end1 2))
                                    (%s3-lazy-label-key cfg key (subseq bytes p2 after)))
-                                 (setf cursor after))
+                                 (setf cursor after)))
                                (progn
                                  (push (list key relative nil nil :delete) out)
                                  (setf cursor p2)))))))))))
@@ -587,7 +664,9 @@ sequence order so overwrite/delete semantics remain deterministic."
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
              (summary-loaded
               (and (%s3-summary-load cfg ordinary-relative segments)
-                   (%s3-label-id-load cfg ordinary-relative segments))))
+                   (%s3-label-id-load cfg ordinary-relative segments)))
+             (endpoint-loaded
+              (%s3-endpoint-aggregate-load cfg segments)))
         (dolist (pair ordinary)
           (setf (gethash (car pair) table)
                 (car (multiple-value-list
@@ -629,6 +708,11 @@ sequence order so overwrite/delete semantics remain deterministic."
                   (remhash key (s3-config-lazy-index cfg))
                   (remhash key table)
                   (setf (s3-config-summary-valid cfg) nil)))))
+          (unless endpoint-loaded
+            (when summary-loaded (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
+            (dolist (relative (sort segments #'string<))
+              (%s3-index-endpoint-aggregates cfg relative)))
+          (%s3-endpoint-aggregate-save cfg segments)
           (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
           (%s3-label-id-save cfg (mapcar #'cdr ordinary) segments)
           (%s3-aggregate-cache-load cfg segments)
@@ -728,9 +812,12 @@ individual objects while retaining deterministic restart semantics."
 (defun %s3-clear-aggregate-cache (cfg)
   (when (s3-config-lazy-aggregate-cache cfg)
     (clrhash (s3-config-lazy-aggregate-cache cfg)))
+  (when (s3-config-lazy-endpoint-aggregates cfg)
+    (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
   (setf (s3-config-summary-valid cfg) nil)
   (dolist (path (list (%s3-summary-path cfg)
                       (%s3-label-id-path cfg)
+                      (%s3-endpoint-aggregate-path cfg)
                       (%s3-aggregate-cache-path cfg)))
     (when (and path (probe-file path)) (ignore-errors (delete-file path)))))
 
