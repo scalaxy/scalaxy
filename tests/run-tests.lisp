@@ -110,6 +110,8 @@
                                :property "distance" :function "SUM"
                                :left-label "Zone" :right-label "Zone"
                                :left-ids "a,b" :right-ids "c,d")
+                         (list :op #.scalaxy::+op-topk+ :prefix "d:g:" :type "TRIP"
+                               :property "distance" :limit 10 :descending t)
                          (list :op #.+op-replicate+ :seq 42 :sub-op #.+op-put+
                                :key "rk" :value (string-to-octets "rv"))
                          (list :op #.+op-replicate+ :seq 43 :sub-op #.+op-delete+
