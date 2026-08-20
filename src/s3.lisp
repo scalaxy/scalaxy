@@ -487,13 +487,13 @@ sequence order so overwrite/delete semantics remain deterministic."
     (when (and (s3-config-summary-valid cfg)
                (s3-config-cache-dir cfg) (not (gethash :disabled table)))
       (%s3-write-sexp (%s3-endpoint-aggregate-path cfg)
-                      (list :version 1
+                      (list :version 2
                             :segments (sort (copy-list segments) #'string<)
                             :values (%s3-hash-pairs table))))))
 
 (defun %s3-endpoint-aggregate-load (cfg segments)
   (let ((value (%s3-read-sexp (%s3-endpoint-aggregate-path cfg))))
-    (when (and (listp value) (eql (getf value :version) 1)
+    (when (and (listp value) (eql (getf value :version) 2)
                (equal (getf value :segments) (sort (copy-list segments) #'string<)))
       (dolist (pair (getf value :values))
         (setf (gethash (car pair) (s3-config-lazy-endpoint-aggregates cfg))
@@ -544,10 +544,14 @@ sequence order so overwrite/delete semantics remain deterministic."
                            (multiple-value-bind (op p1) (%codec-read bytes p0)
                              (multiple-value-bind (key p2) (%codec-read bytes p1)
                                (let ((after (%codec-skip bytes p2)))
-                                 (when (string= op "PUT")
+                                 (when (and (string= op "PUT")
+                                            (let ((entry (gethash key
+                                                                  (s3-config-lazy-index cfg))))
+                                              (and entry (equal relative (first entry))
+                                                   (= p2 (second entry))))
                                    (%s3-endpoint-aggregate-add cfg key
                                                                  (subseq bytes p2 after)))
-                                 (setf cursor after)))))))))))))
+                                 (setf cursor after)))))))))))))))
 
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
@@ -622,8 +626,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                            (if (string= op "PUT")
                                (let ((after (%codec-skip bytes p2)))
                                  (when build-metadata
-                                   (%s3-lazy-type-key cfg key (subseq bytes p2 after))
-                                   (%s3-endpoint-aggregate-add cfg key (subseq bytes p2 after)))
+                                   (%s3-lazy-type-key cfg key (subseq bytes p2 after)))
                                  (push (list key relative p2 after) out)
                                  (when (and build-metadata
                                             (>= (length key) 4) (string= key "d:" :end1 2))
@@ -634,7 +637,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                                  (setf cursor p2)))))))))))
     (let ((result (nreverse out)))
       (%s3-index-sidecar-write cfg relative result)
-      result)))
+      result))
 
 (defun %s3-load-lazy (cfg table)
   "Load ordinary objects and build a deterministic packed-segment index."
