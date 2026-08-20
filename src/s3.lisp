@@ -82,10 +82,13 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
 
-(defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1") (prefix "scalaxy/") cache-dir lazy)
+(defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1")
+                              (prefix "scalaxy/") cache-dir lazy
+                              (cache-max-bytes (let ((v (uiop:getenv "SCALAXY_S3_CACHE_MAX_BYTES")))
+                                                 (and v (ignore-errors (parse-integer v))))))
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
   (unless (and endpoint bucket access-key secret-key) (error "S3 requires endpoint, bucket, access-key and secret-key"))
   (let* ((scheme-pos (search "://" endpoint))
@@ -103,6 +106,7 @@
                          (format nil "~a/" (string-right-trim "/" prefix))
                          "")
                      (and cache-dir (uiop:ensure-directory-pathname cache-dir))
+                     (or cache-max-bytes 0)
                      lazy (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
@@ -207,6 +211,23 @@ The segment is a codec list of MAGIC and a second codec list of records."
     (when (and path (probe-file path))
       (ignore-errors (delete-file path)))))
 
+(defun %s3-cache-enforce-budget (cfg required path)
+  (let ((limit (s3-config-cache-max-bytes cfg)))
+    (when (and (plusp limit) (<= required limit))
+      (labels ((size (file)
+                 (ignore-errors
+                   (with-open-file (in file :element-type '(unsigned-byte 8))
+                     (file-length in)))))
+        (let* ((dir (s3-config-cache-dir cfg))
+               (files (and dir (directory (merge-pathnames "*.bin" dir))))
+               (total (loop for f in files when (probe-file f) sum (or (size f) 0))))
+          (dolist (file (sort (remove path files :test #'equal)
+                              #'< :key (lambda (f) (or (file-write-date f) 0))))
+            (when (<= (+ total required) limit) (return))
+            (let ((bytes (size file)))
+              (when (and bytes (ignore-errors (delete-file file)))
+                (decf total bytes)))))))))
+
 (defun %s3-get-cached (cfg relative)
   "Read an object through the local persistent cache and record metrics."
   (let ((path (%s3-cache-file cfg relative)))
@@ -227,7 +248,10 @@ The segment is a codec list of MAGIC and a second codec list of records."
             (let ((bytes (if (typep body '(vector (unsigned-byte 8))) body
                              (string-to-octets body))))
               (incf (s3-config-cache-bytes cfg) (length bytes))
-              (when path
+              (when (and path
+                         (or (zerop (s3-config-cache-max-bytes cfg))
+                             (<= (length bytes) (s3-config-cache-max-bytes cfg))))
+                (%s3-cache-enforce-budget cfg (length bytes) path)
                 (ensure-directories-exist path)
                 (let ((tmp (format nil "~a.tmp.~d.~d" path (get-universal-time)
                                    (random 1000000000))))

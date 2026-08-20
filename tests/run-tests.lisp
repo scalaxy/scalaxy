@@ -1709,7 +1709,20 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
                    "cached-value" "S3 range cache hit")
       (check (= (scalaxy::s3-config-cache-hits cached) 1) "S3 cache hit metric")
       (scalaxy::%s3-cache-invalidate cached relative)
-      (check (not (probe-file path)) "S3 cache invalidation"))))
+      (check (not (probe-file path)) "S3 cache invalidation")
+      (let* ((limited-dir (format nil "/tmp/scalaxy-cache-limit-~d/" (get-universal-time)))
+             (limited (scalaxy::make-s3-config :endpoint "http://127.0.0.1:3900"
+                                                :bucket "b" :access-key "a" :secret-key "s"
+                                                :cache-dir limited-dir :cache-max-bytes 10))
+             (old (merge-pathnames "old.bin" (uiop:ensure-directory-pathname limited-dir))))
+        (ensure-directories-exist old)
+        (with-open-file (out old :direction :output :if-exists :supersede
+                                  :element-type '(unsigned-byte 8))
+          (write-sequence #(1 2 3 4 5 6 7 8) out))
+        (scalaxy::%s3-cache-enforce-budget limited 8
+                                            (merge-pathnames "new.bin"
+                                                             (uiop:ensure-directory-pathname limited-dir)))
+        (check (not (probe-file old)) "S3 cache budget evicts oldest entry")))))
 
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)
