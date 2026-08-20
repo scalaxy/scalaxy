@@ -1141,6 +1141,13 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
     (%codec-roundtrip (cypher-list (list 1 2 3)) "codec list")
     (%codec-roundtrip (cypher-list (list 1 (cypher-list (list 2 3)) "x")) "codec nested list")
     (%codec-roundtrip (cypher-map (list (cons "a" 1) (cons "b" "two"))) "codec map")
+    (let ((encoded (codec-encode
+                     (cypher-map (list (cons "type" "TRIP")
+                                       (cons "distance" 1.5))))))
+      (check-equal (scalaxy::%codec-map-field-light encoded "type") "TRIP"
+                   "codec light map field")
+      (check (= (scalaxy::%codec-skip encoded 0) (length encoded))
+             "codec map skip reaches end"))
     (%codec-roundtrip
      (cypher-map (list (cons "n" (cypher-map (list (cons "k" (cypher-list (list 1 2))))))))
      "codec nested map")
@@ -1676,7 +1683,23 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (let ((cfg (scalaxy::make-s3-config :endpoint "http://127.0.0.1:3900"
                                       :bucket "b" :access-key "a" :secret-key "s"
                                       :prefix "node-1")))
-    (check-equal (scalaxy::s3-config-prefix cfg) "node-1/" "S3 prefix normalization")))
+    (check-equal (scalaxy::s3-config-prefix cfg) "node-1/" "S3 prefix normalization")
+    (let* ((dir (format nil "/tmp/scalaxy-cache-test-~d/" (get-universal-time)))
+           (cached (scalaxy::make-s3-config :endpoint "http://127.0.0.1:3900"
+                                             :bucket "b" :access-key "a" :secret-key "s"
+                                             :cache-dir dir :lazy t))
+           (relative "immutable-segment")
+           (path (scalaxy::%s3-cache-file cached relative))
+           (bytes (codec-encode "cached-value")))
+      (ensure-directories-exist path)
+      (with-open-file (out path :direction :output :if-exists :supersede
+                                :element-type '(unsigned-byte 8))
+        (write-sequence bytes out))
+      (check-equal (scalaxy::%s3-get-cached-range cached relative 0 (length bytes))
+                   "cached-value" "S3 range cache hit")
+      (check (= (scalaxy::s3-config-cache-hits cached) 1) "S3 cache hit metric")
+      (scalaxy::%s3-cache-invalidate cached relative)
+      (check (not (probe-file path)) "S3 cache invalidation"))))
 
 (defun run-all-tests ()
   (setf *checks* 0 *failures* 0)

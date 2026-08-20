@@ -84,6 +84,13 @@
         (cons "keys" (store-count (node-store node)))
         (cons "graphNodes" (or graph-nodes 0))
         (cons "graphRelationships" (or graph-rels 0))
+        (cons "s3Cache"
+              (let ((backend (store-backend (node-store node))))
+                (if (and backend (typep backend 's3-config))
+                    (list (cons "hits" (s3-config-cache-hits backend))
+                          (cons "misses" (s3-config-cache-misses backend))
+                          (cons "bytesRead" (s3-config-cache-bytes backend)))
+                    nil)))
         (cons "s3SummaryValid"
               (let ((backend (store-backend (node-store node))))
                 (and backend (typep backend 's3-config)

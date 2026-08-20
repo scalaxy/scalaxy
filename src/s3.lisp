@@ -82,8 +82,8 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1") (prefix "scalaxy/") cache-dir lazy)
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
@@ -109,7 +109,7 @@
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
-                     t)))
+                     t 0 0 0)))
 
 (defun %s3-hex-key (key)
   ;; Encode Unicode code points directly so object names remain reversible
@@ -200,27 +200,40 @@ The segment is a codec list of MAGIC and a second codec list of records."
     (when dir
       (merge-pathnames (format nil "~a.bin" (%s3-hex (%s3-sha256 (string-to-octets relative)))) dir))))
 
+(defun %s3-cache-invalidate (cfg relative)
+  (let ((path (%s3-cache-file cfg relative)))
+    (when (and path (probe-file path))
+      (ignore-errors (delete-file path)))))
+
 (defun %s3-get-cached (cfg relative)
-  "Read an object through the local persistent segment cache."
+  "Read an object through the local persistent cache and record metrics."
   (let ((path (%s3-cache-file cfg relative)))
     (if (and path (probe-file path))
-        (with-open-file (in path :element-type '(unsigned-byte 8))
-          (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
-            (read-sequence v in) v))
-        (multiple-value-bind (status headers body)
-            (%s3-call cfg "GET" relative :binary t)
-          (declare (ignore headers))
-          (unless (= status 200) (error "S3 GET failed with HTTP ~d" status))
-          (let ((bytes (if (typep body '(vector (unsigned-byte 8))) body
-                           (string-to-octets body))))
-            (when path
-              (ensure-directories-exist path)
-              (let ((tmp (format nil "~a.tmp.~d" path (get-universal-time))))
-                (with-open-file (out tmp :direction :output :if-exists :supersede
-                                          :element-type '(unsigned-byte 8))
-                  (write-sequence bytes out))
-                (rename-file tmp path)))
-            bytes)))))
+        (progn
+          (incf (s3-config-cache-hits cfg))
+          (with-open-file (in path :element-type '(unsigned-byte 8))
+            (let ((v (make-array (file-length in) :element-type '(unsigned-byte 8))))
+              (read-sequence v in)
+              (incf (s3-config-cache-bytes cfg) (length v))
+              v)))
+        (progn
+          (incf (s3-config-cache-misses cfg))
+          (multiple-value-bind (status headers body)
+              (%s3-call cfg "GET" relative :binary t)
+            (declare (ignore headers))
+            (unless (= status 200) (error "S3 GET failed with HTTP ~d" status))
+            (let ((bytes (if (typep body '(vector (unsigned-byte 8))) body
+                             (string-to-octets body))))
+              (incf (s3-config-cache-bytes cfg) (length bytes))
+              (when path
+                (ensure-directories-exist path)
+                (let ((tmp (format nil "~a.tmp.~d.~d" path (get-universal-time)
+                                   (random 1000000000))))
+                  (with-open-file (out tmp :direction :output :if-exists :supersede
+                                            :element-type '(unsigned-byte 8))
+                    (write-sequence bytes out))
+                  (rename-file tmp path)))
+              bytes))))))
 
 (defun %s3-apply-segments-parallel (cfg segments table)
   "Fetch/decode independent immutable segments in parallel, then merge in
@@ -331,12 +344,12 @@ sequence order so overwrite/delete semantics remain deterministic."
                                    (%s3-lazy-label-key cfg key (subseq bytes p2 after)))
                                  (setf cursor after))
                                (progn
-                                 (push (list key relative nil nil) out)
+                                 (push (list key relative nil nil :delete) out)
                                  (setf cursor p2)))))))))))
     (nreverse out)))
 
 (defun %s3-load-lazy (cfg table)
-  "Load ordinary objects and build a value-offset index for packed segments."
+  "Load ordinary objects and build a deterministic packed-segment index."
   (let ((token nil) (objects nil))
     (loop
       (let ((query (format nil "list-type=2&prefix=~a~:[~;~&continuation-token=~a~]"
@@ -350,36 +363,74 @@ sequence order so overwrite/delete semantics remain deterministic."
               (push (subseq object (length (s3-config-prefix cfg))) objects)))
           (setf token (first (%s3-xml-values body "NextContinuationToken")))
           (unless token (return)))))
-    (dolist (relative objects)
-      (let ((key (%s3-unhex-key relative)))
-        (cond
-          ((and (>= (length key) 7) (string= key "@batch:" :end1 7))
-           (dolist (entry (%s3-index-batch cfg relative))
-             (let ((key (first entry)))
-               (when (gethash key (s3-config-lazy-index cfg))
-                 (setf (s3-config-summary-valid cfg) nil))
-               (unless (gethash key (s3-config-lazy-index cfg))
-                 (%s3-lazy-count-key cfg key 1))
-               (setf (gethash key (s3-config-lazy-index cfg)) (cdr entry)))))
-          ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
-           (setf (s3-config-summary-valid cfg) nil)
-           (remhash (%s3-unhex-key (subseq key 11 (or (position #\: key :start 11)
-                                                      (length key))))
-                    (s3-config-lazy-index cfg)))
-          (t
-           (setf (gethash key table)
-                 (car (multiple-value-list (codec-decode (%s3-get-cached cfg relative)))))))))
-    table))
+    (let ((ordinary nil) (segments nil) (tombstones nil))
+      ;; S3 LIST order is not a mutation log.  Classify first and apply
+      ;; immutable batches in their monotonic batch-id order.
+      (dolist (relative objects)
+        (let ((key (%s3-unhex-key relative)))
+          (cond
+            ((and (>= (length key) 7) (string= key "@batch:" :end1 7))
+             (push relative segments))
+            ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
+             (push key tombstones))
+            (t (push (cons key relative) ordinary)))))
+      (dolist (pair ordinary)
+        (setf (gethash (car pair) table)
+              (car (multiple-value-list
+                    (codec-decode (%s3-get-cached cfg (cdr pair)))))))
+      (dolist (relative (sort segments #'string<))
+        (dolist (entry (%s3-index-batch cfg relative))
+          (let ((key (first entry)) (delete-p (eq (fifth entry) :delete)))
+            (when (gethash key (s3-config-lazy-index cfg))
+              (setf (s3-config-summary-valid cfg) nil))
+            (if delete-p
+                (progn
+                  (when (gethash key (s3-config-lazy-index cfg))
+                    (%s3-lazy-count-key cfg key -1))
+                  (remhash key (s3-config-lazy-index cfg))
+                  (remhash key table)
+                  (setf (s3-config-summary-valid cfg) nil))
+                (progn
+                  (unless (gethash key (s3-config-lazy-index cfg))
+                    (%s3-lazy-count-key cfg key 1))
+                  (remhash key table)
+                  (setf (gethash key (s3-config-lazy-index cfg)) (cdr entry)))))))
+      (dolist (marker tombstones)
+        (let ((sep (position #\: marker :start 11)))
+          (when sep
+            (let ((key (%s3-unhex-key (subseq marker 11 sep))))
+              (when (gethash key (s3-config-lazy-index cfg))
+                (%s3-lazy-count-key cfg key -1))
+              (remhash key (s3-config-lazy-index cfg))
+              (remhash key table)
+              (setf (s3-config-summary-valid cfg) nil)))))
+      table)))
+
+(defun %s3-get-cached-range (cfg relative start end)
+  "Read one immutable packed value from the persistent cache when present."
+  (let ((path (%s3-cache-file cfg relative)))
+    (if (and path (probe-file path))
+        (with-open-file (in path :element-type '(unsigned-byte 8))
+          (if (>= (file-length in) end)
+              (let ((v (make-array (- end start) :element-type '(unsigned-byte 8))))
+                (incf (s3-config-cache-hits cfg))
+                (file-position in start)
+                (read-sequence v in)
+                (incf (s3-config-cache-bytes cfg) (length v))
+                (car (multiple-value-list (%codec-read v 0))))
+              (progn
+                (%s3-cache-invalidate cfg relative)
+                (let ((bytes (%s3-get-cached cfg relative)))
+                  (car (multiple-value-list (%codec-read bytes start)))))))
+        (let ((bytes (%s3-get-cached cfg relative)))
+          (car (multiple-value-list (%codec-read bytes start)))))))
 
 (defun %s3-lazy-get (cfg key)
   (let ((entry (gethash key (s3-config-lazy-index cfg))))
     (when entry
       (let ((relative (first entry)) (start (second entry)) (end (third entry)))
-        (when start
-          (multiple-value-bind (value ignored)
-              (%codec-read (%s3-get-cached cfg relative) start)
-            (declare (ignore ignored))
-            value))))))
+        (when (and start end)
+          (%s3-get-cached-range cfg relative start end))))))
 
 (defun %s3-load (cfg table &optional decoder)
   (when (and (s3-config-lazy cfg) (null decoder))
@@ -418,8 +469,6 @@ individual objects while retaining deterministic restart semantics."
           (when sep
             (remhash (%s3-unhex-key (subseq marker 11 sep)) table))))))
 
-(defvar *s3-batch-sequence* 0)
-
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
 RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
@@ -437,16 +486,22 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
   (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body bytes)
     (declare (ignore headers))
     (unless (member status '(200 201 204))
-      (error "S3 PUT failed with HTTP ~d: ~a" status body))))
+      (error "S3 PUT failed with HTTP ~d: ~a" status body))
+    (%s3-cache-invalidate cfg (%s3-hex-key key))))
 
 (defun %s3-put (cfg key value)
   (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (codec-encode value))
-    (declare (ignore headers)) (unless (member status '(200 201 204)) (error "S3 PUT failed with HTTP ~d: ~a" status body))))
+    (declare (ignore headers))
+    (unless (member status '(200 201 204))
+      (error "S3 PUT failed with HTTP ~d: ~a" status body))
+    (%s3-cache-invalidate cfg (%s3-hex-key key))))
+
 (defun %s3-delete (cfg key)
   (let ((encoded (%s3-hex-key key)))
     (multiple-value-bind (status headers body) (%s3-call cfg "DELETE" encoded)
       (declare (ignore headers body))
       (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
+    (%s3-cache-invalidate cfg encoded)
     ;; A tombstone prevents an older packed import segment from resurrecting
     ;; this key when the store is reconstructed after restart.
     (let ((marker (format nil "@tombstone:~a:~d" encoded (get-universal-time))))
