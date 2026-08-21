@@ -289,7 +289,9 @@ The USE command returns the new database name as its output."
                              1000)))
              (multiple-value-bind (moved skipped)
                  (node-rehome node :limit (max 1 (min 100000
-                                                    (if (numberp limit) limit 1000))))
+                                                    (if (numberp limit) limit 1000)))
+                                  :keep (and (hash-table-p data)
+                                             (gethash "keep" data)))
                (json-response (list (cons "moved" moved)
                                     (cons "skipped" skipped))))))
          (error (e)

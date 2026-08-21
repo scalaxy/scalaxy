@@ -82,7 +82,8 @@
 
 (defun make-node-store (&key node-id (data-dir "./scalaxy-data") store-backend
                               s3-endpoint s3-bucket s3-access-key s3-secret-key
-                              (s3-region "us-east-1") (s3-prefix "scalaxy/") encryption-key lazy)
+                              (s3-region "us-east-1") (s3-prefix "scalaxy/") encryption-key lazy
+                              peers)
   "Construct the node's durable store.  S3 prefixes are isolated per node."
   (if (or s3-endpoint (eq store-backend :s3)
           (and (stringp store-backend) (string-equal store-backend "s3")))
@@ -94,7 +95,10 @@
                                      (or node-id "node"))
                   :cache-path (merge-pathnames "s3-cache/"
                                                (uiop:ensure-directory-pathname data-dir))
-                  :lazy lazy)
+                  :lazy lazy
+                  :owner-ring (when peers
+                                (make-ring :nodes (mapcar #'first peers)))
+                  :owner-id node-id)
       (make-store :path (merge-pathnames "scalaxy.log"
                                          (uiop:ensure-directory-pathname data-dir)))))
 
@@ -120,6 +124,7 @@ across the cluster and aggregates cluster status.  Returns
              (node (make-node
                     :id node-id
                     :store (make-node-store :node-id node-id :data-dir data-dir
+                                             :peers peers
                                              :store-backend store-backend
                                              :s3-endpoint s3-endpoint :s3-bucket s3-bucket
                                              :s3-access-key s3-access-key :s3-secret-key s3-secret-key

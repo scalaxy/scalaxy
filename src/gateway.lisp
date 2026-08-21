@@ -243,13 +243,9 @@ through the ring.  Returns the write reply."
                              (codec-decode (getf reply :value))))))
             (incf total value)))))
     (unless (plusp healthy) (error "no nodes available for aggregate"))
-    (let ((replicas (1+ (or (and (gateway-peers gateway)
-                                 ;; configured followers are one in the
-                                 ;; current ring; status reports this too.
-                                 1)
-                            1))))
-      (if (string-equal function "COUNT") (floor total replicas)
-          (/ total replicas)))))
+    ;; Nodes count only keys they own per the shared ring, so the raw
+    ;; sum is already the cluster-wide unique aggregate.
+    (if (string-equal function "COUNT") (floor total) total)))
 
 (defun %gateway-pushdown-aggregate (ast graph)
   (when (and (consp ast) (eq (car ast) :query))

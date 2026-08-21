@@ -46,7 +46,8 @@ queued mutations before returning and is intended for rebuilds/imports."
        (%s3-flush-batches))))
 
 (defun make-store (&key path backend encryption-key s3-endpoint s3-bucket s3-access-key s3-secret-key
-                         (s3-region "us-east-1") (s3-prefix "scalaxy/") cache-path lazy)
+                         (s3-region "us-east-1") (s3-prefix "scalaxy/") cache-path lazy
+                         owner-ring owner-id)
   "Create a store.  S3 configuration selects a write-through remote backend;
 otherwise PATH selects the existing local append-only log."
   (let* ((backend (or backend
@@ -54,7 +55,8 @@ otherwise PATH selects the existing local append-only log."
                          (make-s3-config :endpoint s3-endpoint :bucket s3-bucket
                                          :access-key s3-access-key :secret-key s3-secret-key
                                          :region s3-region :prefix s3-prefix
-                                         :cache-dir cache-path :lazy lazy))))
+                                         :cache-dir cache-path :lazy lazy
+                                         :owner-ring owner-ring :owner-id owner-id))))
          (backend (if encryption-key
                       (progn (unless backend (error "encryption requires a storage backend"))
                              (make-encrypted-storage-plugin backend encryption-key))

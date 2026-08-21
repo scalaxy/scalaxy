@@ -192,9 +192,10 @@ PREFIX<follower-id>__<seq>."
                     (store-table (node-store node)))))
     candidates))
 
-(defun %node-rehome-deliver (node key)
-  "Deliver KEY's value to its ring owner; on success delete the local
-copy.  Returns :moved or :skipped."
+(defun %node-rehome-deliver (node key &optional keep)
+  "Deliver KEY's value to its ring owner.  With KEEP the local copy is
+retained (presence repair); without it the local copy is deleted after
+an acknowledged delivery.  Returns :moved or :skipped."
   (let ((value (store-get (node-store node) key)))
     (if (null value)
         :skipped
@@ -207,18 +208,21 @@ copy.  Returns :moved or :skipped."
                     (let ((reply (ignore-errors
                                   (funcall send (list :op #.+op-put+
                                                       :key key :value value)))))
-                      (if (and reply (eql (getf reply :status) #.+status-ok+)
-                               (store-delete (node-store node) key))
-                          :moved
-                          :skipped)))))))))
-(defun node-rehome (node &key (limit 1000))
-  "Move up to LIMIT keys this node holds but does not own to their
-owning peer.  Undeliverable keys are skipped.  Returns (values moved
-skipped)."
+                      (cond ((null reply) :skipped)
+                            ((not (eql (getf reply :status) #.+status-ok+)) :skipped)
+                            (keep :moved)
+                            (t (if (store-delete (node-store node) key)
+                                   :moved
+                                   :skipped)))))))))))
+(defun node-rehome (node &key (limit 1000) keep)
+  "Deliver up to LIMIT misowned keys to their ring owners.  With KEEP
+the local copy is retained (presence repair for displaced keys);
+otherwise the local copy is removed after delivery.  Returns (values
+moved skipped)."
   (let ((moved 0) (skipped 0))
     (when (node-ring node)
       (dolist (key (%node-rehome-candidates node limit))
-        (if (eq (%node-rehome-deliver node key) :moved)
+        (if (eq (%node-rehome-deliver node key keep) :moved)
             (incf moved)
             (incf skipped))))
     (values moved skipped)))
@@ -334,7 +338,8 @@ skipped)."
                                                    (string= prefix key :end2 (length prefix))
                                                    (string= (subseq key (length prefix)) "r:" :end1 2))
                                           (let ((entry (gethash key (s3-config-lazy-index cfg))))
-                                            (when (and entry (equal relative (first entry))
+                                            (when (and (node-owned-p node key)
+                                                       entry (equal relative (first entry))
                                                        (= p2 (second entry)))
                                               (let* ((raw (car (multiple-value-list (%codec-read bytes p2))))
                                                      (rec (%decode-record raw))

@@ -82,11 +82,11 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1")
-                              (prefix "scalaxy/") cache-dir lazy
+                              (prefix "scalaxy/") cache-dir lazy owner-ring owner-id
                               (cache-max-bytes (let ((v (uiop:getenv "SCALAXY_S3_CACHE_MAX_BYTES")))
                                                  (and v (ignore-errors (parse-integer v))))))
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
@@ -117,7 +117,14 @@
                      (and lazy (make-hash-table :test #'equal))
                      t 0 0 0
                      (and lazy (make-hash-table :test #'equal))
-                     (and lazy (make-hash-table :test #'equal)))))
+                     (and lazy (make-hash-table :test #'equal))
+                     owner-ring owner-id)))
+
+(defun %s3-meta-owned-p (cfg key)
+  "True when KEY belongs to this node per the cluster ring."
+  (let ((ring (s3-config-owner-ring cfg)))
+    (or (null ring)
+        (equal (ring-lookup ring key) (s3-config-owner-id cfg)))))
 
 (defun %s3-hex-key (key)
   ;; Encode Unicode code points directly so object names remain reversible
@@ -447,7 +454,8 @@ sequence order so overwrite/delete semantics remain deterministic."
               (%s3-apply-batch-bytes (%s3-get-cached cfg relative) table)))))
 
 (defun %s3-lazy-label-key (cfg key value-bytes)
-  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (%s3-meta-owned-p cfg key)
+             (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let ((local (subseq key (1+ sep))))
@@ -552,7 +560,7 @@ sequence order so overwrite/delete semantics remain deterministic."
 (defun %s3-endpoint-aggregate-add (cfg key bytes)
   (let ((table (s3-config-lazy-endpoint-aggregates cfg))
         (sep (position #\: key :start 2)))
-    (when (and sep (not (gethash :disabled table)))
+    (when (and sep (%s3-meta-owned-p cfg key) (not (gethash :disabled table)))
       (let ((local (subseq key (1+ sep))))
         (when (and (>= (length local) 2) (string= local "r:" :end1 2))
           ;; Decode the record fully so aggregation matches query-time
@@ -609,7 +617,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                                                                    (subseq bytes p2 after)))))
                                  (setf cursor after))))))))))))))
 (defun %s3-lazy-count-key (cfg key delta)
-  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (%s3-meta-owned-p cfg key)
+             (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let* ((db (subseq key 2 sep)) (local (subseq key (1+ sep)))
@@ -634,7 +643,8 @@ sequence order so overwrite/delete semantics remain deterministic."
                       0 (min 100 (length values))))))))
 
 (defun %s3-lazy-type-key (cfg key bytes)
-  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (%s3-meta-owned-p cfg key)
+             (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let* ((db (subseq key 2 sep))
@@ -777,6 +787,9 @@ sequence order so overwrite/delete semantics remain deterministic."
           ;; valid so they persist for the next start.
           (unless summary-loaded
             (setf (s3-config-summary-valid cfg) t))
+          ;; A fresh rebuild produces exactly current summaries.
+          (unless summary-loaded
+            (setf (s3-config-summary-valid cfg) t))
           (%s3-endpoint-aggregate-save cfg segments)
           (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
           (%s3-label-id-save cfg (mapcar #'cdr ordinary) segments)
@@ -874,6 +887,14 @@ individual objects while retaining deterministic restart semantics."
               (cdr pair)))
       t)))
 
+(defun %s3-lazy-unindex-key (cfg key)
+  "Immediately remove KEY from the in-memory lazy indexes after a delete."
+  (when (gethash key (s3-config-lazy-index cfg))
+    (%s3-lazy-count-key cfg key -1)
+    (%s3-remove-lazy-label-id cfg key)
+    (remhash key (s3-config-lazy-index cfg)))
+  (setf (s3-config-summary-valid cfg) nil))
+
 (defun %s3-clear-aggregate-cache (cfg)
   (when (s3-config-lazy-aggregate-cache cfg)
     (clrhash (s3-config-lazy-aggregate-cache cfg)))
@@ -915,32 +936,3 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
     (%s3-cache-invalidate cfg (%s3-hex-key key))
     (%s3-clear-aggregate-cache cfg)))
-
-(defun %s3-lazy-unindex-key (cfg key)
-  "Immediately remove KEY from the in-memory lazy indexes after a
-delete so queries observe the deletion without a restart.  Aggregate
-summaries that cannot be decremented precisely are invalidated and
-rebuilt from authoritative replay on the next load."
-  (when (gethash key (s3-config-lazy-index cfg))
-    (%s3-lazy-count-key cfg key -1)
-    (%s3-remove-lazy-label-id cfg key)
-    (remhash key (s3-config-lazy-index cfg)))
-  (setf (s3-config-summary-valid cfg) nil))
-
-(defun %s3-delete (cfg key)
-  (let ((encoded (%s3-hex-key key)))
-    (multiple-value-bind (status headers body) (%s3-call cfg "DELETE" encoded)
-      (declare (ignore headers body))
-      (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
-    (%s3-cache-invalidate cfg encoded)
-    (%s3-lazy-unindex-key cfg key)
-    (%s3-clear-aggregate-cache cfg)
-    ;; A tombstone prevents an older packed import segment from resurrecting
-    ;; this key when the store is reconstructed after restart.
-    (let ((marker (format nil "@tombstone:~a:~d" encoded (get-universal-time))))
-      (multiple-value-bind (status headers body)
-          (%s3-call cfg "PUT" (%s3-hex-key marker)
-                    :body (make-array 0 :element-type '(unsigned-byte 8)))
-        (declare (ignore headers))
-        (unless (member status '(200 201 204))
-          (error "S3 tombstone PUT failed with HTTP ~d: ~a" status body))))))
