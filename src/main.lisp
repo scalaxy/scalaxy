@@ -124,7 +124,11 @@ across the cluster and aggregates cluster status.  Returns
                                              :s3-endpoint s3-endpoint :s3-bucket s3-bucket
                                              :s3-access-key s3-access-key :s3-secret-key s3-secret-key
                                              :s3-region s3-region :s3-prefix s3-prefix
-                                             :encryption-key encryption-key :lazy lazy))))
+                                             :encryption-key encryption-key :lazy lazy)
+                    :ring (when peers
+                            (make-ring :nodes (mapcar #'first peers)))
+                    :peers (loop for (pid phost pport) in peers
+                                 collect (cons pid (list phost pport))))))
         ;; wire TCP replication followers
         (dolist (p replicate-to)
           (destructuring-bind (fid fhost fport) p

@@ -8,7 +8,9 @@
   replicator
   followers   ; list of (follower-id . transport-fn)
   started-at  ; universal time when the node was created
-  (graphs (make-hash-table :test #'equal))) ; db name -> cached graph-view
+  (graphs (make-hash-table :test #'equal)) ; db name -> cached graph-view
+  ring        ; consistent-hash ring shared with the cluster (or nil)
+  peers)      ; alist: id -> (host data-port) for direct peer requests
 
 
 (defvar *node-outboxes* (make-hash-table :test #'eq))
@@ -83,10 +85,12 @@ PREFIX<follower-id>__<seq>."
 
 (defvar *node-counter* 0)
 
-(defun make-node (&key (id nil) (store (make-store)) (quorum 0))
+(defun make-node (&key (id nil) (store (make-store)) (quorum 0) (ring nil) (peers nil))
   (incf *node-counter*)
   (let ((node (%make-node (or id (format nil "node-~d" *node-counter*))
                           store (make-replicator) nil (get-universal-time))))
+    (setf (node-ring node) ring)
+    (setf (node-peers node) peers)
     (let ((v (ignore-errors (store-get store "__scalaxy_replication_seq__"))))
       (when (and v (vectorp v) (>= (length v) 8))
         (setf (replicator-seq (node-replicator node)) (read-u64 v 0))))
@@ -154,6 +158,70 @@ PREFIX<follower-id>__<seq>."
 
 (defun node-scan (node prefix)
   (store-scan (node-store node) prefix))
+(defun %node-peer-transport (node owner-id)
+  "Return a function delivering messages to OWNER-ID, or NIL."
+  (let* ((peer (assoc owner-id (node-peers node) :test #'equal))
+         (host (first (cdr peer)))
+         (port (second (cdr peer))))
+    (when (and host port)
+      (lambda (msg) (tcp-request host port msg)))))
+
+(defun node-owned-p (node key)
+  "True when KEY's ring owner is this node (always true without a ring)."
+  (let ((ring (node-ring node)))
+    (or (null ring)
+        (equal (ring-lookup ring key) (node-id node)))))
+
+(defun %node-rehome-candidates (node limit)
+  (let ((candidates nil)
+        (cfg (store-backend (node-store node))))
+    (cond ((and cfg (typep cfg (quote s3-config)) (s3-config-lazy cfg))
+           (maphash (lambda (key entry)
+                      (declare (ignore entry))
+                      (when (and (< (length candidates) limit)
+                                 (not (node-owned-p node key)))
+                        (push key candidates)))
+                    (s3-config-lazy-index cfg)))
+          (t
+           (maphash (lambda (key value)
+                      (declare (ignore value))
+                      (when (and (< (length candidates) limit)
+                                 (not (node-owned-p node key))
+                                 (not (%store-internal-key-p key)))
+                        (push key candidates)))
+                    (store-table (node-store node)))))
+    candidates))
+
+(defun %node-rehome-deliver (node key)
+  "Deliver KEY's value to its ring owner; on success delete the local
+copy.  Returns :moved or :skipped."
+  (let ((value (store-get (node-store node) key)))
+    (if (null value)
+        :skipped
+        (let ((owner (ring-lookup (node-ring node) key)))
+          (if (null owner)
+              :skipped
+              (let ((send (%node-peer-transport node owner)))
+                (if (null send)
+                    :skipped
+                    (let ((reply (ignore-errors
+                                  (funcall send (list :op #.+op-put+
+                                                      :key key :value value)))))
+                      (if (and reply (eql (getf reply :status) #.+status-ok+)
+                               (store-delete (node-store node) key))
+                          :moved
+                          :skipped)))))))))
+(defun node-rehome (node &key (limit 1000))
+  "Move up to LIMIT keys this node holds but does not own to their
+owning peer.  Undeliverable keys are skipped.  Returns (values moved
+skipped)."
+  (let ((moved 0) (skipped 0))
+    (when (node-ring node)
+      (dolist (key (%node-rehome-candidates node limit))
+        (if (eq (%node-rehome-deliver node key) :moved)
+            (incf moved)
+            (incf skipped))))
+    (values moved skipped)))
 
 (defun %node-aggregate-id-set (encoded)
   (let ((set (make-hash-table :test #'equal)))

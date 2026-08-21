@@ -279,6 +279,22 @@ The USE command returns the new database name as its output."
       ;; cypher
       ((and (string= path "/api/cypher") (string= method "POST"))
        (%api-cypher node gateway request db))
+      ;; re-home misowned keys to their ring owners (admin)
+      ((and (string= path "/api/rehome") (string= method "POST"))
+       (handler-case
+           (let* ((data (and (getf request :body)
+                             (json-decode (getf request :body))))
+                  (limit (or (and (hash-table-p data)
+                                  (gethash "limit" data))
+                             1000)))
+             (multiple-value-bind (moved skipped)
+                 (node-rehome node :limit (max 1 (min 100000
+                                                    (if (numberp limit) limit 1000))))
+               (json-response (list (cons "moved" moved)
+                                    (cons "skipped" skipped))))))
+         (error (e)
+           (json-response (list (cons "error" (format nil "~a" e)))
+                          :status 500)))
       ;; graphql
       ((and (string= path "/api/graphql") (string= method "POST"))
        (%api-graphql node request db))

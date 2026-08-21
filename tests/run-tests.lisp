@@ -190,6 +190,33 @@
         (check (equal (octets-to-string (node-get follower "dur1")) "v1")
                "follower caught up after recovery")))))
 
+(defun test-node-rehome ()
+  (deftest node-rehome
+    (let* ((ids (list "ra" "rb"))
+           (ring (make-ring :nodes ids))
+           (key (loop for i from 0
+                      for k = (format nil "rj~d" i)
+                      when (equal (ring-lookup ring k) "rb")
+                        return k))
+           (owner (make-node :id "rb"))
+           (holder (make-node :id "ra" :ring ring))
+           (old (fdefinition 'scalaxy::%node-peer-transport)))
+      (setf (fdefinition 'scalaxy::%node-peer-transport)
+            (lambda (node id)
+              (when (string= id "rb")
+                (lambda (msg) (node-dispatch owner msg)))))
+      (unwind-protect
+           (progn
+             (node-put holder key (string-to-octets "vv"))
+             (multiple-value-bind (moved skipped) (scalaxy::node-rehome holder :limit 10)
+               (check (= moved 1) "rehome moved misowned key")
+               (check (null (store-get (node-store holder) key))
+                      "holder no longer holds rehomed key")
+               (check (equal (octets-to-string (node-get owner key)) "vv")
+                      "owner received rehomed value")))
+        (setf (fdefinition 'scalaxy::%node-peer-transport) old)))))
+
+
 (defun test-s3-lazy-delete ()
   (deftest s3-lazy-delete
     (let* ((dir (format nil "/tmp/scalaxy-lazy-del-~d/" (get-universal-time)))
@@ -1818,6 +1845,7 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-replication)
 (test-replication-outbox)
 (test-s3-lazy-delete)
+(test-node-rehome)
   (test-cluster)
   (test-tcp)
   (test-resolve-host)
