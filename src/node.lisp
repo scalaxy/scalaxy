@@ -190,7 +190,10 @@ PREFIX<follower-id>__<seq>."
          (count 0) (sum 0) (sum-seen nil))
     ;; An empty type filter spans every relationship type, which the
     ;; per-type table cannot answer directly; fall back to the scan path.
+    ;; An empty table means summaries were invalidated by a mutation;
+    ;; fall back to the scan rather than reporting an authoritative zero.
     (when (and sep left right table (not (gethash :disabled table))
+               (plusp (hash-table-count table))
                (plusp (length (or (getf msg :type) ""))))
       (let ((db (subseq prefix 2 sep)) (type (getf msg :type))
             (property (getf msg :property)))

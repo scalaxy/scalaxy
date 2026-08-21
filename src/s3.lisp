@@ -682,14 +682,14 @@ sequence order so overwrite/delete semantics remain deterministic."
                                (let ((after (%codec-skip bytes p2)))
                                  (when build-metadata
                                    (%s3-lazy-type-key cfg key (subseq bytes p2 after)))
-                                 (push (list key relative p2 after) out)
                                  (when (and build-metadata
                                             (>= (length key) 4) (string= key "d:" :end1 2))
                                    (%s3-lazy-label-key cfg key (subseq bytes p2 after)))
-                                 (setf cursor after)))
+                                 (push (list key relative p2 after) out)
+                                 (setf cursor after))
                                (progn
                                  (push (list key relative nil nil :delete) out)
-                                 (setf cursor p2))))))))))
+                                 (setf cursor p2)))))))))))
     (let ((result (nreverse out)))
       (%s3-index-sidecar-write cfg relative result)
       result)))
@@ -773,6 +773,10 @@ sequence order so overwrite/delete semantics remain deterministic."
             (when summary-loaded (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
             (dolist (relative (sort segments #'string<))
               (%s3-index-endpoint-aggregates cfg relative)))
+          ;; A fresh rebuild produces exactly current summaries: mark them
+          ;; valid so they persist for the next start.
+          (unless summary-loaded
+            (setf (s3-config-summary-valid cfg) t))
           (%s3-endpoint-aggregate-save cfg segments)
           (%s3-summary-save cfg (mapcar #'cdr ordinary) segments)
           (%s3-label-id-save cfg (mapcar #'cdr ordinary) segments)
@@ -912,12 +916,24 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
     (%s3-cache-invalidate cfg (%s3-hex-key key))
     (%s3-clear-aggregate-cache cfg)))
 
+(defun %s3-lazy-unindex-key (cfg key)
+  "Immediately remove KEY from the in-memory lazy indexes after a
+delete so queries observe the deletion without a restart.  Aggregate
+summaries that cannot be decremented precisely are invalidated and
+rebuilt from authoritative replay on the next load."
+  (when (gethash key (s3-config-lazy-index cfg))
+    (%s3-lazy-count-key cfg key -1)
+    (%s3-remove-lazy-label-id cfg key)
+    (remhash key (s3-config-lazy-index cfg)))
+  (setf (s3-config-summary-valid cfg) nil))
+
 (defun %s3-delete (cfg key)
   (let ((encoded (%s3-hex-key key)))
     (multiple-value-bind (status headers body) (%s3-call cfg "DELETE" encoded)
       (declare (ignore headers body))
       (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
     (%s3-cache-invalidate cfg encoded)
+    (%s3-lazy-unindex-key cfg key)
     (%s3-clear-aggregate-cache cfg)
     ;; A tombstone prevents an older packed import segment from resurrecting
     ;; this key when the store is reconstructed after restart.

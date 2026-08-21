@@ -190,6 +190,46 @@
         (check (equal (octets-to-string (node-get follower "dur1")) "v1")
                "follower caught up after recovery")))))
 
+(defun test-s3-lazy-delete ()
+  (deftest s3-lazy-delete
+    (let* ((dir (format nil "/tmp/scalaxy-lazy-del-~d/" (get-universal-time)))
+           (cfg (make-node-store-s3-cfg-for-test dir)))
+      ;; simulate lazily indexed records plus their summaries
+      (setf (gethash "d:g:r:1" (scalaxy::s3-config-lazy-index cfg))
+            (list "segment-x" 10 20)
+            (gethash "d:g:n:z1" (scalaxy::s3-config-lazy-index cfg))
+            (list "segment-x" 30 40))
+      (setf (gethash "g" (scalaxy::s3-config-lazy-counts cfg)) (cons 7 5))
+      (let ((labels (make-hash-table :test #'equal))
+            (zone (make-hash-table :test #'equal)))
+        (setf (gethash "z1" zone) t
+              (gethash "Zone" labels) zone
+              (gethash "g" (scalaxy::s3-config-lazy-label-ids cfg)) labels))
+      (setf (scalaxy::s3-config-summary-valid cfg) t)
+      ;; deleting the relationship must be visible immediately
+      (scalaxy::%s3-lazy-unindex-key cfg "d:g:r:1")
+      (check (null (gethash "d:g:r:1" (scalaxy::s3-config-lazy-index cfg)))
+             "lazy delete removes index entry")
+      (check (= (cdr (gethash "g" (scalaxy::s3-config-lazy-counts cfg))) 4)
+             "lazy delete decrements relationship count")
+      ;; deleting a node must also drop its label membership
+      (scalaxy::%s3-lazy-unindex-key cfg "d:g:n:z1")
+      (check (null (gethash "d:g:n:z1" (scalaxy::s3-config-lazy-index cfg)))
+             "lazy delete removes node entry")
+      (check (= (car (gethash "g" (scalaxy::s3-config-lazy-counts cfg))) 6)
+             "lazy delete decrements node count")
+      (check (null (gethash "z1"
+                            (gethash "Zone"
+                                     (gethash "g" (scalaxy::s3-config-lazy-label-ids cfg)))))
+             "lazy delete removes label membership")
+      (check (null (scalaxy::s3-config-summary-valid cfg))
+             "lazy delete invalidates summaries"))))
+
+(defun make-node-store-s3-cfg-for-test (dir)
+  (scalaxy::make-s3-config :endpoint "http://127.0.0.1:3900"
+                           :bucket "b" :access-key "a" :secret-key "s"
+                           :cache-dir dir :lazy t))
+
 ;;; ------------------------------------------------------------------
 ;;; cluster
 
@@ -1777,6 +1817,7 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-protocol)
   (test-replication)
 (test-replication-outbox)
+(test-s3-lazy-delete)
   (test-cluster)
   (test-tcp)
   (test-resolve-host)
