@@ -20,14 +20,66 @@
 (defun (setf node-quorum) (value node) (setf (gethash node *node-quorums*) value))
 (defun node-last-replication-error (node) (gethash node *node-last-replication-errors*))
 (defun (setf node-last-replication-error) (value node) (setf (gethash node *node-last-replication-errors*) value))
+
+(defparameter *outbox-prefix* "__scalaxy_outbox__")
+
+(defun %outbox-store-key (follower-id seq)
+  (format nil "~a~a__~d" *outbox-prefix* follower-id seq))
+
+(defun %outbox-encode (msg)
+  "Encode an outbox message as a durable store value."
+  (codec-encode (cypher-map
+                 (list (cons "op" (getf msg :op))
+                       (cons "seq" (getf msg :seq))
+                       (cons "sub-op" (getf msg :sub-op))
+                       (cons "key" (getf msg :key))
+                       (cons "value" (getf msg :value))))))
+
+(defun %outbox-decode (bytes)
+  "Rebuild an outbox message plist from its stored encoding."
+  (handler-case
+      (let ((m (car (multiple-value-list (codec-decode bytes)))))
+        (when (cypher-map-p m)
+          (let ((pairs (cypher-map-pairs m)))
+            (list :op (cdr (assoc "op" pairs :test #'equal))
+                  :seq (cdr (assoc "seq" pairs :test #'equal))
+                  :sub-op (cdr (assoc "sub-op" pairs :test #'equal))
+                  :key (cdr (assoc "key" pairs :test #'equal))
+                  :value (cdr (assoc "value" pairs :test #'equal))))))
+    (error () nil)))
+
+(defun %outbox-follower-id (store-key)
+  "Extract the follower id from an outbox store key of the form
+PREFIX<follower-id>__<seq>."
+  (let* ((rest (subseq store-key (length *outbox-prefix*)))
+         (cut (search "__" rest)))
+    (when cut (subseq rest 0 cut))))
+
+(defun %outbox-load (node)
+  "Reload persisted outbox entries from this node's own store."
+  (let ((entries nil))
+    (dolist (pair (store-scan-all (node-store node) *outbox-prefix*))
+      (let* ((key (car pair))
+             (msg (%outbox-decode (cdr pair)))
+             (fid (%outbox-follower-id key)))
+        (when (and msg fid)
+          (push (list fid msg key) entries))))
+    (when entries
+      (setf (node-outbox node) (nreverse entries)))
+    (length entries)))
 (defun node-retry-replication (node)
+  "Retry queued replication messages, clearing durable entries on success."
   (let ((acked 0) (remaining nil))
     (dolist (entry (node-outbox node))
-      (let ((f (assoc (car entry) (node-followers node) :test #'equal)))
-        (let ((reply (and f (ignore-errors (funcall (cdr f) (cdr entry))))))
-          (if (and reply (eql (getf reply :status) #.+status-ok+))
-              (incf acked) (push entry remaining)))))
-    (setf (node-outbox node) remaining) acked))
+      (let* ((f (assoc (first entry) (node-followers node) :test #'equal))
+             (reply (and f (ignore-errors (funcall (cdr f) (second entry))))))
+        (if (and reply (eql (getf reply :status) #.+status-ok+))
+            (progn
+              (incf acked)
+              (ignore-errors (store-delete (node-store node) (third entry))))
+            (push entry remaining))))
+    (setf (node-outbox node) (nreverse remaining))
+    acked))
 
 (defvar *node-counter* 0)
 
@@ -38,6 +90,9 @@
     (let ((v (ignore-errors (store-get store "__scalaxy_replication_seq__"))))
       (when (and v (vectorp v) (>= (length v) 8))
         (setf (replicator-seq (node-replicator node)) (read-u64 v 0))))
+    ;; Reload any replication messages that failed before a restart so
+    ;; followers can catch up after the leader comes back.
+    (ignore-errors (%outbox-load node))
     (setf (node-quorum node) quorum) node))
 
 (defun node-next-seq (node)
@@ -62,8 +117,10 @@
         (let ((reply (ignore-errors (funcall (cdr f) msg))))
           (if (and reply (eql (getf reply :status) #.+status-ok+))
               (incf acked)
-              (progn (push (cons (car f) msg) (node-outbox node))
-                     (setf (node-last-replication-error node) (car f)))))))
+              (let ((skey (%outbox-store-key (car f) seq)))
+                (store-put (node-store node) skey (%outbox-encode msg))
+                (push (list (car f) msg skey) (node-outbox node))
+                (setf (node-last-replication-error node) (car f)))))))
     (when (and (plusp (node-quorum node)) (< acked (node-quorum node)))
       (error "replication quorum unavailable: ~d/~d acknowledgements" acked (node-quorum node)))
     acked))
@@ -84,8 +141,10 @@
             (let ((reply (ignore-errors (funcall (cdr f) msg))))
               (if (and reply (eql (getf reply :status) #.+status-ok+))
                   (incf acked)
-                  (progn (push (cons (car f) msg) (node-outbox node))
-                         (setf (node-last-replication-error node) (car f)))))))
+                  (let ((skey (%outbox-store-key (car f) seq)))
+                    (store-put (node-store node) skey (%outbox-encode msg))
+                    (push (list (car f) msg skey) (node-outbox node))
+                    (setf (node-last-replication-error node) (car f)))))))
         (when (and (plusp (node-quorum node)) (< acked (node-quorum node)))
           (error "replication quorum unavailable: ~d/~d acknowledgements" acked (node-quorum node)))))
     present?))

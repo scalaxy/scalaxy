@@ -164,6 +164,18 @@ update memory because the leader owns the durable log."
                               (funcall fn k v))))))
   store)
 
+(defun store-scan-all (store prefix)
+  "Prefix scan that INCLUDES internal __ keys.  Used by subsystems
+such as the durable replication outbox whose entries must survive
+restarts but stay invisible to user scans."
+  (let ((results nil))
+    (maphash (lambda (k v)
+               (when (and (>= (length k) (length prefix))
+                          (string= prefix k :end2 (length prefix)))
+                 (push (cons k v) results)))
+             (store-table store))
+    (sort results #'string< :key #'car)))
+
 (defun store-scan-page (store prefix offset limit)
   "Return one bounded page of prefix matches without materializing the scan."
   (let ((seen 0) (out nil) (stop (+ offset limit)))

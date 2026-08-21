@@ -161,6 +161,35 @@
       (check (null (node-get follower "shared")) "replicated delete")
       (check (plusp (replicator-seq (node-replicator leader))) "op log advanced"))))
 
+(defun test-replication-outbox ()
+  (deftest replication-outbox
+    (let ((leader (make-node :id "outbox-leader"))
+          (follower (make-node :id "outbox-follower")))
+      ;; A follower that is down rejects every replication.
+      (node-add-follower leader "flaky"
+                         (lambda (msg) (declare (ignore msg)) nil))
+      (node-put leader "dur1" (string-to-octets "v1"))
+      (node-delete leader "missing-key")
+      (check (= (length (node-outbox leader)) 1)
+             "failed write queued in outbox")
+      (check (= (length (store-scan-all (node-store leader) "__scalaxy_outbox__")) 1)
+             "outbox entry persisted durably")
+      ;; Simulated restart: a fresh node over the same store reloads the
+      ;; queued message.
+      (let ((reborn (make-node :id "outbox-leader"
+                               :store (node-store leader))))
+        (check (= (length (node-outbox reborn)) 1)
+               "outbox reloaded after restart")
+        ;; Follower returns; retry delivers and clears the durable entry.
+        (node-add-follower reborn "flaky"
+                           (lambda (msg) (node-dispatch follower msg)))
+        (check (= (node-retry-replication reborn) 1) "retry delivered")
+        (check (null (node-outbox reborn)) "outbox drained")
+        (check (null (store-scan-all (node-store reborn) "__scalaxy_outbox__"))
+               "durable entry cleared")
+        (check (equal (octets-to-string (node-get follower "dur1")) "v1")
+               "follower caught up after recovery")))))
+
 ;;; ------------------------------------------------------------------
 ;;; cluster
 
@@ -1747,6 +1776,7 @@ A -LIKES-> C; C -LIKES-> A; B -WORKS_AT-> org:Company {name: 'Acme'}."
   (test-s3-primitives)
   (test-protocol)
   (test-replication)
+(test-replication-outbox)
   (test-cluster)
   (test-tcp)
   (test-resolve-host)

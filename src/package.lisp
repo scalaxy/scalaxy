@@ -43,6 +43,7 @@
    ;; storage
    #:store #:make-store #:store-put #:store-get #:store-delete #:store-scan
    #:store-count #:store-snapshot #:store-restore #:store-apply-log-record
+   #:store-scan-all
    #:with-s3-batch #:make-encrypted-storage-plugin #:storage-plugin-load
    #:storage-plugin-put #:storage-plugin-delete #:graph-db-backend #:make-graph-db-backend
    ;; node & replication

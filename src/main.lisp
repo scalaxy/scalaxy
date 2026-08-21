@@ -142,6 +142,15 @@ across the cluster and aggregates cluster status.  Returns
                     http-host (http-server-port http-server)
                     data-dir (length peers))
             (finish-output)
+            ;; Retry failed follower replications periodically so a
+            ;; follower that was down catches up after it returns.
+            #+sbcl
+            (when replicate-to
+              (sb-thread:make-thread
+               (lambda ()
+                 (loop (sleep 5)
+                       (ignore-errors (node-retry-replication node))))
+               :name "scalaxy-outbox-retry"))
             (values tcp-server http-server gateway)))))))
 
 (defun main (&rest argv)
