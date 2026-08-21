@@ -129,7 +129,10 @@
          (right (%node-aggregate-id-set (getf msg :right-ids)))
          (table (and cfg (s3-config-lazy-endpoint-aggregates cfg)))
          (count 0) (sum 0) (sum-seen nil))
-    (when (and sep left right table (not (gethash :disabled table)))
+    ;; An empty type filter spans every relationship type, which the
+    ;; per-type table cannot answer directly; fall back to the scan path.
+    (when (and sep left right table (not (gethash :disabled table))
+               (plusp (length (or (getf msg :type) ""))))
       (let ((db (subseq prefix 2 sep)) (type (getf msg :type))
             (property (getf msg :property)))
         (maphash
@@ -153,7 +156,9 @@
          (property (getf msg :property))
          (left-ids (%node-aggregate-id-set (getf msg :left-ids)))
          (right-ids (%node-aggregate-id-set (getf msg :right-ids)))
-         (labels (%node-lazy-label-map store prefix))
+         ;; The label map walks every indexed key and is only needed for
+         ;; label-based matching without explicit endpoint IDs.
+         (labels nil)
          (count 0) (sum 0) (sum-seen nil)
          (cache (s3-config-lazy-aggregate-cache cfg))
          (cache-key (list prefix type (getf msg :function) property
@@ -170,9 +175,12 @@
     (labels ((has-id (id ids wanted)
                (or (and ids (gethash id ids))
                    (and (null ids) (plusp (length wanted))
-                        (member wanted (or (gethash id labels)
-                                           (gethash (princ-to-string id) labels))
-                                :test #'string-equal)))))
+                        (progn
+                          (unless labels
+                            (setf labels (%node-lazy-label-map store prefix)))
+                          (member wanted (or (gethash id labels)
+                                             (gethash (princ-to-string id) labels))
+                                  :test #'string-equal))))))
       (maphash
        (lambda (relative ignored)
          (declare (ignore ignored))

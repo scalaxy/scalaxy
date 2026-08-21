@@ -536,13 +536,13 @@ sequence order so overwrite/delete semantics remain deterministic."
     (when (and (s3-config-summary-valid cfg)
                (s3-config-cache-dir cfg) (not (gethash :disabled table)))
       (%s3-write-sexp (%s3-endpoint-aggregate-path cfg)
-                      (list :version 2
+                      (list :version 4
                             :segments (sort (copy-list segments) #'string<)
                             :values (%s3-hash-pairs table))))))
 
 (defun %s3-endpoint-aggregate-load (cfg segments)
   (let ((value (%s3-read-sexp (%s3-endpoint-aggregate-path cfg))))
-    (when (and (listp value) (eql (getf value :version) 2)
+    (when (and (listp value) (eql (getf value :version) 4)
                (equal (getf value :segments) (sort (copy-list segments) #'string<)))
       (dolist (pair (getf value :values))
         (setf (gethash (car pair) (s3-config-lazy-endpoint-aggregates cfg))
@@ -555,29 +555,37 @@ sequence order so overwrite/delete semantics remain deterministic."
     (when (and sep (not (gethash :disabled table)))
       (let ((local (subseq key (1+ sep))))
         (when (and (>= (length local) 2) (string= local "r:" :end1 2))
-          (let* ((type (%codec-map-field-light bytes "type"))
-                 (start (%codec-map-field-light bytes "start"))
-                 (end (%codec-map-field-light bytes "end")))
-            (when (and type start end)
-              (let* ((db (subseq key 2 sep))
-                     (aggregate-key (list db (princ-to-string type)
-                                          (princ-to-string start)
-                                          (princ-to-string end)))
-                     (values (gethash aggregate-key table)))
-                (unless values
-                  (if (>= (hash-table-count table) 200000)
-                      (setf (gethash :disabled table) t)
-                      (setf values (make-hash-table :test #'equal)
-                            (gethash aggregate-key table) values)))
-                (when values
-                  (incf (gethash "~count" values 0))
-                  (let ((props (%codec-map-field-light bytes "props")))
-                    (when (cypher-map-p props)
-                      (dolist (pair (cypher-map-pairs props))
-                        (when (numberp (cdr pair))
-                          (incf (gethash (car pair) values 0) (cdr pair)))))))))))))))
+          ;; Decode the record fully so aggregation matches query-time
+          ;; semantics exactly; the light parser misses rare encodings.
+          (handler-case
+              (let* ((raw (car (multiple-value-list (%codec-read bytes 0))))
+                     (recm (%decode-record raw))
+                     (type (%record-get recm "type"))
+                     (start (%record-get recm "start"))
+                     (end (%record-get recm "end")))
+                (when (and type start end)
+                  (let* ((db (subseq key 2 sep))
+                         (aggregate-key (list db (princ-to-string type)
+                                              (princ-to-string start)
+                                              (princ-to-string end)))
+                         (values (or (gethash aggregate-key table)
+                                     (if (>= (hash-table-count table) 200000)
+                                         (progn
+                                           (setf (gethash :disabled table) t)
+                                           nil)
+                                         (let ((v (make-hash-table :test #'equal)))
+                                           (setf (gethash aggregate-key table) v)
+                                           v)))))
+                    (when values
+                      (incf (gethash "~count" values 0))
+                      (dolist (pair (%props-of recm))
+                        (let ((value (cdr pair)))
+                          (when (and (numberp value) (not (eq value :cypher-null)))
+                            (incf (gethash (car pair) values 0) value))))))))
+            (error () nil)))))))
 
 (defun %s3-index-endpoint-aggregates (cfg relative)
+  "Aggregate final-index relationship records from one packed segment."
   (let ((bytes (%s3-get-cached cfg relative)))
     (multiple-value-bind (outer pos) (read-u32 bytes 1)
       (declare (ignore outer))
@@ -593,15 +601,13 @@ sequence order so overwrite/delete semantics remain deterministic."
                            (multiple-value-bind (op p1) (%codec-read bytes p0)
                              (multiple-value-bind (key p2) (%codec-read bytes p1)
                                (let ((after (%codec-skip bytes p2)))
-                                 (when (and (string= op "PUT")
-                                            (let ((entry (gethash key
-                                                                  (s3-config-lazy-index cfg))))
-                                              (and entry (equal relative (first entry))
-                                                   (= p2 (second entry))))
-                                   (%s3-endpoint-aggregate-add cfg key
-                                                                 (subseq bytes p2 after)))
-                                 (setf cursor after)))))))))))))))
-
+                                 (when (string= op "PUT")
+                                   (let ((entry (gethash key (s3-config-lazy-index cfg))))
+                                     (when (and entry (equal relative (first entry))
+                                                (= p2 (second entry)))
+                                       (%s3-endpoint-aggregate-add cfg key
+                                                                   (subseq bytes p2 after)))))
+                                 (setf cursor after))))))))))))))
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
