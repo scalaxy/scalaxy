@@ -708,7 +708,7 @@ sequence order so overwrite/delete semantics remain deterministic."
   "Load ordinary objects and build a deterministic packed-segment index."
   (let ((marker nil) (objects nil))
     (loop
-      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&marker=~a~]&max-keys=1000"
+      (let ((query (format nil "list-type=2&max-keys=1000&prefix=~a~:[~;~&marker=~a~]"
                            (%s3-url-encode (s3-config-prefix cfg)) marker
                            (and marker (%s3-url-encode marker)))))
         (multiple-value-bind (status headers body) (%s3-call cfg "GET" "" :query query)
@@ -834,7 +834,7 @@ Segments are applied last so they can represent updates/deletes of older
 individual objects while retaining deterministic restart semantics."
   (let ((marker nil) (objects nil))
     (loop
-      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&marker=~a~]&max-keys=1000"
+      (let ((query (format nil "list-type=2&max-keys=1000&prefix=~a~:[~;~&marker=~a~]"
                            (%s3-url-encode (s3-config-prefix cfg))
                            marker (and marker (%s3-url-encode marker)))))
         (multiple-value-bind (status headers body) (%s3-call cfg "GET" "" :query query)
