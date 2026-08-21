@@ -706,19 +706,22 @@ sequence order so overwrite/delete semantics remain deterministic."
 
 (defun %s3-load-lazy (cfg table)
   "Load ordinary objects and build a deterministic packed-segment index."
-  (let ((token nil) (objects nil))
+  (let ((marker nil) (objects nil))
     (loop
-      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&continuation-token=~a~]"
-                           (%s3-url-encode (s3-config-prefix cfg)) token
-                           (and token (%s3-url-encode token)))))
+      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&marker=~a~]&max-keys=1000"
+                           (%s3-url-encode (s3-config-prefix cfg)) marker
+                           (and marker (%s3-url-encode marker)))))
         (multiple-value-bind (status headers body) (%s3-call cfg "GET" "" :query query)
           (declare (ignore headers))
           (unless (= status 200) (error "S3 LIST failed with HTTP ~d: ~a" status body))
-          (dolist (object (%s3-xml-values body "Key"))
-            (when (search (s3-config-prefix cfg) object)
-              (push (subseq object (length (s3-config-prefix cfg))) objects)))
-          (setf token (first (%s3-xml-values body "NextContinuationToken")))
-          (unless token (return)))))
+          (let ((page-keys nil))
+            (dolist (object (%s3-xml-values body "Key"))
+              (when (search (s3-config-prefix cfg) object)
+                (push (subseq object (length (s3-config-prefix cfg))) page-keys)))
+            (setf page-keys (nreverse page-keys))
+            (dolist (k page-keys) (push k objects))
+            (unless (>= (length page-keys) 1000) (return))
+            (setf marker (car (last page-keys)))))))
     (let ((ordinary nil) (segments nil) (tombstones nil))
       (dolist (relative objects)
         (let ((key (%s3-unhex-key relative)))
@@ -829,19 +832,22 @@ sequence order so overwrite/delete semantics remain deterministic."
   "Load ordinary objects and then bulk mutation segments.
 Segments are applied last so they can represent updates/deletes of older
 individual objects while retaining deterministic restart semantics."
-  (let ((token nil) (objects nil))
+  (let ((marker nil) (objects nil))
     (loop
-      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&continuation-token=~a~]"
+      (let ((query (format nil "list-type=2&prefix=~a~:[~;~&marker=~a~]&max-keys=1000"
                            (%s3-url-encode (s3-config-prefix cfg))
-                           token (and token (%s3-url-encode token)))))
+                           marker (and marker (%s3-url-encode marker)))))
         (multiple-value-bind (status headers body) (%s3-call cfg "GET" "" :query query)
           (declare (ignore headers))
           (unless (= status 200) (error "S3 LIST failed with HTTP ~d: ~a" status body))
-          (dolist (object (%s3-xml-values body "Key"))
-            (when (search (s3-config-prefix cfg) object)
-              (push (subseq object (length (s3-config-prefix cfg))) objects)))
-          (setf token (first (%s3-xml-values body "NextContinuationToken")))
-          (unless token (return)))))
+          (let ((page-keys nil))
+            (dolist (object (%s3-xml-values body "Key"))
+              (when (search (s3-config-prefix cfg) object)
+                (push (subseq object (length (s3-config-prefix cfg))) page-keys)))
+            (setf page-keys (nreverse page-keys))
+            (dolist (k page-keys) (push k objects))
+            (unless (>= (length page-keys) 1000) (return))
+            (setf marker (car (last page-keys)))))))
     (let ((segments nil) (tombstones nil))
       (dolist (relative objects)
         (let ((key (%s3-unhex-key relative)))
