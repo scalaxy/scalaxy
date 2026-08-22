@@ -902,7 +902,7 @@ individual objects while retaining deterministic restart semantics."
       (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
     (%s3-cache-invalidate cfg encoded)
     (%s3-lazy-unindex-key cfg key)
-    (%s3-clear-aggregate-cache cfg)
+    (%s3-clear-aggregate-cache cfg key)
     ;; A tombstone prevents an older packed import segment from resurrecting
     ;; this key when the store is reconstructed after restart.
     (let ((marker (format nil "@tombstone:~a:~d" encoded (get-universal-time))))
@@ -921,18 +921,28 @@ individual objects while retaining deterministic restart semantics."
     (remhash key (s3-config-lazy-index cfg)))
   (setf (s3-config-summary-valid cfg) nil))
 
-(defun %s3-clear-aggregate-cache (cfg)
+(defun %s3-clear-aggregate-cache (cfg &optional affected-key)
+  "Invalidate cached aggregates.  When AFFECTED-KEY is given, only
+relationship-affecting mutations clear the expensive per-type and
+per-endpoint summaries."
   (when (s3-config-lazy-aggregate-cache cfg)
     (clrhash (s3-config-lazy-aggregate-cache cfg)))
-  (when (s3-config-lazy-endpoint-aggregates cfg)
-    (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
-  (setf (s3-config-summary-valid cfg) nil)
-  (dolist (path (list (%s3-summary-path cfg)
-                      (%s3-label-id-path cfg)
-                      (%s3-endpoint-aggregate-path cfg)
-                      (%s3-aggregate-cache-path cfg)))
-    (when (and path (probe-file path)) (ignore-errors (delete-file path)))))
-
+  (let ((rel-p (and affected-key
+                    (> (length affected-key) 4)
+                    (string= affected-key "d:" :end1 2)
+                    (let ((sep (position #\: affected-key :start 2)))
+                      (and sep
+                           (> (length affected-key) (+ sep 2))
+                           (string= affected-key "r:" :start1 (+ sep 2) :end1 (+ sep 4)))))))
+    (when rel-p
+      (setf (s3-config-summary-valid cfg) nil)
+      (when (s3-config-lazy-endpoint-aggregates cfg)
+        (clrhash (s3-config-lazy-endpoint-aggregates cfg)))
+      (dolist (path (list (%s3-summary-path cfg)
+                          (%s3-label-id-path cfg)
+                          (%s3-endpoint-aggregate-path cfg)
+                          (%s3-aggregate-cache-path cfg)))
+        (when (and path (probe-file path)) (ignore-errors (delete-file path)))))))
 (defun %s3-put-batch (cfg records)
   "Write a bulk mutation segment as one S3 object.
 RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
@@ -953,7 +963,7 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
     (%s3-cache-invalidate cfg (%s3-hex-key key))
-    (%s3-clear-aggregate-cache cfg)))
+    (%s3-clear-aggregate-cache cfg key)))
 
 (defun %s3-put (cfg key value)
   (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (codec-encode value))
@@ -961,4 +971,4 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
     (%s3-cache-invalidate cfg (%s3-hex-key key))
-    (%s3-clear-aggregate-cache cfg)))
+    (%s3-clear-aggregate-cache cfg key)))
