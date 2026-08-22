@@ -176,7 +176,7 @@ configuration is read from SCALAXY_* environment variables."
   (let ((args (or argv (env-args))))
     (multiple-value-bind (address data-dir id http-address peers replicate-to web-dir
                           store-backend s3-endpoint s3-bucket s3-access-key s3-secret-key
-                          s3-region s3-prefix encryption-key lazy)
+                          s3-region s3-prefix encryption-key lazy s3-streaming)
         (parse-args args)
       (start-node :id id :address address :http-address http-address
                   :data-dir data-dir :peers peers :replicate-to replicate-to
