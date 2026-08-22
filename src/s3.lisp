@@ -895,6 +895,24 @@ individual objects while retaining deterministic restart semantics."
               (cdr pair)))
       t)))
 
+(defun %s3-delete (cfg key)
+  (let ((encoded (%s3-hex-key key)))
+    (multiple-value-bind (status headers body) (%s3-call cfg "DELETE" encoded)
+      (declare (ignore headers body))
+      (unless (member status '(200 204)) (error "S3 DELETE failed with HTTP ~d" status)))
+    (%s3-cache-invalidate cfg encoded)
+    (%s3-lazy-unindex-key cfg key)
+    (%s3-clear-aggregate-cache cfg)
+    ;; A tombstone prevents an older packed import segment from resurrecting
+    ;; this key when the store is reconstructed after restart.
+    (let ((marker (format nil "@tombstone:~a:~d" encoded (get-universal-time))))
+      (multiple-value-bind (status headers body)
+          (%s3-call cfg "PUT" (%s3-hex-key marker)
+                    :body (make-array 0 :element-type '(unsigned-byte 8)))
+        (declare (ignore headers))
+        (unless (member status '(200 201 204))
+          (error "S3 tombstone PUT failed with HTTP ~d: ~a" status body))))))
+
 (defun %s3-lazy-unindex-key (cfg key)
   "Immediately remove KEY from the in-memory lazy indexes after a delete."
   (when (gethash key (s3-config-lazy-index cfg))
