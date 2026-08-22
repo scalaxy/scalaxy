@@ -750,13 +750,12 @@ sequence order so overwrite/delete semantics remain deterministic."
              (push key tombstones))
             (t (push (cons key relative) ordinary)))))
       (when (s3-config-streaming-mode cfg)
-        ;; Streaming mode: serve reads via direct S3 GET.
-        ;; No in-memory key index — designed for low-RAM nodes
-        ;; with very large buckets.
-        (return-from %s3-load-lazy table))
-      (when (s3-config-streaming-mode cfg)
-        ;; Streaming mode: skip lazy-index construction.
-        ;; Reads fall through to direct S3 GET via %s3-lazy-get.
+        ;; Streaming mode: accumulate metadata (counts, types, sums,
+        ;; label-IDs, endpoint-pairs) without building the O(N) lazy-index.
+        ;; Point reads fall through to direct S3 GET.
+        (dolist (relative segments)
+          (%s3-index-batch cfg relative t))
+        (setf (s3-config-summary-valid cfg) t)
         (return-from %s3-load-lazy table))
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
              (summary-loaded
