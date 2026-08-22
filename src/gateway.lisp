@@ -131,7 +131,7 @@ Physical replicas are divided out using the configured replica count."
          (total (if label
                     (reduce #'+ nodes
                             :key (lambda (n)
-                                   (or (gethash label (gethash "graphLabelCounts" n)) 0))
+                                   (or (let ((lc (gethash "graphLabelCounts" n))) (when (hash-table-p lc) (gethash label lc))) 0))
                             :initial-value 0)
                     (reduce #'+ nodes :key (lambda (n) (or (gethash field n) 0)) :initial-value 0)))
          (replicas (1+ (or (and nodes (gethash "replicas" (first nodes))) 1))))
