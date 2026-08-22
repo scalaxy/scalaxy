@@ -723,6 +723,45 @@ lazy-index (used in streaming mode where no index is built)."
       (%s3-index-sidecar-write cfg relative result)
       result)))
 
+(defun %s3-sidecar-might-contain-p (cfg relative key)
+  "Check if RELATIVE's sidecar Bloom filter might contain KEY.
+Returns :yes (might contain) or :no (definitely not)."
+  (let ((path (%s3-index-sidecar-path cfg relative)))
+    (when (and path (probe-file path))
+      (handler-case
+          (with-open-file (in path :element-type '(unsigned-byte 8))
+            ;; Read enough bytes for the header (magic + version + segment name + count + range + bloom)
+            (let* ((header-size 512)
+                   (buf (make-array (min header-size (file-length in))
+                                    :element-type '(unsigned-byte 8))))
+              (read-sequence buf in)
+              ;; Parse the sexp header from the raw bytes
+              (let ((header-str (map 'string #'code-char
+                                     (remove-if (lambda (b) (> b 127)) buf))))
+                (when (search "SCX1" header-str)
+                  :maybe)
+                ;; Simple check: if we can read it as a sexp, look for bloom
+                (let ((form (ignore-errors
+                             (with-input-from-string (s (map 'string #'code-char buf))
+                               (read s nil nil)))))
+                  (when (and (listp form) (eql (getf form :version) 2))
+                    ;; Valid v2 sidecar - check bloom against key
+                    (let ((bloom (getf form :bloom)))
+                      (if bloom
+                          ;; Recompute what the key would add and compare
+                          (let ((test-bloom (%s3-bloom-add
+                                             (make-array 32 :element-type '(unsigned-byte 8)
+                                                              :initial-element 0)
+                                             key)))
+                            ;; If OR of test-bloom into stored bloom changes nothing,
+                            ;; the key is already represented
+                            (if (equalp test-bloom
+                                        (subseq test-bloom 0 32))
+                                :maybe
+                                :no))
+                      :no)))))))
+        (error () :no)))))
+
 (defun %s3-load-lazy (cfg table)
   "Load ordinary objects and build a deterministic packed-segment index."
   (let ((marker nil) (objects nil))
