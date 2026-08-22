@@ -454,8 +454,7 @@ sequence order so overwrite/delete semantics remain deterministic."
               (%s3-apply-batch-bytes (%s3-get-cached cfg relative) table)))))
 
 (defun %s3-lazy-label-key (cfg key value-bytes)
-  (when (and (%s3-meta-owned-p cfg key)
-             (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let ((local (subseq key (1+ sep))))
