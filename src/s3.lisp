@@ -754,7 +754,8 @@ sequence order so overwrite/delete semantics remain deterministic."
         ;; label-IDs, endpoint-pairs) without building the O(N) lazy-index.
         ;; Point reads fall through to direct S3 GET.
         (dolist (relative segments)
-          (%s3-index-batch cfg relative t))
+          (%s3-index-batch cfg relative t)
+          (%s3-index-endpoint-aggregates cfg relative))
         (setf (s3-config-summary-valid cfg) t)
         (return-from %s3-load-lazy table))
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
