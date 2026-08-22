@@ -754,6 +754,10 @@ sequence order so overwrite/delete semantics remain deterministic."
         ;; No in-memory key index — designed for low-RAM nodes
         ;; with very large buckets.
         (return-from %s3-load-lazy table))
+      (when (s3-config-streaming-mode cfg)
+        ;; Streaming mode: skip lazy-index construction.
+        ;; Reads fall through to direct S3 GET via %s3-lazy-get.
+        (return-from %s3-load-lazy table))
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
              (summary-loaded
               (and (%s3-summary-load cfg ordinary-relative segments)
@@ -841,11 +845,18 @@ sequence order so overwrite/delete semantics remain deterministic."
           (car (multiple-value-list (%codec-read bytes start)))))))
 
 (defun %s3-lazy-get (cfg key)
-  (let ((entry (gethash key (s3-config-lazy-index cfg))))
-    (when entry
-      (let ((relative (first entry)) (start (second entry)) (end (third entry)))
-        (when (and start end)
-          (%s3-get-cached-range cfg relative start end))))))
+  "Read the value for KEY, using the lazy-index or direct S3 GET in streaming mode."
+  (let ((index (s3-config-lazy-index cfg)))
+    (if (and index (plusp (hash-table-count index)))
+        (let ((entry (gethash key index)))
+          (when entry
+            (let ((rel (first entry)) (start (second entry)) (end (third entry)))
+              (when (and start end)
+                (%s3-get-cached-range cfg rel start end)))))
+        (multiple-value-bind (status headers body)
+            (%s3-call cfg "GET" (%s3-hex-key key) :binary t)
+          (declare (ignore headers))
+          (when (= status 200) body)))))
 
 (defun %s3-load (cfg table &optional decoder)
   (when (and (s3-config-lazy cfg) (null decoder))
@@ -979,7 +990,7 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
         (%s3-clear-aggregate-cache cfg)))))
 
 (defun %s3-put-raw (cfg key bytes)
-  (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body bytes)
+  (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (%s3-encrypt-body bytes))
     (declare (ignore headers))
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
