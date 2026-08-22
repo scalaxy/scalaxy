@@ -559,7 +559,7 @@ sequence order so overwrite/delete semantics remain deterministic."
 (defun %s3-endpoint-aggregate-add (cfg key bytes)
   (let ((table (s3-config-lazy-endpoint-aggregates cfg))
         (sep (position #\: key :start 2)))
-    (when (and sep (%s3-meta-owned-p cfg key) (not (gethash :disabled table)))
+    (when (and sep (not (gethash :disabled table)))
       (let ((local (subseq key (1+ sep))))
         (when (and (>= (length local) 2) (string= local "r:" :end1 2))
           ;; Decode the record fully so aggregation matches query-time
@@ -616,8 +616,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                                                                    (subseq bytes p2 after)))))
                                  (setf cursor after))))))))))))))
 (defun %s3-lazy-count-key (cfg key delta)
-  (when (and (%s3-meta-owned-p cfg key)
-             (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let* ((db (subseq key 2 sep)) (local (subseq key (1+ sep)))
@@ -642,8 +641,7 @@ sequence order so overwrite/delete semantics remain deterministic."
                       0 (min 100 (length values))))))))
 
 (defun %s3-lazy-type-key (cfg key bytes)
-  (when (and (%s3-meta-owned-p cfg key)
-             (>= (length key) 4) (string= key "d:" :end1 2))
+  (when (and (>= (length key) 4) (string= key "d:" :end1 2))
     (let ((sep (position #\: key :start 2)))
       (when sep
         (let* ((db (subseq key 2 sep))
