@@ -113,6 +113,11 @@
 console (HTTP).  When PEERS is given, the web console routes key operations
 across the cluster and aggregates cluster status.  Returns
 (values tcp-server http-server gateway-or-nil)."
+    (when encryption-key
+    (setf *s3-encryption-key*
+          (if (stringp encryption-key)
+              (string-to-octets encryption-key)
+              encryption-key)))
   (multiple-value-bind (host port) (parse-host-port address)
     (multiple-value-bind (http-host http-port) (parse-host-port http-address)
       (let* ((node-id (or id

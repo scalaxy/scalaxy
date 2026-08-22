@@ -160,6 +160,23 @@
                  (write-char (code-char b) out)
                  (progn (write-char #\% out) (format out "~2,'0X" b))))))
 
+(defvar *s3-encryption-key* nil
+  "When non-nil, all object data written to S3 is encrypted with
+authenticated HMAC-SHA256 encryption before upload and decrypted after
+download.  Set from SCALAXY_S3_ENCRYPTION_KEY.")
+
+(defun %s3-encrypt-body (bytes)
+  "Encrypt BYTES for S3 storage when encryption is enabled."
+  (if *s3-encryption-key* (%secure-encrypt *s3-encryption-key* bytes) bytes))
+
+(defun %s3-decrypt-body (bytes)
+  "Decrypt BYTES fetched from S3 when encryption is enabled."
+  (if (and *s3-encryption-key*
+           (> (length bytes) 4)
+           (equalp (subseq bytes 0 4) (string-to-octets "SCX1")))
+      (%secure-decrypt *s3-encryption-key* bytes)
+      bytes))
+
 (defun %s3-date ()
   (multiple-value-bind (sec min hour day month year) (decode-universal-time (get-universal-time) 0)
     (values (format nil "~4,'0d~2,'0d~2,'0dT~2,'0d~2,'0d~2,'0dZ" year month day hour min sec)
@@ -412,8 +429,9 @@ The segment is a codec list of MAGIC and a second codec list of records."
               (%s3-call cfg "GET" relative :binary t)
             (declare (ignore headers))
             (unless (= status 200) (error "S3 GET failed with HTTP ~d" status))
-            (let ((bytes (if (typep body '(vector (unsigned-byte 8))) body
-                             (string-to-octets body))))
+            (let ((bytes (%s3-decrypt-body
+                          (if (typep body '(vector (unsigned-byte 8))) body
+                              (string-to-octets body)))))
               (incf (s3-config-cache-bytes cfg) (length bytes))
               (when (and path
                          (or (zerop (s3-config-cache-max-bytes cfg))
@@ -946,7 +964,7 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
   (when records
     (let* ((id (format nil "@batch:~d-~d-~d" (get-universal-time)
                        (get-internal-real-time) (incf *s3-batch-sequence*)))
-           (payload (codec-encode (list "scalaxy-s3-batch-v1" records))))
+           (payload (%s3-encrypt-body (codec-encode (list "scalaxy-s3-batch-v1" records)))))
       (multiple-value-bind (status headers body)
           (%s3-call cfg "PUT" (%s3-hex-key id) :body payload)
         (declare (ignore headers))
