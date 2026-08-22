@@ -295,6 +295,7 @@ The USE command returns the new database name as its output."
                (json-response (list (cons "moved" moved)
                                     (cons "skipped" skipped))))))
          (error (e)
+           (format t "REHOME-ERROR ~a~%" e)
            (json-response (list (cons "error" (format nil "~a" e)))
                           :status 500)))
       ;; graphql
