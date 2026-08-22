@@ -282,8 +282,10 @@ moved skipped)."
                (multiple-value-bind (value present) (gethash property values)
                  (when present (incf sum value) (setf sum-seen t))))))
          table)
-        (values (if (string-equal (getf msg :function) "COUNT") count
-                    (if sum-seen sum :cypher-null)) t)))))
+        (values (cond ((string-equal (getf msg :function) "COUNT") count)
+                      ((string-equal (getf msg :function) "AVG")
+                       (if (and sum-seen (plusp count)) (/ sum count) :cypher-null))
+                      (t (if sum-seen sum :cypher-null))) t)))))
 
 (defun %node-lazy-filtered-aggregate (node msg)
   "Aggregate packed relationships using globally supplied endpoint IDs."
@@ -358,8 +360,10 @@ moved skipped)."
                                                         (incf sum v) (setf sum-seen t)))))))))
                                         (setf cursor after))))))))))))))
        (s3-config-lazy-segments cfg)))
-    (let ((result (if (string-equal (getf msg :function) "COUNT") count
-                      (if sum-seen sum :cypher-null))))
+    (let ((result (cond ((string-equal (getf msg :function) "COUNT") count)
+                        ((string-equal (getf msg :function) "AVG")
+                         (if (and sum-seen (plusp count)) (/ sum count) :cypher-null))
+                        (t (if sum-seen sum :cypher-null)))))
       (setf (gethash cache-key cache) result)
       (%s3-aggregate-cache-save cfg)
       result)))
@@ -376,7 +380,7 @@ moved skipped)."
                (s3-config-lazy (store-backend store)))
       (return-from node-aggregate-relationships
         (%node-lazy-filtered-aggregate node msg)))
-    (when (and (string-equal (getf msg :function) "SUM")
+    (when (and (member (getf msg :function) '("SUM" "AVG") :test #'string-equal)
                (plusp (length (or (getf msg :property) "")))
                (store-backend store)
                (typep (store-backend store) 's3-config)
@@ -386,12 +390,21 @@ moved skipped)."
         (when sep
           (let* ((db (subseq prefix 2 sep))
                  (sums (gethash db (s3-config-lazy-sums (store-backend store))))
+                 (types (gethash db (s3-config-lazy-type-counts (store-backend store))
+                                  ))
                  (key (list type (getf msg :property))))
             (when sums
               (if (plusp (length type))
-                  (return-from node-aggregate-relationships (gethash key sums 0))
-                  (return-from node-aggregate-relationships
-                    (loop for v being the hash-values of sums sum v))))))))
+                  (let ((s (or (gethash key sums) 0))
+                        (c (or (and types (gethash type types)) 0)))
+                    (if (and (string-equal (getf msg :function) "AVG") (plusp c) (plusp s))
+                        (return-from node-aggregate-relationships (/ s c))
+                        (return-from node-aggregate-relationships s)))
+                  (let ((total-s (loop for v being the hash-values of sums sum v))
+                        (total-c (loop for v being the hash-values of types sum v)))
+                    (if (and (string-equal (getf msg :function) "AVG") (plusp total-c) (plusp total-s))
+                        (return-from node-aggregate-relationships (/ total-s total-c))
+                        (return-from node-aggregate-relationships total-s)))))))))
     (when (and (string-equal (getf msg :function) "COUNT")
                (zerop (length (or (getf msg :property) "")))
                (store-backend store)
