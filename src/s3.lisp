@@ -188,6 +188,7 @@ download.  Set from SCALAXY_S3_ENCRYPTION_KEY.")
               "")))
 (defun %s3-call (cfg method object &key (query "") (body (make-array 0 :element-type '(unsigned-byte 8))) (binary nil))
   (multiple-value-bind (amz-date short-date) (%s3-date)
+
     (let* ((payload-hash (%s3-hex (%s3-sha256 body)))
            (path (%s3-path cfg object))
            (host (format nil "~a:~d" (s3-config-host cfg) (s3-config-port cfg)))
@@ -981,7 +982,7 @@ RECORDS contains (OP KEY VALUE), where OP is the string PUT or DELETE."
     (%s3-clear-aggregate-cache cfg key)))
 
 (defun %s3-put (cfg key value)
-  (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (codec-encode value))
+  (multiple-value-bind (status headers body) (%s3-call cfg "PUT" (%s3-hex-key key) :body (%s3-encrypt-body (codec-encode value)))
     (declare (ignore headers))
     (unless (member status '(200 201 204))
       (error "S3 PUT failed with HTTP ~d: ~a" status body))
