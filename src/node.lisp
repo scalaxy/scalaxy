@@ -222,9 +222,11 @@ moved skipped)."
   (let ((moved 0) (skipped 0))
     (when (node-ring node)
       (dolist (key (%node-rehome-candidates node limit))
-        (if (eq (%node-rehome-deliver node key keep) :moved)
-            (incf moved)
-            (incf skipped))))
+        (handler-case
+            (if (eq (%node-rehome-deliver node key keep) :moved)
+                (incf moved)
+                (incf skipped))
+          (error () (incf skipped)))))
     (values moved skipped)))
 
 (defun %node-aggregate-id-set (encoded)
