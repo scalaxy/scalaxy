@@ -82,11 +82,11 @@
                             (%s3-sha256 (%s3-concat (%s3-xor-octets kp #x36) data))))))
 (defun %s3-hmac-string (key string) (%s3-hmac key (string-to-octets string)))
 
-(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id)))
-  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id)
+(defstruct (s3-config (:constructor %make-s3-config (endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id encryption-key streaming-mode)))
+  endpoint host port bucket access-key secret-key region prefix cache-dir cache-max-bytes lazy lazy-index lazy-segments lazy-counts lazy-labels lazy-label-ids lazy-endpoint-aggregates lazy-type-counts lazy-sums summary-valid cache-hits cache-misses cache-bytes lazy-aggregate-cache lazy-topk-summaries owner-ring owner-id encryption-key streaming-mode)
 
 (defun make-s3-config (&key endpoint bucket access-key secret-key (region "us-east-1")
-                              (prefix "scalaxy/") cache-dir lazy owner-ring owner-id
+                              (prefix "scalaxy/") cache-dir lazy owner-ring owner-id encryption-key streaming-mode
                               (cache-max-bytes (let ((v (uiop:getenv "SCALAXY_S3_CACHE_MAX_BYTES")))
                                                  (and v (ignore-errors (parse-integer v))))))
   "Create an S3 configuration.  HTTP endpoints are supported for local Garage testing."
@@ -118,7 +118,7 @@
                      t 0 0 0
                      (and lazy (make-hash-table :test #'equal))
                      (and lazy (make-hash-table :test #'equal))
-                     owner-ring owner-id)))
+                     owner-ring owner-id encryption-key streaming-mode)))
 
 (defun %s3-meta-owned-p (cfg key)
   "True when KEY belongs to this node per the cluster ring."
@@ -749,6 +749,11 @@ sequence order so overwrite/delete semantics remain deterministic."
             ((and (>= (length key) 11) (string= key "@tombstone:" :end1 11))
              (push key tombstones))
             (t (push (cons key relative) ordinary)))))
+      (when (s3-config-streaming-mode cfg)
+        ;; Streaming mode: serve reads via direct S3 GET.
+        ;; No in-memory key index — designed for low-RAM nodes
+        ;; with very large buckets.
+        (return-from %s3-load-lazy table))
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
              (summary-loaded
               (and (%s3-summary-load cfg ordinary-relative segments)
