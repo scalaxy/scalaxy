@@ -133,6 +133,7 @@ across the cluster and aggregates cluster status.  Returns
                     :id node-id
                     :store (make-node-store :node-id node-id :data-dir data-dir
                                              :peers peers
+                                             :streaming-mode streaming-mode
                                              :store-backend store-backend
                                              :s3-endpoint s3-endpoint :s3-bucket s3-bucket
                                              :s3-access-key s3-access-key :s3-secret-key s3-secret-key
