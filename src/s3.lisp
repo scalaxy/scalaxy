@@ -610,8 +610,10 @@ sequence order so overwrite/delete semantics remain deterministic."
                             (incf (gethash (car pair) values 0) value))))))))
             (error () nil)))))))
 
-(defun %s3-index-endpoint-aggregates (cfg relative)
-  "Aggregate final-index relationship records from one packed segment."
+(defun %s3-index-endpoint-aggregates (cfg relative &optional skip-check)
+  "Aggregate relationship records from one packed segment.
+When SKIP-CHECK is T, process all PUT records without checking the
+lazy-index (used in streaming mode where no index is built)."
   (let ((bytes (%s3-get-cached cfg relative)))
     (multiple-value-bind (outer pos) (read-u32 bytes 1)
       (declare (ignore outer))
@@ -628,11 +630,12 @@ sequence order so overwrite/delete semantics remain deterministic."
                              (multiple-value-bind (key p2) (%codec-read bytes p1)
                                (let ((after (%codec-skip bytes p2)))
                                  (when (string= op "PUT")
-                                   (let ((entry (gethash key (s3-config-lazy-index cfg))))
-                                     (when (and entry (equal relative (first entry))
-                                                (= p2 (second entry)))
-                                       (%s3-endpoint-aggregate-add cfg key
-                                                                   (subseq bytes p2 after)))))
+                                   (when (or skip-check
+                                             (let ((entry (gethash key (s3-config-lazy-index cfg))))
+                                               (and entry (equal relative (first entry))
+                                                    (= p2 (second entry)))))
+                                     (%s3-endpoint-aggregate-add cfg key
+                                                                 (subseq bytes p2 after))))
                                  (setf cursor after))))))))))))))
 (defun %s3-lazy-count-key (cfg key delta)
   (when (and (>= (length key) 4) (string= key "d:" :end1 2))
@@ -755,7 +758,7 @@ sequence order so overwrite/delete semantics remain deterministic."
         ;; Point reads fall through to direct S3 GET.
         (dolist (relative segments)
           (%s3-index-batch cfg relative t)
-          (%s3-index-endpoint-aggregates cfg relative))
+          (%s3-index-endpoint-aggregates cfg relative t))
         (setf (s3-config-summary-valid cfg) t)
         (return-from %s3-load-lazy table))
       (let* ((ordinary-relative (mapcar #'cdr ordinary))
