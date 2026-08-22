@@ -29,7 +29,7 @@
         (http-address "127.0.0.1:8080") (peers nil) (replicate-to nil)
         (web-dir "web/") (store-backend nil) (s3-endpoint nil) (s3-bucket nil)
         (s3-access-key nil) (s3-secret-key nil) (s3-region "us-east-1")
-        (s3-prefix "scalaxy/") (encryption-key nil) (s3-lazy nil))
+        (s3-prefix "scalaxy/") (encryption-key nil) (s3-lazy nil) (s3-streaming nil))
     (loop for (k v) on args by #'cddr
           do (cond ((string= k "--address") (setf address v))
                    ((string= k "--data-dir") (setf data-dir v))
@@ -47,10 +47,12 @@
                    ((string= k "--s3-prefix") (setf s3-prefix v))
                    ((string= k "--s3-encryption-key") (setf encryption-key v))
                    ((string= k "--s3-lazy")
-                    (setf s3-lazy (not (null (member (string-downcase v) '("1" "true" "yes") :test #'string=)))))))
+                    (setf s3-lazy (not (null (member (string-downcase v) '("1" "true" "yes") :test #'string=)))))
+                   ((string= k "--s3-streaming")
+                    (setf s3-streaming (not (null (member (string-downcase v) '("1" "true" "yes") :test #'string=)))))))
     (values address data-dir id http-address peers replicate-to web-dir
             store-backend s3-endpoint s3-bucket s3-access-key s3-secret-key
-            s3-region s3-prefix encryption-key s3-lazy)))
+            s3-region s3-prefix encryption-key s3-lazy s3-streaming)))
 
 (defun env-args ()
   "Build a CLI argument list from SCALAXY_* environment variables."
@@ -71,7 +73,8 @@
       (add "--s3-region" (or (env-get "SCALAXY_S3_REGION") (env-get "AWS_REGION")))
       (add "--s3-prefix" (env-get "SCALAXY_S3_PREFIX"))
       (add "--s3-encryption-key" (env-get "SCALAXY_S3_ENCRYPTION_KEY"))
-      (add "--s3-lazy" (env-get "SCALAXY_S3_LAZY")))
+      (add "--s3-lazy" (env-get "SCALAXY_S3_LAZY"))
+      (add "--s3-streaming" (env-get "SCALAXY_S3_STREAMING")))
     (nreverse args)))
 
 (defun parse-host-port (address)
@@ -83,7 +86,7 @@
 (defun make-node-store (&key node-id (data-dir "./scalaxy-data") store-backend
                               s3-endpoint s3-bucket s3-access-key s3-secret-key
                               (s3-region "us-east-1") (s3-prefix "scalaxy/") encryption-key lazy
-                              peers)
+                              streaming-mode peers)
   "Construct the node's durable store.  S3 prefixes are isolated per node."
   (if (or s3-endpoint (eq store-backend :s3)
           (and (stringp store-backend) (string-equal store-backend "s3")))
@@ -95,7 +98,7 @@
                                      (or node-id "node"))
                   :cache-path (merge-pathnames "s3-cache/"
                                                (uiop:ensure-directory-pathname data-dir))
-                  :lazy lazy
+                  :lazy lazy :streaming-mode streaming-mode
                   :owner-ring (when peers
                                 (make-ring :nodes (mapcar #'first peers)))
                   :owner-id node-id)
@@ -108,7 +111,7 @@
                         (peers nil) (replicate-to nil)
                         (web-dir "web/") (store-backend nil) (s3-endpoint nil)
                         (s3-bucket nil) (s3-access-key nil) (s3-secret-key nil)
-                        (s3-region "us-east-1") (s3-prefix "scalaxy/") encryption-key lazy)
+                        (s3-region "us-east-1") (s3-prefix "scalaxy/") encryption-key lazy streaming-mode)
   "Start a Scalaxy node: durable store, TCP data server, and the web
 console (HTTP).  When PEERS is given, the web console routes key operations
 across the cluster and aggregates cluster status.  Returns
@@ -179,5 +182,5 @@ configuration is read from SCALAXY_* environment variables."
                   :data-dir data-dir :peers peers :replicate-to replicate-to
                   :web-dir web-dir :store-backend store-backend :s3-endpoint s3-endpoint
                   :s3-bucket s3-bucket :s3-access-key s3-access-key :s3-secret-key s3-secret-key
-                  :s3-region s3-region :s3-prefix s3-prefix :lazy lazy)
+                  :s3-region s3-region :s3-prefix s3-prefix :lazy lazy :streaming-mode s3-streaming)
       (loop (sleep 3600)))))
