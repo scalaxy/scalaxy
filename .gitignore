@@ -23,3 +23,5 @@ benchmarks/nyc-taxi/trips.csv
 
 # Agent session artifacts
 prime-agent-session-*.html
+
+tla2tools.jar
