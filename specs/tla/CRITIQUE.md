@@ -90,3 +90,59 @@ keeps working even on the reviewer's own drafts:
 | 3 nodes x 2 keys x RF=2 | 2,752 + temporal | yes | 2 s |
 | 3 nodes x 3 keys x RF=2 | 26,464 + temporal | yes | 9 s |
 | 3 nodes x 3 keys x RF=3 | 92,240 + temporal | yes | 33 s |
+
+---
+
+# Pass 3 (2026-08-23): media loss + anti-entropy self-healing
+
+## Remaining realism gaps found in v2
+
+1. **HIGH -- disks never died.** `held` survived everything, so the spec
+   claimed unconditional durability. Real clusters lose disks; Scalaxy's
+   own self-healing cache/replica validation exists precisely because of
+   this. A central-truth spec that cannot express data loss cannot state
+   what RF=2 actually buys.
+
+2. **HIGH -- no anti-entropy.** Replication depended solely on the write
+   path's outbox entry. Lose that entry (e.g., with its disk) and a key
+   stays under-replicated forever. Real systems repair from any holder.
+
+## What was added
+
+- `LoseDisk(n)`: permanent media-loss action; wipes held+outbox, takes
+  the node down.
+- `lostData[k]`: latching history flag -- TRUE forever once the last copy
+  of a live key is destroyed. Honesty mechanism, not an excuse: invariants
+  now say exactly when data is gone.
+- `ReReplicate(k, src, dst)`: anti-entropy repair from any holder to any
+  up, encrypted node lacking a copy whenever holders < Rf. Fairness-
+  scheduled like the shipper.
+- Invariants restated honestly:
+  - `DataIntegrityUnlessMediaLoss` (was unconditional DataIntegrity)
+  - `NoFalseLossAlarm` / `NoUndetectedLoss` (two-directional accounting)
+- Liveness guarded by media loss: convergence and service restoration
+  hold for every key EXCEPT those whose last copy was destroyed --
+  which is precisely the promise any storage system can truthfully make.
+
+## Bugs TLC caught in THIS pass's drafts
+
+1. **Latch reset bug**: the first `LoseDisk` recomputed lostData from
+   scratch instead of OR-ing with the old value, so a second disk loss
+   flipped lostData[k] back to FALSE after it had correctly latched TRUE.
+   TLC counterexample: write -> lose disk 1 (lostData=TRUE) -> lose disk 2
+   (lostData wrongly reverted). Fixed by proper latching.
+
+2. **Biconditional overreach**: stating "lostData[k] <=> live and zero
+   copies" broke when a lost key was later deleted (live=FALSE while
+   lostData stays latched). Replaced with two separate implications,
+   each verified.
+
+## Verification matrix (pass 3, all PASS, safety + temporal)
+
+| Config | Distinct states | Time |
+|--------|----------------|------|
+| 2 nodes x 1 key x RF=2 | 152 | <1 s |
+| 2 nodes x 2 keys x RF=2 | 1,840 | 1 s |
+| 3 nodes x 2 keys x RF=2 | 19,808 | 8 s |
+| 3 nodes x 2 keys x RF=3 | 23,552 | 9 s |
+| 3 nodes x 3 keys x RF=2 | 525,632 | 395 s |

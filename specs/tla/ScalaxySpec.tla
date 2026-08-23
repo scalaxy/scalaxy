@@ -38,9 +38,13 @@ VARIABLES
   \* live[k]: TRUE iff key k is committed and client-visible.
   live,
   \* tombstoned[k]: TRUE iff key k was deleted (permanent).
-  tombstoned
+  tombstoned,
+  \* lostData[k]: history flag -- set when the LAST durable copy of a
+  \* live key was destroyed by media loss. Once TRUE it latches:
+  \* that data is gone forever.
+  lostData
 
-vars == <<nodeUp, encOn, held, outbox, live, tombstoned>>
+vars == <<nodeUp, encOn, held, outbox, live, tombstoned, lostData>>
 
 NodeSubset == SUBSET Nodes
 
@@ -53,6 +57,7 @@ Init ==
   /\ outbox     = [n \in Nodes |-> [k \in Keys |-> FALSE]]
   /\ live       = [k \in Keys |-> FALSE]
   /\ tombstoned = [k \in Keys |-> FALSE]
+  /\ lostData   = [k \in Keys |-> FALSE]
 
 -----------------------------------------------------------------------------
 \*
@@ -68,7 +73,7 @@ ClientWrite(k, w) ==
   /\ held'      = [held EXCEPT ![w][k] = TRUE]
   /\ outbox'    = [outbox EXCEPT ![w][k] = (Rf > 1)]
   /\ live'      = [live EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, tombstoned>>
+  /\ UNCHANGED <<nodeUp, encOn, tombstoned, lostData>>
 
 \* REPLICATION RULE (central truth): the shipper copies an under-
 \* replicated key from any holder to any up, encrypted node that lacks
@@ -90,7 +95,7 @@ ShipReplica(k, src, dst) ==
   /\ held'      = [held EXCEPT ![dst][k] = TRUE]
   /\ outbox'    =
         [outbox EXCEPT ![src][k] = (Cardinality(Holders(k)) + 1 < Rf)]
-  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned>>
+  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned, lostData>>
 
 \* DELETE RULE (central truth): the tombstone is set immediately; the
 \* key becomes invisible atomically and can never be written again.
@@ -101,20 +106,52 @@ ClientDelete(k) ==
   /\ ~tombstoned[k]
   /\ live'       = [live EXCEPT ![k] = FALSE]
   /\ tombstoned' = [tombstoned EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, held, outbox>>
+  /\ UNCHANGED <<nodeUp, encOn, held, outbox, lostData>>
 
 \* Crash: node stops serving. Durable state (held, outbox, encryption
 \* config) survives on disk.
 CrashNode(n) ==
   /\ nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData>>
 
 \* Recover: restart restores all durable state intact.
 RecoverNode(n) ==
   /\ ~nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData>>
+
+\* MEDIA LOSS (central truth): a disk can die permanently. The node
+\* goes down and its durable state is gone. If that was the LAST copy
+\* of a live key, lostData[k] latches TRUE -- the data is unrecoverable.
+LoseDisk(n) ==
+  /\ nodeUp[n]
+  /\ nodeUp'    = [nodeUp EXCEPT ![n] = FALSE]
+  /\ held'      = [held EXCEPT ![n] = [k \in Keys |-> FALSE]]
+  /\ outbox'    = [outbox EXCEPT ![n] = [k \in Keys |-> FALSE]]
+  /\ lostData'  =
+        [k \in Keys |->
+           lostData[k]   \* latch: loss is forever
+             \/ (live[k] /\ ~tombstoned[k] /\ Holders(k) = {n})
+        ]
+  /\ UNCHANGED <<encOn, live, tombstoned>>
+
+\* ANTI-ENTROPY RULE (central truth): replication does not depend only
+\* on the write path's outbox. Any node holding a copy of an under-
+\* replicated live key repairs any up, encrypted node lacking a copy --
+\* this is how the system self-heals after media loss elsewhere.
+ReReplicate(k, src, dst) ==
+  /\ live[k]
+  /\ ~tombstoned[k]
+  /\ Cardinality(Holders(k)) < Rf
+  /\ held[src][k]
+  /\ ~held[dst][k]
+  /\ dst # src
+  /\ nodeUp[src]
+  /\ nodeUp[dst]
+  /\ encOn[dst]
+  /\ held'      = [held EXCEPT ![dst][k] = TRUE]
+  /\ UNCHANGED <<nodeUp, encOn, outbox, live, tombstoned, lostData>>
 
 \* SECURITY RULE: encryption at rest may be toggled on a node only while
 \* it holds no data. Plaintext must never exist on any disk.
@@ -124,13 +161,13 @@ DisableEncryption(n) ==
   /\ encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData>>
 
 EnableEncryption(n) ==
   /\ ~encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData>>
 
 -----------------------------------------------------------------------------
 
@@ -142,6 +179,8 @@ Next ==
   \/ \E n \in Nodes                     : RecoverNode(n)
   \/ \E n \in Nodes                     : DisableEncryption(n)
   \/ \E n \in Nodes                     : EnableEncryption(n)
+  \/ \E k \in Keys, s \in Nodes, d \in Nodes : ReReplicate(k, s, d)
+  \/ \E n \in Nodes                     : LoseDisk(n)
 
 \* FAIRNESS (central truth): the shipper and recovery are eventually
 \* scheduled whenever continuously enabled. Without these conjuncts a
@@ -150,6 +189,8 @@ Fairness ==
   /\ \A k \in Keys, s \in Nodes, d \in Nodes :
         WF_vars(ShipReplica(k, s, d))
   /\ \A n \in Nodes : WF_vars(RecoverNode(n))
+  /\ \A k \in Keys, s \in Nodes, d \in Nodes :
+        WF_vars(ReReplicate(k, s, d))
 
 Spec ==
   Init /\ [][Next]_vars /\ Fairness
@@ -166,12 +207,27 @@ TypeOK ==
   /\ outbox     \in [Nodes -> [Keys -> BOOLEAN]]
   /\ live       \in [Keys -> BOOLEAN]
   /\ tombstoned \in [Keys -> BOOLEAN]
+  /\ lostData   \in [Keys -> BOOLEAN]
 
 \* SAFETY: every visible key has at least one durable copy at all times,
-\* including inside the single-copy window before async replication.
-DataIntegrity ==
+\* UNLESS media loss destroyed the last copy (lostData latched).
+DataIntegrityUnlessMediaLoss ==
   \A k \in Keys :
-    live[k] => \E n \in Nodes : held[n][k]
+    live[k] => (\E n \in Nodes : held[n][k]) \/ lostData[k]
+
+\* SAFETY: media loss is recorded honestly, in two directions:
+\* (a) no false alarms -- lostData is set only when no copies remain;
+\* (b) no undetected loss -- a live key with zero copies is flagged.
+\* (A biconditional would be wrong: deleting an already-lost key makes
+\* it live=FALSE while lostData correctly stays latched.)
+NoFalseLossAlarm ==
+  \A k \in Keys :
+    lostData[k] => Cardinality(Holders(k)) = 0
+
+NoUndetectedLoss ==
+  \A k \in Keys :
+    (live[k] /\ ~tombstoned[k] /\ Cardinality(Holders(k)) = 0) =>
+      lostData[k]
 
 \* SAFETY: deleted keys never appear live.
 DeleteVisible ==
@@ -207,12 +263,14 @@ AvailabilityUnderSingleFailureAfterReplication ==
 \* and replication gives a second holder.
 ServiceRestored ==
   \A k \in Keys :
-    live[k] ~> (\E h \in Nodes : nodeUp[h] /\ held[h][k])
+    live[k] ~>
+      ((\E h \in Nodes : nodeUp[h] /\ held[h][k]) \/ lostData[k])
 
-\* RELIABILITY: crashes never destroy durable copies.
-RecoveryRestoresService ==
-  \A k \in Keys :
-    live[k] => \E h \in Nodes : held[h][k]
+\* RELIABILITY: crashes never destroy durable copies -- only explicit
+\* media loss can, and LossAccounting forces that to be visible in
+\* lostData. (RecoveryRestoresService from v2 was unconditional and was
+\* correctly falsified by LoseDisk; its content now lives in
+\* DataIntegrityUnlessMediaLoss + the temporal ServiceRestored.)
 
 
 \* LIVENESS: if the cluster becomes stable-up, every live key eventually
@@ -220,6 +278,6 @@ RecoveryRestoresService ==
 \* fair shipper makes: under-replicated data converges.
 ReplicationConverges ==
   [](\A n \in Nodes : nodeUp[n]) =>
-      <>(\A k \in Keys : live[k] => Replicated(k))
+      <>(\A k \in Keys : live[k] => (Replicated(k) \/ lostData[k]))
 
 =============================================================================
