@@ -25,3 +25,6 @@ benchmarks/nyc-taxi/trips.csv
 prime-agent-session-*.html
 
 tla2tools.jar
+
+specs/tla/states/
+specs/tla/*_TTrace_*.tla
