@@ -146,3 +146,88 @@ keeps working even on the reviewer's own drafts:
 | 3 nodes x 2 keys x RF=2 | 19,808 | 8 s |
 | 3 nodes x 2 keys x RF=3 | 23,552 | 9 s |
 | 3 nodes x 3 keys x RF=2 | 525,632 | 395 s |
+
+---
+
+# Pass 4 (2026-08-24): topology, zone failures, and the five-nines claim
+
+## New requirement
+
+Prove that under node/zone outages the cluster can carry a healthy load
+without interruption -- telecom-grade ("five nines") -- GIVEN proper
+topology. This forced topology into the model: v3 was topology-blind
+(replicas could share a rack/zone), so no zone-level claim was even
+stateable.
+
+## What was added
+
+- `ZoneOneNodes` / `ZoneTwoNodes` constants partitioning `Nodes`
+  (ASSUME-checked partition; two zones suffice for RF=2 claims).
+- `CrossZone(src, dst)` guard on BOTH `ShipReplica` and `ReReplicate` --
+  proper topology is now a central-truth RULE: replicas never share a
+  zone, ever, on any path.
+- `ZoneOutage(Z)` / `ZoneRecover(Z)`: whole-zone failure and recovery.
+- Invariants: `ZoneSpreadReplication` (birthright form, suspended by the
+  `degraded` history flag after media loss), 
+  `AvailabilityUnderSingleZoneFailure`.
+- Liveness: `TopologyHeals` -- anti-entropy re-spreads surviving keys
+  after media loss; `ReReplicate` trigger strengthened to fire whenever
+  coverage is lost, not merely count.
+
+## Bugs TLC caught in THIS pass's drafts
+
+1. **Overbroad zone-failure claim**: "at most one zone fully down =>
+   all readable" was falsified immediately -- after a zone outage,
+   PARTIAL node crashes inside the SURVIVING zone can still take out
+   exactly the nodes holding a key's copies. Corrected by requiring the
+   surviving zone to be healthy (`SomeZoneFullyUp`); partial single-node
+   crashes inside it remain covered by the existing single-node-failure
+   invariant. The honest combined statement: converged service survives
+   ANY one full-zone outage OR any one node crash.
+2. **Post-loss placement drift**: after media loss, the remaining Rf
+   holders can all sit in ONE zone (e.g., 3 holders spread over 2 zones,
+   lose the lone zone-B holder -> 2 holders both in zone A). A state-
+   level "always zone-spread" invariant is simply FALSE in those states;
+   TLC found the counterexample. Reformulated honestly: zone-spread is a
+   birthright until first media loss (~degraded antecedent) and a
+   LIVENESS obligation afterwards (TopologyHeals).
+
+## Verification matrix (pass 4, all PASS, safety + temporal)
+
+| Config | Distinct states | Time |
+|--------|----------------|------|
+| 2 nodes (1+1 zones) x 1 key x RF=2 | 224 | 1 s |
+| 3 nodes (2+1 zones) x 2 keys x RF=2 | 22,432 | 17 s |
+| 3 nodes (2+1 zones) x 3 keys x RF=2 | 31,688 | 16 s |
+| 4 nodes (2+2 zones) x 2 keys x RF=2 | 211,200 | 350 s |
+
+## The five-nines argument (structural proof + arithmetic)
+
+Five nines = 99.999% availability = at most 5.26 minutes of downtime per
+year (8,760 h budget x 10^-5).
+
+STRUCTURAL HALF (machine-proven): `AvailabilityUnderSingleZoneFailure`
+-- with proper (cross-zone) topology, a full outage of any ONE zone,
+with the surviving zone healthy, leaves EVERY live key readable. No
+configuration change, no operator action: the surviving zone already
+holds a copy of every key because placement never shares a zone.
+
+ARITHMETIC HALF (standard fault-tree math, operational inputs):
+service-affecting downtime requires TWO independent zone failures
+overlapping in time. Expected overlap per year ~= (d1 x d2) / 8,760
+hours, where di = annualized zone downtime:
+
+  - Conservative zones, d = 24 h/yr each:
+      24 x 24 / 8,760 = 0.0658 h/yr = 3.9 min/yr  < 5.26 min  => five nines MET
+  - Typical cloud-zone availability (99.99%, d ~= 8.8 h/yr):
+      8.8 x 8.8 / 8,760 = 0.0088 h/yr = 32 s/yr   => ~99.9999%
+
+ASSUMPTIONS (stated, not hidden): zone failures statistically
+independent (no shared power/network/control plane across zones);
+bounded repair time; the replication window (before a key converges to
+cross-zone copies) is covered by the separately-proven recovery
+guarantees; clients implement failover.
+
+This is exactly how telecom carriers certify five nines: prove that no
+single fault is service-affecting (we did, mechanically), then bound the
+probability of simultaneous faults arithmetically.

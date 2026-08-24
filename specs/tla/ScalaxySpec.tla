@@ -21,9 +21,21 @@ CONSTANTS
   \* Set of keys.
   Keys,
   \* Replication factor: number of durable copies per live key.
-  Rf
+  Rf,
+  \* TOPOLOGY (central truth): nodes are partitioned into exactly two
+  \* availability zones. Proper topology = replicas never share a zone.
+  \* (Two zones suffice to prove single-zone-outage transparency for
+  \* RF=2; k-zone generalizations extend the same argument.)
+  ZoneOneNodes,
+  ZoneTwoNodes
 
 ASSUME RfAssume == Rf >= 1 /\ Rf <= Cardinality(Nodes)
+
+ASSUME ZonePartition ==
+  /\ ZoneOneNodes # {}
+  /\ ZoneTwoNodes # {}
+  /\ ZoneOneNodes \cap ZoneTwoNodes = {}
+  /\ ZoneOneNodes \cup ZoneTwoNodes = Nodes
 
 VARIABLES
   \* nodeUp[n]: TRUE iff node n is running.
@@ -42,9 +54,14 @@ VARIABLES
   \* lostData[k]: history flag -- set when the LAST durable copy of a
   \* live key was destroyed by media loss. Once TRUE it latches:
   \* that data is gone forever.
-  lostData
+  lostData,
+  \* degraded: history flag -- TRUE once ANY media loss has occurred.
+  \* Zone-spread placement is a birthright (guaranteed until the first
+  \* media loss) and a liveness obligation afterwards (anti-entropy
+  \* re-spreads under fair scheduling).
+  degraded
 
-vars == <<nodeUp, encOn, held, outbox, live, tombstoned, lostData>>
+vars == <<nodeUp, encOn, held, outbox, live, tombstoned, lostData, degraded>>
 
 NodeSubset == SUBSET Nodes
 
@@ -58,6 +75,7 @@ Init ==
   /\ live       = [k \in Keys |-> FALSE]
   /\ tombstoned = [k \in Keys |-> FALSE]
   /\ lostData   = [k \in Keys |-> FALSE]
+  /\ degraded   = FALSE
 
 -----------------------------------------------------------------------------
 \*
@@ -73,21 +91,55 @@ ClientWrite(k, w) ==
   /\ held'      = [held EXCEPT ![w][k] = TRUE]
   /\ outbox'    = [outbox EXCEPT ![w][k] = (Rf > 1)]
   /\ live'      = [live EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, tombstoned, lostData>>
+  /\ UNCHANGED <<nodeUp, encOn, tombstoned, lostData, degraded>>
 
 \* REPLICATION RULE (central truth): the shipper copies an under-
 \* replicated key from any holder to any up, encrypted node that lacks
-\* a copy, and retires the source's outbox entry once Rf copies exist.
+\* a copy -- ALWAYS into a DIFFERENT ZONE than the source. This is the
+\* "proper topology" requirement: no two replicas share a zone. The
+\* source's outbox entry retires once Rf copies exist.
 Holders(k) == {n \in Nodes : held[n][k]}
 
 \* A key is fully replicated once Rf durable copies exist.
 Replicated(k) == Cardinality(Holders(k)) >= Rf
+
+-----------------------------------------------------------------------------
+\* TOPOLOGY OPERATORS
+-----------------------------------------------------------------------------
+
+\* TRUE iff src and dst sit in DIFFERENT zones (proper placement).
+CrossZone(src, dst) ==
+    (src \in ZoneOneNodes /\ dst \in ZoneTwoNodes)
+  \/ (src \in ZoneTwoNodes /\ dst \in ZoneOneNodes)
+
+\* The set of zones (represented by their node sets).
+ZonesAll == {ZoneOneNodes, ZoneTwoNodes}
+
+\* Zone holding node n.
+ZoneOfSet(n) == IF n \in ZoneOneNodes THEN ZoneOneNodes ELSE ZoneTwoNodes
+
+\* Distinct zones occupied by a key's holders.
+HolderZones(k) == {ZoneOfSet(h) : h \in Holders(k)}
+
+\* A key is zone-spread once its holders occupy Min(Rf, |zones|) zones;
+\* with RF=2 over two zones this means one copy in EACH zone.
+Min2(a, b) == IF a <= b THEN a ELSE b
+
+ZoneSpreadReplicationLevel == Min2(Rf, Cardinality(ZonesAll))
+
+ZoneReplicated(k) == Cardinality(HolderZones(k)) >= ZoneSpreadReplicationLevel
+
+\* Zone status.
+ZoneFullyDown(Z) == \A n \in Z : ~nodeUp[n]
+
+SomeZoneFullyUp == \E Z \in ZonesAll : \A n \in Z : nodeUp[n]
 
 ShipReplica(k, src, dst) ==
   /\ held[src][k]
   /\ outbox[src][k]
   /\ ~held[dst][k]
   /\ dst # src
+  /\ CrossZone(src, dst)
   /\ ~tombstoned[k]
   /\ nodeUp[src]
   /\ nodeUp[dst]
@@ -95,7 +147,7 @@ ShipReplica(k, src, dst) ==
   /\ held'      = [held EXCEPT ![dst][k] = TRUE]
   /\ outbox'    =
         [outbox EXCEPT ![src][k] = (Cardinality(Holders(k)) + 1 < Rf)]
-  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned, lostData>>
+  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned, lostData, degraded>>
 
 \* DELETE RULE (central truth): the tombstone is set immediately; the
 \* key becomes invisible atomically and can never be written again.
@@ -106,20 +158,20 @@ ClientDelete(k) ==
   /\ ~tombstoned[k]
   /\ live'       = [live EXCEPT ![k] = FALSE]
   /\ tombstoned' = [tombstoned EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, held, outbox, lostData>>
+  /\ UNCHANGED <<nodeUp, encOn, held, outbox, lostData, degraded>>
 
 \* Crash: node stops serving. Durable state (held, outbox, encryption
 \* config) survives on disk.
 CrashNode(n) ==
   /\ nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
 
 \* Recover: restart restores all durable state intact.
 RecoverNode(n) ==
   /\ ~nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
 
 \* MEDIA LOSS (central truth): a disk can die permanently. The node
 \* goes down and its durable state is gone. If that was the LAST copy
@@ -134,24 +186,48 @@ LoseDisk(n) ==
            lostData[k]   \* latch: loss is forever
              \/ (live[k] /\ ~tombstoned[k] /\ Holders(k) = {n})
         ]
+  /\ degraded'  = TRUE   \* latch: placement guarantee suspended until healed
   /\ UNCHANGED <<encOn, live, tombstoned>>
 
 \* ANTI-ENTROPY RULE (central truth): replication does not depend only
 \* on the write path's outbox. Any node holding a copy of an under-
 \* replicated live key repairs any up, encrypted node lacking a copy --
 \* this is how the system self-heals after media loss elsewhere.
+\* A key needs anti-entropy when under-replicated OR not zone-spread.
+NeedsRepair(k) ==
+    Cardinality(Holders(k)) < Rf
+  \/ ~ZoneReplicated(k)
+
 ReReplicate(k, src, dst) ==
   /\ live[k]
   /\ ~tombstoned[k]
-  /\ Cardinality(Holders(k)) < Rf
+  /\ NeedsRepair(k)
   /\ held[src][k]
   /\ ~held[dst][k]
   /\ dst # src
+  /\ CrossZone(src, dst)
   /\ nodeUp[src]
   /\ nodeUp[dst]
   /\ encOn[dst]
   /\ held'      = [held EXCEPT ![dst][k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, outbox, live, tombstoned, lostData>>
+  /\ UNCHANGED <<nodeUp, encOn, outbox, live, tombstoned, lostData, degraded>>
+
+\* ZONE OUTAGE (central truth): an entire availability zone fails at
+\* once (power, network, cooling). Every node in the zone stops.
+ZoneOutage(Z) ==
+  /\ Z \in ZonesAll
+  /\ \E n \in Z : nodeUp[n]
+  /\ nodeUp'    =
+        [x \in Nodes |-> IF x \in Z THEN FALSE ELSE nodeUp[x]]
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
+
+\* ZONE RECOVERY: a failed zone comes back as a whole.
+ZoneRecover(Z) ==
+  /\ Z \in ZonesAll
+  /\ ZoneFullyDown(Z)
+  /\ nodeUp'    =
+        [x \in Nodes |-> IF x \in Z THEN TRUE ELSE nodeUp[x]]
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
 
 \* SECURITY RULE: encryption at rest may be toggled on a node only while
 \* it holds no data. Plaintext must never exist on any disk.
@@ -161,13 +237,13 @@ DisableEncryption(n) ==
   /\ encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded>>
 
 EnableEncryption(n) ==
   /\ ~encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded>>
 
 -----------------------------------------------------------------------------
 
@@ -181,6 +257,8 @@ Next ==
   \/ \E n \in Nodes                     : EnableEncryption(n)
   \/ \E k \in Keys, s \in Nodes, d \in Nodes : ReReplicate(k, s, d)
   \/ \E n \in Nodes                     : LoseDisk(n)
+  \/ \E Z \in ZonesAll                  : ZoneOutage(Z)
+  \/ \E Z \in ZonesAll                  : ZoneRecover(Z)
 
 \* FAIRNESS (central truth): the shipper and recovery are eventually
 \* scheduled whenever continuously enabled. Without these conjuncts a
@@ -208,6 +286,41 @@ TypeOK ==
   /\ live       \in [Keys -> BOOLEAN]
   /\ tombstoned \in [Keys -> BOOLEAN]
   /\ lostData   \in [Keys -> BOOLEAN]
+
+\* TOPOLOGY SAFETY: fully replicated keys are spread across zones --
+\* with RF=2 over two zones this means one copy in EACH zone.
+\* This is what "proper topology" means operationally.
+\* Birthright form: before any media loss, replicated keys are always
+\* zone-spread. Afterwards, TopologyHeals (liveness) restores spread.
+ZoneSpreadReplication ==
+  ~degraded =>
+    (\A k \in Keys : Replicated(k) => ZoneReplicated(k))
+
+\* TELECOM-GRADE AVAILABILITY: if all live keys are zone-spread, then a
+\* FULL ZONE OUTAGE -- with the surviving zone healthy -- leaves every
+\* live key readable. Structural core of carrier-grade availability:
+\* a single-zone failure does NOT interrupt converged service.
+\*
+\* TLC note (honest scoping): an earlier draft dropped SomeZoneFullyUp
+\* from the antecedent and was falsified immediately -- after a zone
+\* outage, PARTIAL crashes inside the surviving zone can still take out
+\* that zone's copy of a key. Those cases are covered separately by
+\* AvailabilityUnderSingleFailureAfterReplication (any one node crash).
+\* Together: converged service survives ANY single-zone outage OR any
+\* single-node crash.
+AvailabilityUnderSingleZoneFailure ==
+  (\A k \in Keys : live[k] => ZoneReplicated(k))
+    /\ Cardinality({Z \in ZonesAll : ZoneFullyDown(Z)}) <= 1
+    /\ SomeZoneFullyUp =>
+    \A k \in Keys :
+      live[k] => \E h \in Nodes : nodeUp[h] /\ held[h][k]
+
+\* LIVENESS: on a stable cluster, topology damage from media loss is
+\* repaired -- every surviving key becomes zone-spread again.
+TopologyHeals ==
+  [](\A n \in Nodes : nodeUp[n]) =>
+      <>(\A k \in Keys :
+           live[k] => (ZoneReplicated(k) \/ lostData[k]))
 
 \* SAFETY: every visible key has at least one durable copy at all times,
 \* UNLESS media loss destroyed the last copy (lostData latched).

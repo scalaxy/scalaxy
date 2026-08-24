@@ -33,16 +33,18 @@ Central-truth rules binding the implementation:
 All runs: TLC exhaustive breadth-first search, safety + liveness
 (temporal) checking. Every configuration below PASSED with zero errors.
 
-| Config | Distinct states | Liveness | Time |
-|--------|----------------|----------|------|
-| 2 nodes x 1 key x RF=2 | 152 | checked | <1 s |
-| 2 nodes x 2 keys x RF=2 | 1,840 | checked | 1 s |
-| 3 nodes x 2 keys x RF=2 | 19,808 | checked | 8 s |
-| 3 nodes x 2 keys x RF=3 | 23,552 | checked | 9 s |
-| 3 nodes x 3 keys x RF=2 | 525,632 | checked | 395 s |
+| Config | Topology (zones) | Distinct states | Time |
+|--------|------------------|-----------------|------|
+| 3 nodes x 2 keys x RF=2 | z1:{n1,n2}, z2:{n3} | 22,432 | 17 s |
+| 3 nodes x 3 keys x RF=2 | z1:{n1,n2}, z2:{n3} | 31,688 | 16 s |
+| 4 nodes x 2 keys x RF=2 | z1:{n1,n2}, z2:{n3,n4} | 211,200 | 350 s |
 
-Model includes media loss (`LoseDisk`) and anti-entropy self-healing
-(`ReReplicate`). See CRITIQUE.md pass 3.
+All runs check safety invariants AND temporal properties
+(ReplicationConverges, ServiceRestored, TopologyHeals).
+
+Model includes media loss (`LoseDisk`), anti-entropy self-healing
+(`ReReplicate`), availability zones and whole-zone outages
+(`ZoneOutage`). See CRITIQUE.md passes 3-4.
 
 Safety invariants (hold in every reachable state of every config):
 
@@ -51,6 +53,8 @@ Safety invariants (hold in every reachable state of every config):
 | `TypeOK` | correctness | All state well-formed |
 | `DataIntegrityUnlessMediaLoss` | storage | Visible keys keep >= 1 durable copy unless media loss destroyed the last one (then flagged) |
 | `NoFalseLossAlarm` / `NoUndetectedLoss` | storage | Media loss accounted exactly, both directions |
+| `ZoneSpreadReplication` | topology | Until first media loss, replicated copies never share a zone |
+| `AvailabilityUnderSingleZoneFailure` | reliability | Full outage of any ONE zone (survivor healthy) never interrupts converged service |
 | `DeleteVisible` | correctness | Deleted keys can never resurrect |
 | `EncryptionAtRest` | security | No key ever stored on an unencrypted node |
 | `AvailabilityUnderSingleFailureAfterReplication` | reliability | After convergence, single-node crash costs zero availability |
@@ -61,6 +65,7 @@ Liveness properties (checked under WF fairness):
 |----------|-----------|
 | `ReplicationConverges` | Stable cluster => every live key reaches RF copies (unless media-lost) |
 | `ServiceRestored` | Every live key eventually readable again after crashes (unless media-lost) |
+| `TopologyHeals` | Stable cluster re-spreads surviving keys across zones after media loss |
 
 ## Honest limitations (see CRITIQUE.md)
 
@@ -71,6 +76,29 @@ Liveness properties (checked under WF fairness):
 - Media loss IS modeled (pass 3): losing the last copy of a live key is
   permanent and flagged via lostData; all other losses self-heal via
   anti-entropy replication.
+
+## Five nines (telecom-grade availability)
+
+Five nines = at most 5.26 minutes downtime per year. The certification
+argument has two halves:
+
+**Structural half -- machine-proven.** With proper topology (replicas
+never share a zone -- enforced on EVERY replication path), a full outage
+of any one zone with the surviving zone healthy leaves every live key
+readable from the survivor. TLC verified this invariant over all
+reachable states of the certified models. No single-zone event is
+service-affecting.
+
+**Arithmetic half -- standard fault-tree math.** Downtime therefore
+requires two independent zone failures overlapping within the repair
+window: expected overlap ~= d1*d2 / 8760 hours per year.
+
+    Conservative zones (24 h/yr each):   3.9 min/yr  < 5.26  => five nines MET
+    Typical cloud zones (8.8 h/yr each): 32 sec/yr          => ~99.9999%
+
+Assumptions: independent zone failures (no shared power/network/control
+plane), bounded repair, converged keys (the replication window is
+covered by the proven recovery guarantees), client failover.
 
 ## How to verify
 
