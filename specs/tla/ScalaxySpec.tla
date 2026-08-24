@@ -59,9 +59,12 @@ VARIABLES
   \* Zone-spread placement is a birthright (guaranteed until the first
   \* media loss) and a liveness obligation afterwards (anti-entropy
   \* re-spreads under fair scheduling).
-  degraded
+  degraded,
+  \* linkUp: TRUE iff the INTER-ZONE NETWORK is connected. A partition
+  \* leaves every node running but blocks all cross-zone replication.
+  linkUp
 
-vars == <<nodeUp, encOn, held, outbox, live, tombstoned, lostData, degraded>>
+vars == <<nodeUp, encOn, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 NodeSubset == SUBSET Nodes
 
@@ -76,6 +79,7 @@ Init ==
   /\ tombstoned = [k \in Keys |-> FALSE]
   /\ lostData   = [k \in Keys |-> FALSE]
   /\ degraded   = FALSE
+  /\ linkUp     = TRUE
 
 -----------------------------------------------------------------------------
 \*
@@ -91,7 +95,7 @@ ClientWrite(k, w) ==
   /\ held'      = [held EXCEPT ![w][k] = TRUE]
   /\ outbox'    = [outbox EXCEPT ![w][k] = (Rf > 1)]
   /\ live'      = [live EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, encOn, tombstoned, lostData, degraded, linkUp>>
 
 \* REPLICATION RULE (central truth): the shipper copies an under-
 \* replicated key from any holder to any up, encrypted node that lacks
@@ -140,6 +144,7 @@ ShipReplica(k, src, dst) ==
   /\ ~held[dst][k]
   /\ dst # src
   /\ CrossZone(src, dst)
+  /\ linkUp
   /\ ~tombstoned[k]
   /\ nodeUp[src]
   /\ nodeUp[dst]
@@ -147,7 +152,7 @@ ShipReplica(k, src, dst) ==
   /\ held'      = [held EXCEPT ![dst][k] = TRUE]
   /\ outbox'    =
         [outbox EXCEPT ![src][k] = (Cardinality(Holders(k)) + 1 < Rf)]
-  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, encOn, live, tombstoned, lostData, degraded, linkUp>>
 
 \* DELETE RULE (central truth): the tombstone is set immediately; the
 \* key becomes invisible atomically and can never be written again.
@@ -158,20 +163,20 @@ ClientDelete(k) ==
   /\ ~tombstoned[k]
   /\ live'       = [live EXCEPT ![k] = FALSE]
   /\ tombstoned' = [tombstoned EXCEPT ![k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, held, outbox, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, encOn, held, outbox, lostData, degraded, linkUp>>
 
 \* Crash: node stops serving. Durable state (held, outbox, encryption
 \* config) survives on disk.
 CrashNode(n) ==
   /\ nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 \* Recover: restart restores all durable state intact.
 RecoverNode(n) ==
   /\ ~nodeUp[n]
   /\ nodeUp'    = [nodeUp EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 \* MEDIA LOSS (central truth): a disk can die permanently. The node
 \* goes down and its durable state is gone. If that was the LAST copy
@@ -187,7 +192,7 @@ LoseDisk(n) ==
              \/ (live[k] /\ ~tombstoned[k] /\ Holders(k) = {n})
         ]
   /\ degraded'  = TRUE   \* latch: placement guarantee suspended until healed
-  /\ UNCHANGED <<encOn, live, tombstoned>>
+  /\ UNCHANGED <<encOn, live, tombstoned, linkUp>>
 
 \* ANTI-ENTROPY RULE (central truth): replication does not depend only
 \* on the write path's outbox. Any node holding a copy of an under-
@@ -206,11 +211,12 @@ ReReplicate(k, src, dst) ==
   /\ ~held[dst][k]
   /\ dst # src
   /\ CrossZone(src, dst)
+  /\ linkUp
   /\ nodeUp[src]
   /\ nodeUp[dst]
   /\ encOn[dst]
   /\ held'      = [held EXCEPT ![dst][k] = TRUE]
-  /\ UNCHANGED <<nodeUp, encOn, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, encOn, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 \* ZONE OUTAGE (central truth): an entire availability zone fails at
 \* once (power, network, cooling). Every node in the zone stops.
@@ -219,7 +225,7 @@ ZoneOutage(Z) ==
   /\ \E n \in Z : nodeUp[n]
   /\ nodeUp'    =
         [x \in Nodes |-> IF x \in Z THEN FALSE ELSE nodeUp[x]]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 \* ZONE RECOVERY: a failed zone comes back as a whole.
 ZoneRecover(Z) ==
@@ -227,7 +233,21 @@ ZoneRecover(Z) ==
   /\ ZoneFullyDown(Z)
   /\ nodeUp'    =
         [x \in Nodes |-> IF x \in Z THEN TRUE ELSE nodeUp[x]]
-  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<encOn, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
+
+\* INTER-ZONE PARTITION (central truth): the network between zones can
+\* split while every node keeps running. Each zone serves its local
+\* copies; cross-zone replication pauses until the link heals. No data
+\* is lost or destroyed by a partition -- only convergence pauses.
+LinkPartition ==
+  /\ linkUp
+  /\ linkUp'    = FALSE
+  /\ UNCHANGED <<nodeUp, encOn, held, outbox, live, tombstoned, lostData, degraded>>
+
+LinkHeal ==
+  /\ ~linkUp
+  /\ linkUp'    = TRUE
+  /\ UNCHANGED <<nodeUp, encOn, held, outbox, live, tombstoned, lostData, degraded>>
 
 \* SECURITY RULE: encryption at rest may be toggled on a node only while
 \* it holds no data. Plaintext must never exist on any disk.
@@ -237,13 +257,13 @@ DisableEncryption(n) ==
   /\ encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = FALSE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 EnableEncryption(n) ==
   /\ ~encOn[n]
   /\ Drained(n)
   /\ encOn'     = [encOn EXCEPT ![n] = TRUE]
-  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded>>
+  /\ UNCHANGED <<nodeUp, held, outbox, live, tombstoned, lostData, degraded, linkUp>>
 
 -----------------------------------------------------------------------------
 
@@ -259,6 +279,8 @@ Next ==
   \/ \E n \in Nodes                     : LoseDisk(n)
   \/ \E Z \in ZonesAll                  : ZoneOutage(Z)
   \/ \E Z \in ZonesAll                  : ZoneRecover(Z)
+  \/ LinkPartition
+  \/ LinkHeal
 
 \* FAIRNESS (central truth): the shipper and recovery are eventually
 \* scheduled whenever continuously enabled. Without these conjuncts a
@@ -318,9 +340,27 @@ AvailabilityUnderSingleZoneFailure ==
 \* LIVENESS: on a stable cluster, topology damage from media loss is
 \* repaired -- every surviving key becomes zone-spread again.
 TopologyHeals ==
-  [](\A n \in Nodes : nodeUp[n]) =>
+  []((\A n \in Nodes : nodeUp[n]) /\ linkUp) =>
       <>(\A k \in Keys :
            live[k] => (ZoneReplicated(k) \/ lostData[k]))
+
+\* WORKLOAD AVAILABILITY (reads AND writes): under a single-zone outage
+\* with zone-spread keys and a healthy survivor, clients can both read
+\* every live key AND keep writing -- some surviving node accepts or can
+\* instantly accept writes.
+\*
+\* TLC note: the first draft required an ALREADY-encrypted survivor and
+\* was falsified: an operator may disable encryption on a DRAINED node,
+\* whose zone then dies. Per the security rule, re-enabling on a drained
+\* node is instant and safe (no plaintext ever involved), so "encrypted
+\* OR drained" is the honest capability condition. A node holding data
+\* is always encrypted (EncryptionAtRest), so every healthy up node
+\* qualifies.
+WriteCapabilityUnderSingleZoneFailure ==
+  (\A k \in Keys : live[k] => ZoneReplicated(k))
+    /\ Cardinality({Z \in ZonesAll : ZoneFullyDown(Z)}) <= 1
+    /\ SomeZoneFullyUp =>
+    \E w \in Nodes : nodeUp[w] /\ (encOn[w] \/ Drained(w))
 
 \* SAFETY: every visible key has at least one durable copy at all times,
 \* UNLESS media loss destroyed the last copy (lostData latched).
@@ -390,7 +430,7 @@ ServiceRestored ==
 \* reaches full replication. This is the promise the durable outbox +
 \* fair shipper makes: under-replicated data converges.
 ReplicationConverges ==
-  [](\A n \in Nodes : nodeUp[n]) =>
+  []((\A n \in Nodes : nodeUp[n]) /\ linkUp) =>
       <>(\A k \in Keys : live[k] => (Replicated(k) \/ lostData[k]))
 
 =============================================================================

@@ -40,11 +40,20 @@ All runs: TLC exhaustive breadth-first search, safety + liveness
 | 4 nodes x 2 keys x RF=2 | z1:{n1,n2}, z2:{n3,n4} | 211,200 | 350 s |
 
 All runs check safety invariants AND temporal properties
-(ReplicationConverges, ServiceRestored, TopologyHeals).
+(ReplicationConverges, ServiceRestored, TopologyHeals -- guarded on link
+health where noted).
+
+Pass 5 re-certified WITH inter-zone network partitions enabled
+(`LinkPartition` / `LinkHeal`):
+
+| Config (partitions ON) | Distinct states | Time |
+|------------------------|-----------------|------|
+| 3 nodes (2+1 zones) x 2 keys x RF=2 | 44,864 | 37 s |
+| 4 nodes (2+2 zones) x 2 keys x RF=2 | 422,400 | 781 s |
 
 Model includes media loss (`LoseDisk`), anti-entropy self-healing
-(`ReReplicate`), availability zones and whole-zone outages
-(`ZoneOutage`). See CRITIQUE.md passes 3-4.
+(`ReReplicate`), availability zones, whole-zone outages (`ZoneOutage`),
+and inter-zone partitions. See CRITIQUE.md passes 3-5.
 
 Safety invariants (hold in every reachable state of every config):
 
@@ -55,6 +64,7 @@ Safety invariants (hold in every reachable state of every config):
 | `NoFalseLossAlarm` / `NoUndetectedLoss` | storage | Media loss accounted exactly, both directions |
 | `ZoneSpreadReplication` | topology | Until first media loss, replicated copies never share a zone |
 | `AvailabilityUnderSingleZoneFailure` | reliability | Full outage of any ONE zone (survivor healthy) never interrupts converged service |
+| `WriteCapabilityUnderSingleZoneFailure` | workload | Under a single-zone outage, survivors accept or can instantly accept writes (reads AND writes carry on) |
 | `DeleteVisible` | correctness | Deleted keys can never resurrect |
 | `EncryptionAtRest` | security | No key ever stored on an unencrypted node |
 | `AvailabilityUnderSingleFailureAfterReplication` | reliability | After convergence, single-node crash costs zero availability |
@@ -85,9 +95,12 @@ argument has two halves:
 **Structural half -- machine-proven.** With proper topology (replicas
 never share a zone -- enforced on EVERY replication path), a full outage
 of any one zone with the surviving zone healthy leaves every live key
-readable from the survivor. TLC verified this invariant over all
-reachable states of the certified models. No single-zone event is
-service-affecting.
+readable from the survivor, and the survivor accepts or can instantly
+accept writes: the workload -- reads AND writes -- carries on. TLC
+verified these invariants over all reachable states of the certified
+models, INCLUDING inter-zone network partitions: a split cluster serves
+its local copies indefinitely and converges when the link heals. No
+single-zone event is service-affecting.
 
 **Arithmetic half -- standard fault-tree math.** Downtime therefore
 requires two independent zone failures overlapping within the repair

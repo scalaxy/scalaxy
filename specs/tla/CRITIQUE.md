@@ -231,3 +231,58 @@ guarantees; clients implement failover.
 This is exactly how telecom carriers certify five nines: prove that no
 single fault is service-affecting (we did, mechanically), then bound the
 probability of simultaneous faults arithmetically.
+
+---
+
+# Pass 5 (2026-08-24): inter-zone partitions and the write side of the workload
+
+## Remaining gaps found in pass 4
+
+1. **HIGH -- the inter-zone network could not fail.** Whole-zone outages were
+   modeled, but the far more common telecom failure -- a partition where both
+   zones stay UP but cannot talk to each other -- was inexpressible. Real
+   always-on systems must keep serving through exactly this.
+2. **MEDIUM -- "healthy workload" only covered reads.** Nothing stated that
+   clients can still WRITE during degraded operation.
+
+## What was added
+
+- `linkUp` variable + `LinkPartition` / `LinkHeal` actions: every node keeps
+  running; cross-zone shipping and repair pause until the link heals.
+- Both cross-zone actions gated on `linkUp`.
+- `WriteCapabilityUnderSingleZoneFailure`: under a single-zone outage with a
+  healthy survivor, some surviving node accepts (or can instantly accept)
+  writes -- reads AND writes carry on. Liveness properties now honestly
+  guarded on link health (`[](... /\ linkUp) => ...`): if the link never
+  heals, convergence is not promised -- which is the truth.
+
+## Bug TLC caught in THIS pass's draft
+
+The first write-capability invariant demanded an already-ENCRYPTED survivor
+and was falsified immediately: an operator may disable encryption on a
+DRAINED node whose zone then dies, leaving an up-but-unencrypted survivor.
+Per the security rule, re-enabling on a drained node is instant and safe, so
+the honest capability condition is "encrypted OR drained". A node holding
+data is always encrypted, so every healthy up node qualifies.
+
+## Verification matrix (pass 5, all PASS)
+
+| Config | Distinct states | Time |
+|--------|----------------|------|
+| 3 nodes (2+1 zones) x 2 keys x RF=2, WITH partitions | 44,864 | 37 s |
+| 4 nodes (2+2 zones) x 2 keys x RF=2, WITH partitions | 422,400 | 781 s |
+
+Partition modeling roughly doubled the state space versus pass 4 (same
+configs were 22K / 211K), and every invariant held in every partitioned
+state: a split cluster loses nothing -- it merely pauses convergence.
+
+## Updated five-nines story
+
+The structural claim now covers the full failure taxonomy:
+node crash, whole-zone outage, disk loss (with self-healing), AND
+inter-zone partition. Reads continue in all cases from local copies;
+writes continue wherever an up encrypted-or-drainable node exists;
+convergence resumes when the disturbance ends (proven under fair
+scheduling with link health). The arithmetic half is unchanged --
+service-affecting events still require two independent zone-level
+failures overlapping within the repair window.
