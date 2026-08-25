@@ -28,3 +28,5 @@ tla2tools.jar
 
 specs/tla/states/
 specs/tla/*_TTrace_*.tla
+
+erl_crash.dump
