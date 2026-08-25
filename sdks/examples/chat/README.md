@@ -43,7 +43,26 @@ SCALAXY_URL=http://localhost:8080 SCALAXY_DB=chat mix phx.server
 2. Open http://localhost:4000, pick a handle, create a room, share the
    room URL with other browsers/users and chat.
 
+## Demo stack (single host)
+
+`docker-compose.yml` next to this file runs everything the demo needs on one
+machine: a single-node **Garage** S3 instance plus a single **Scalaxy** node.
+
+```bash
+cd sdks/examples/chat
+sh setup-garage.sh                       # one-time: init garage, write .env
+docker compose up -d                     # garage + scalaxy (API on :8090)
+SCALAXY_URL=http://127.0.0.1:8090 SCALAXY_DB=chat mix run seed.exs   # optional welcome content
+SCALAXY_URL=http://127.0.0.1:8090 SCALAXY_DB=chat mix phx.server
+# open http://localhost:4000
+```
+
 ## Notes
+
+* Server-side caveat: chat data written over HTTP currently lives in the
+  node's memory + async S3 uploads and does not survive a Scalaxy container
+  restart yet (see scripts/KNOWN-ISSUES.md KI-2 in the main repository).
+  Re-running `mix run seed.exs` restores the demo content.
 
 * Reads of freshly written nodes rely on the cluster's background sync;
   the UI therefore delivers each message locally from the persisted

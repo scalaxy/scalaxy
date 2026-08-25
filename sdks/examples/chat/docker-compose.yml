@@ -1,0 +1,45 @@
+# Single-host Scalaxy + Garage stack backing the chat demo.
+#
+#   docker compose -f docker-compose.yml up -d
+#   sh ../../scripts/setup-garage-demo.sh     (from sdks/examples/chat)
+#   SCALAXY_URL=http://127.0.0.1:8090 mix phx.server
+#
+services:
+  garage:
+    image: dxflrs/garage:v1.0.0
+    entrypoint: ["/garage"]
+    command: ["-c", "/etc/garage.toml", "server"]
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - chat_garage-meta:/var/lib/garage/meta
+      - chat_garage-data:/var/lib/garage/data
+    ports:
+      - "3910:3900"
+
+  scalaxy:
+    image: scalaxy:integration
+    volumes:
+      - chat_scalaxy-data:/var/lib/scalaxy
+    entrypoint: ["sbcl", "--dynamic-space-size", "8192", "--script", "bin/run-node.lisp"]
+    depends_on: [garage]
+    environment:
+      SCALAXY_NODE_ID: node-0
+      SCALAXY_ADDRESS: 0.0.0.0:7200
+      SCALAXY_HTTP_ADDRESS: 0.0.0.0:8080
+      SCALAXY_STORE_BACKEND: s3
+      SCALAXY_S3_LAZY: "true"
+      SCALAXY_S3_STREAMING: "true"
+      SCALAXY_S3_ENCRYPTION_KEY: "chat-demo-encryption-key-2026"
+      SCALAXY_S3_ENDPOINT: http://garage:3900
+      SCALAXY_S3_BUCKET: chat
+      SCALAXY_S3_ACCESS_KEY: ${CHAT_S3_ACCESS_KEY:-chat-access}
+      SCALAXY_S3_SECRET_KEY: ${CHAT_S3_SECRET_KEY:-chat-secret}
+      SCALAXY_S3_PREFIX: chat-v1
+      SCALAXY_PEERS: node-0=scalaxy:7200,8080
+    ports:
+      - "8090:8080"
+
+volumes:
+  chat_garage-meta:
+  chat_garage-data:
+  chat_scalaxy-data:
