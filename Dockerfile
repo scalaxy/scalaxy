@@ -18,6 +18,7 @@ WORKDIR /opt/scalaxy
 COPY scalaxy.asd ./
 COPY src/ src/
 COPY tests/ tests/
+COPY specs/ specs/
 COPY scripts/ scripts/
 COPY web/ web/
 

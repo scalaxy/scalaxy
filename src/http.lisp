@@ -133,19 +133,28 @@ Returns NIL at end of stream with no pending data."
       (finish-output stream)))
 
   (defun http-handle-connection (handler conn)
+    ;; Central truth (reliability): a client aborting or resetting a
+    ;; connection is ROUTINE, never fatal. Socket-level failures during
+    ;; request parse or response write are dropped silently; only errors
+    ;; from the request handler itself produce a 500 (and only when the
+    ;; connection is still writable). Without this guard one aborted
+    ;; download kills the whole node process.
     (unwind-protect
-         (let ((stream (sb-bsd-sockets:socket-make-stream
-                        conn :input t :output t
-                        :element-type '(unsigned-byte 8)
-                        :buffering :none)))
-           (let ((request (http-parse-request stream)))
-             (when request
-               (let ((response (handler-case (funcall handler request)
-                                 (error (e)
-                                   (list :status 500
-                                         :headers (list (cons "Content-Type" "application/json"))
-                                         :body (json-encode (list (cons "error" (princ-to-string e)))))))))
-                 (http-write-response stream response)))))
+         (handler-case
+             (let ((stream (sb-bsd-sockets:socket-make-stream
+                            conn :input t :output t
+                            :element-type '(unsigned-byte 8)
+                            :buffering :none)))
+               (let ((request (http-parse-request stream)))
+                 (when request
+                   (let ((response (handler-case (funcall handler request)
+                                     (error (e)
+                                       (list :status 500
+                                             :headers (list (cons "Content-Type" "application/json"))
+                                             :body (json-encode (list (cons "error" (princ-to-string e)))))))))
+                     (http-write-response stream response)))))
+           ;; Broken pipe / reset / timeout from a dead peer: drop it.
+           (error (e) (declare (ignore e))))
       (ignore-errors (sb-bsd-sockets:socket-close conn))))
 
   (defun http-serve (handler &key (host "127.0.0.1") (port 8080) (backlog 64))
