@@ -58,10 +58,16 @@ otherwise PATH selects the existing local append-only log."
                                          :cache-dir cache-path :lazy lazy
                                          :owner-ring owner-ring :owner-id owner-id
                                          :streaming-mode streaming-mode))))
-         (backend (if encryption-key
-                      (progn (unless backend (error "encryption requires a storage backend"))
-                             (make-encrypted-storage-plugin backend encryption-key))
-                      backend))
+          ;; Encryption is applied transparently inside the S3 layer
+          ;; (%s3-encrypt-body / %s3-decrypt-body via *s3-encryption-key*).
+          ;; A separate wrapping plugin double-encrypted payloads and broke
+          ;; every downstream typep check -- the root of KI-2.
+          (encryption-key
+           (when encryption-key
+             (setf *s3-encryption-key*
+                   (if (stringp encryption-key)
+                       (string-to-octets encryption-key)
+                       encryption-key))))
          (store (%make-store (make-hash-table :test #'equal) nil path backend)))
     (if backend
         (storage-plugin-load backend (store-table store))

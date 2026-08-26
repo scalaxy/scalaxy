@@ -1,5 +1,12 @@
 # Known issues found by scripts/tla-conformance.py (live-cluster probes)
 
+> **STATUS: BOTH RESOLVED** (2026-08-25). Fixes in `src/graph.lisp`,
+> `src/storage.lisp`, `src/storage-plugins.lisp`, `src/gateway.lisp`,
+> `src/web.lisp`. Re-verified live: writes persist across node restarts,
+> counts are live and correct, fresh writes visible immediately.
+
+# Known issues found by scripts/tla-conformance.py (live-cluster probes)
+
 ## KI-1: fast-counts are stale on freshly restarted lazy-S3 nodes
 
 `MATCH (n) RETURN count(n)` returns 0 (the boot-time value of an empty

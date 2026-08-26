@@ -898,7 +898,7 @@ Returns :yes (might contain) or :no (definitely not)."
         (multiple-value-bind (status headers body)
             (%s3-call cfg "GET" (%s3-hex-key key) :binary t)
           (declare (ignore headers))
-          (when (= status 200) body)))))
+          (when (= status 200) (%s3-decrypt-body body))))))
 
 (defun %s3-load (cfg table &optional decoder)
   (when (and (s3-config-lazy cfg) (null decoder))

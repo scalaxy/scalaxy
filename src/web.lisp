@@ -66,10 +66,9 @@
 
 (defvar *node-graph-metrics-cache* (make-hash-table :test #'equal))
 (defun %node-graph-metrics (node db)
-  (let ((key (list node db)))
-    (or (gethash key *node-graph-metrics-cache*)
-        (setf (gethash key *node-graph-metrics-cache*)
-              (multiple-value-list (graph-store-counts (node-store node) :db db))))))
+  ;; Computed LIVE per database.  The old cache served boot-time zeros
+  ;; forever because nothing invalidated it after writes (KI-1).
+  (multiple-value-list (graph-store-counts (node-store node) :db db)))
 (defun invalidate-node-graph-metrics (node)
   (maphash (lambda (key value) (declare (ignore value))
              (when (eq (first key) node) (remhash key *node-graph-metrics-cache*)))
@@ -217,6 +216,8 @@ The USE command returns the new database name as its output."
     (%web-dispatch request node gateway web-dir address http-address)))
 
 (defun %web-dispatch (request node gateway web-dir address http-address)
+  (format t "~&[dbg wd] path=~s query=~s~%" (getf request :path) (getf request :query))
+  (finish-output)
   (let* ((method (getf request :method))
          (path (getf request :path))
          (segments (remove "" (split-sequence-on #\/ path) :test #'equal))

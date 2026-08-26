@@ -123,19 +123,32 @@ Callers that require deterministic order sort their final identifiers."
     pairs))
 
 (defun gateway-graph-count (gateway kind &key (db +default-db+) label)
-  "Return a fast authoritative graph count from node status metrics.
-Physical replicas are divided out using the configured replica count."
+  "Return an authoritative graph count for the database.
+
+Primary source: per-node status metrics.  When those are zero (fresh
+writes not yet reflected in summaries) the count falls back to a live
+prefix scan across the cluster so fresh writes are never silently
+undercounted."
   (let* ((status (gateway-status gateway :db db))
          (nodes (getf status :nodes))
          (field (if (eq kind :nodes) "graphNodes" "graphRelationships"))
-         (total (if label
-                    (reduce #'+ nodes
-                            :key (lambda (n)
-                                   (or (let ((lc (gethash "graphLabelCounts" n))) (when (hash-table-p lc) (gethash label lc))) 0))
-                            :initial-value 0)
-                    (reduce #'+ nodes :key (lambda (n) (or (gethash field n) 0)) :initial-value 0)))
+         (summary-total
+          (if label
+              (reduce #'+ nodes
+                      :key (lambda (n)
+                             (or (let ((lc (gethash "graphLabelCounts" n)))
+                                   (when (hash-table-p lc) (gethash label lc)))
+                                 0))
+                      :initial-value 0)
+              (reduce #'+ nodes :key (lambda (n) (or (gethash field n) 0)) :initial-value 0)))
          (replicas (1+ (or (and nodes (gethash "replicas" (first nodes))) 1))))
-    (floor total replicas)))
+    (if (> summary-total 0)
+        (floor summary-total replicas)
+        ;; FALLBACK: live scan (KI-1 fix -- status metrics can lag writes).
+        (let* ((kind-char (if (eq kind :nodes) "n" "r"))
+               (pairs (gateway-scan gateway (format nil "d:~a:~a:" db kind-char)))
+               (ids (remove-duplicates (mapcar #'car pairs) :test #'equal)))
+          (length ids)))))
 
 (defun gateway-count (gateway)
   "Total number of distinct keys across the cluster."

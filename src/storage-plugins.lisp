@@ -80,7 +80,52 @@ The format is SCX1 || nonce || ciphertext || authentication tag."
              (incf pos (min (length block) (- (length cipher) pos))) (incf counter))
     plain))
 
+(defgeneric storage-plugin-lazy-index (plugin))
+
+(defmethod storage-plugin-lazy-index ((plugin s3-config))
+  (s3-config-lazy-index plugin))
+
+(defmethod storage-plugin-lazy-index ((plugin t))
+  nil)
+
+(defun %s3-get-raw-object (cfg key)
+  "Direct GET of the object stored under KEY (hex-encoded), binary body
+or NIL when absent.  Bypasses the lazy index entirely so encrypted
+wrappers can fetch exactly what they put."
+  (multiple-value-bind (status headers body)
+      (%s3-call cfg "GET" (%s3-hex-key key) :binary t)
+    (declare (ignore headers))
+    (when (= status 200) body)))
+
 (defstruct (encrypted-storage-plugin (:constructor %make-encrypted-storage-plugin (inner key))) inner key)
+
+;; The wrapper is transparent: values crossing the boundary are codec
+;; octets exactly like the plain store produces and consumes.
+(defmethod storage-plugin-lazy-index ((plugin encrypted-storage-plugin))
+  (storage-plugin-lazy-index (encrypted-storage-plugin-inner plugin)))
+
+(defmethod storage-plugin-get ((plugin encrypted-storage-plugin) key)
+  (let* ((key (encrypted-storage-plugin-key plugin))
+         (bytes (%s3-get-raw-object (encrypted-storage-plugin-inner plugin) key)))
+    (when bytes
+      ;; decrypt -> one codec decode: yields the same encoded octets a
+      ;; plaintext store would hand back.
+      (car (multiple-value-list (codec-decode (%secure-decrypt key bytes)))))))
+
+(defmethod storage-plugin-map ((plugin encrypted-storage-plugin) fn)
+  (let* ((inner (encrypted-storage-plugin-inner plugin))
+         (enc-key (encrypted-storage-plugin-key plugin))
+         (index (storage-plugin-lazy-index inner)))
+    (when index
+      (maphash
+       (lambda (k entry)
+         (declare (ignore entry))
+         (let ((bytes (%s3-get-raw-object inner k)))
+           (when bytes
+             (funcall fn k
+                      (car (multiple-value-list
+                            (codec-decode (%secure-decrypt enc-key bytes))))))))
+       index))))
 (defmethod storage-plugin-load ((plugin encrypted-storage-plugin) table)
   (let ((inner (encrypted-storage-plugin-inner plugin)) (key (encrypted-storage-plugin-key plugin)))
     (let ((raw (make-hash-table :test #'equal)))

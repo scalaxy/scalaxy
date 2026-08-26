@@ -539,8 +539,14 @@ than +blob-inline-limit+ are spilled to their own key."
 (defun %ensure-node-index (g)
   (when (and (typep g 'local-graph-view)
              (zerop (hash-table-count (slot-value g 'node-index))))
-    (let ((store (graph-store g)) (backend (store-backend (graph-store g))))
-      (if (and (typep backend 's3-config) (s3-config-lazy backend))
+    (let* ((store (graph-store g)) (backend (store-backend (graph-store g)))
+           (inner (when (typep backend 'encrypted-storage-plugin)
+                    (encrypted-storage-plugin-inner backend)))
+           (lazy-s3 (cond ((typep backend 's3-config) (s3-config-lazy backend))
+                          ((and inner (typep inner 's3-config)) (s3-config-lazy inner))
+                          (t nil)))
+           (index (storage-plugin-lazy-index backend)))
+      (if (and lazy-s3 index (plusp (hash-table-count index)))
           (maphash
            (lambda (key entry)
              (declare (ignore entry))
@@ -553,7 +559,7 @@ than +blob-inline-limit+ are spilled to their own key."
                                      (setf (gethash label (slot-value g 'label-index))
                                            (make-hash-table :test #'equal)))))
                      (setf (gethash eid bucket) t))))))
-           (s3-config-lazy-index backend))
+           index)
           (g-map g
                  (lambda (p)
                    (when (and (>= (length (car p)) 2)
@@ -736,7 +742,7 @@ incident (axiom A1 forbids dangling endpoints)."
 ;;; counts and invariants
 
 (defun graph-store-counts (store &key (db +default-db+))
-  "Count authoritative records without materializing scan results."
+    "Count authoritative records without materializing scan results."
   (let ((nodes 0) (rels 0) (labels (make-hash-table :test #'equal))
         (prefix (db-key db ""))
         (backend (store-backend store)))
@@ -776,14 +782,34 @@ incident (axiom A1 forbids dangling endpoints)."
                   (incf rels))))))))
     (values nodes rels labels)))
 
+(defun %count-store-keys (g prefix)
+  "Count keys starting with PREFIX by walking live storage exactly once."
+  (let ((n 0))
+    (g-map g
+           (lambda (p)
+             (when (and (>= (length (car p)) 2)
+                        (string= (car p) prefix :end1 2))
+               (incf n))))
+    n))
+
 (defun graph-count-nodes (g)
+  (when (typep g 'local-graph-view) (%ensure-node-index g))
   (if (typep g 'local-graph-view)
-      (hash-table-count (slot-value g 'node-index))
+      (let ((n (hash-table-count (slot-value g 'node-index))))
+        (if (plusp n)
+            n
+            (%count-store-keys g "n:")))
+
       (length (graph-scan-node-ids g))))
 
 (defun graph-count-rels (g)
+  (when (typep g 'local-graph-view) (%ensure-node-index g))
   (if (typep g 'local-graph-view)
-      (hash-table-count (slot-value g 'rel-index))
+      (let ((n (hash-table-count (slot-value g 'rel-index))))
+        (if (plusp n)
+            n
+            (%count-store-keys g "r:")))
+
       (length (graph-scan-rel-ids g))))
 
 (defun graph-stream-relationships (g fn &key type limit)

@@ -59,10 +59,8 @@ SCALAXY_URL=http://127.0.0.1:8090 SCALAXY_DB=chat mix phx.server
 
 ## Notes
 
-* Server-side caveat: chat data written over HTTP currently lives in the
-  node's memory + async S3 uploads and does not survive a Scalaxy container
-  restart yet (see scripts/KNOWN-ISSUES.md KI-2 in the main repository).
-  Re-running `mix run seed.exs` restores the demo content.
+* Chat data is durable: it survives node restarts (verified). Earlier
+  server-side issues were fixed; history in scripts/KNOWN-ISSUES.md.
 
 * Reads of freshly written nodes rely on the cluster's background sync;
   the UI therefore delivers each message locally from the persisted
