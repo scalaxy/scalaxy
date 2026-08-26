@@ -28,7 +28,6 @@ services:
       SCALAXY_HTTP_ADDRESS: 0.0.0.0:8080
       SCALAXY_STORE_BACKEND: s3
       SCALAXY_S3_LAZY: "true"
-      SCALAXY_S3_STREAMING: "true"
       SCALAXY_S3_ENCRYPTION_KEY: "chat-demo-encryption-key-2026"
       SCALAXY_S3_ENDPOINT: http://garage:3900
       SCALAXY_S3_BUCKET: chat
